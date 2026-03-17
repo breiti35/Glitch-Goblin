@@ -88,7 +88,10 @@ pub async fn switch_project(
         .cloned()
         .ok_or_else(|| format!("Project '{}' not found", name))?;
 
-    let kanban_path = project.path.join(".claude").join("kanban.json");
+    let data_dir = config::project_data_dir(&project.name)?;
+    // Migrate old runtime data from .claude/ if needed
+    let _ = config::migrate_project_data(&project.path, &data_dir);
+    let kanban_path = data_dir.join("kanban.json");
     let board = kanban::load_board(&kanban_path)?;
 
     // Stop old watcher
@@ -103,6 +106,7 @@ pub async fn switch_project(
 
     s.board = board.clone();
     s.kanban_path = kanban_path;
+    s.data_dir = data_dir;
     s.project = Some(project);
     s.log("Project switched".to_string());
 
@@ -178,8 +182,8 @@ pub async fn create_ticket(
     s.board.tickets.push(ticket.clone());
     s.save_and_backup()?;
     s.log(format!("Created ticket {id}"));
-    if let Some(pp) = s.project_path() {
-        activity::log_activity(&pp, "ticket_created", Some(&ticket.id), Some(&ticket.title), None);
+    if let Some(dd) = s.data_dir() {
+        activity::log_activity(&dd, "ticket_created", Some(&ticket.id), Some(&ticket.title), None);
     }
     Ok(ticket)
 }
@@ -248,9 +252,9 @@ pub async fn move_ticket(
 
     s.board.tickets[idx].column = target_column.clone();
     s.save_and_backup()?;
-    if let Some(pp) = s.project_path() {
+    if let Some(dd) = s.data_dir() {
         let detail = format!("{} -> {}", current.label(), target_column.label());
-        activity::log_activity(&pp, "ticket_moved", Some(&ticket_id), None, Some(&detail));
+        activity::log_activity(&dd, "ticket_moved", Some(&ticket_id), None, Some(&detail));
     }
     Ok(())
 }
@@ -267,8 +271,8 @@ pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), St
     let title = s.board.tickets[idx].title.clone();
     s.board.tickets.remove(idx);
     s.save_and_backup()?;
-    if let Some(pp) = s.project_path() {
-        activity::log_activity(&pp, "ticket_deleted", Some(&ticket_id), Some(&title), None);
+    if let Some(dd) = s.data_dir() {
+        activity::log_activity(&dd, "ticket_deleted", Some(&ticket_id), Some(&title), None);
     }
     Ok(())
 }
@@ -306,13 +310,15 @@ pub async fn start_ticket(
             "Starting {} - {}",
             ticket.id, ticket.title
         ));
-        activity::log_activity(
-            &project_path,
-            "ticket_started",
-            Some(&ticket.id),
-            Some(&ticket.title),
-            None,
-        );
+        if let Some(dd) = s.data_dir() {
+            activity::log_activity(
+                &dd,
+                "ticket_started",
+                Some(&ticket.id),
+                Some(&ticket.title),
+                None,
+            );
+        }
         (ticket, project_path, kanban_path)
     }; // Lock released
 
@@ -351,7 +357,7 @@ pub async fn finish_ticket(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (ticket, project_path, kanban_path, commit_prefix) = {
+    let (ticket, project_path, kanban_path, commit_prefix, data_dir) = {
         let s = state.lock().await;
         let idx = s
             .board
@@ -363,7 +369,8 @@ pub async fn finish_ticket(
         let project_path = s.project_path().ok_or("No project selected")?;
         let kanban_path = s.kanban_path.clone();
         let commit_prefix = s.settings.commit_prefix.clone();
-        (ticket, project_path, kanban_path, commit_prefix)
+        let data_dir = s.data_dir();
+        (ticket, project_path, kanban_path, commit_prefix, data_dir)
     };
 
     // Auto-commit changes from worktree
@@ -383,13 +390,15 @@ pub async fn finish_ticket(
             s.board.tickets[idx].review_at = Some(kanban::now_iso());
             s.board.tickets[idx].branch = Some(git::branch_name(&ticket));
             s.log(format!("{} finished -> Review", ticket_id));
-            activity::log_activity(
-                &project_path,
-                "ticket_completed",
-                Some(&ticket_id),
-                Some(&ticket.title),
-                None,
-            );
+            if let Some(dd) = &data_dir {
+                activity::log_activity(
+                    dd,
+                    "ticket_completed",
+                    Some(&ticket_id),
+                    Some(&ticket.title),
+                    None,
+                );
+            }
             let _ = s.save_and_backup();
         }
     }
@@ -439,7 +448,9 @@ pub async fn merge_ticket(
             let _ = s.save_and_backup();
             s.log(format!("Merged {} successfully", ticket_id));
             let title = s.board.tickets[idx].title.clone();
-            activity::log_activity(&project_path, "ticket_merged", Some(&ticket_id), Some(&title), Some(&branch));
+            if let Some(dd) = s.data_dir() {
+                activity::log_activity(&dd, "ticket_merged", Some(&ticket_id), Some(&title), Some(&branch));
+            }
         }
     }
 
@@ -572,8 +583,8 @@ pub async fn restore_backup(
     kanban::save_board(&s.kanban_path, &board)?;
     s.board = board.clone();
     s.log(format!("Restored backup: {}", filename));
-    if let Some(pp) = s.project_path() {
-        activity::log_activity(&pp, "backup_restored", None, None, Some(&filename));
+    if let Some(dd) = s.data_dir() {
+        activity::log_activity(&dd, "backup_restored", None, None, Some(&filename));
     }
 
     let _ = app.emit("board-changed", &board);
@@ -773,7 +784,8 @@ pub async fn move_ticket_to_project(
         .cloned()
         .ok_or_else(|| format!("Target project '{}' not found", target_project))?;
 
-    let target_kanban_path = target.path.join(".claude").join("kanban.json");
+    let target_data_dir = config::project_data_dir(&target.name)?;
+    let target_kanban_path = target_data_dir.join("kanban.json");
     let mut target_board = kanban::load_board(&target_kanban_path)?;
 
     // Re-generate ticket ID based on target board
@@ -940,9 +952,9 @@ pub async fn get_activity(
     state: State<'_>,
 ) -> Result<Vec<activity::ActivityEntry>, String> {
     let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let data_dir = s.data_dir().ok_or("No project data directory")?;
     drop(s);
-    Ok(activity::get_activity(&project_path, limit as usize))
+    Ok(activity::get_activity(&data_dir, limit as usize))
 }
 
 #[tauri::command]
@@ -1017,6 +1029,7 @@ pub struct ProjectInfo {
 pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
+    let data_dir = s.data_dir().ok_or("No project data directory")?;
     let board = s.board.clone();
     drop(s);
 
@@ -1084,7 +1097,7 @@ pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
     let command_count = config::list_commands(&project_path).len() as u32;
 
     // Recent activity
-    let recent_activity = activity::get_activity(&project_path, 5);
+    let recent_activity = activity::get_activity(&data_dir, 5);
 
     Ok(ProjectInfo {
         readme_preview,
@@ -1105,9 +1118,9 @@ pub async fn list_templates(
     state: State<'_>,
 ) -> Result<Vec<config::TicketTemplate>, String> {
     let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let data_dir = s.data_dir().ok_or("No project data directory")?;
     drop(s);
-    Ok(config::load_templates(&project_path))
+    Ok(config::load_templates(&data_dir))
 }
 
 #[tauri::command]
@@ -1116,9 +1129,9 @@ pub async fn save_templates(
     state: State<'_>,
 ) -> Result<(), String> {
     let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let data_dir = s.data_dir().ok_or("No project data directory")?;
     drop(s);
-    config::save_templates(&project_path, &templates)
+    config::save_templates(&data_dir, &templates)
 }
 
 #[tauri::command]
@@ -1128,8 +1141,8 @@ pub async fn create_ticket_from_template(
     state: State<'_>,
 ) -> Result<Ticket, String> {
     let mut s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
-    let templates = config::load_templates(&project_path);
+    let data_dir = s.data_dir().ok_or("No project data directory")?;
+    let templates = config::load_templates(&data_dir);
     let tpl = templates
         .iter()
         .find(|t| t.name == template_name)
@@ -1173,9 +1186,9 @@ pub async fn create_ticket_from_template(
     s.board.tickets.push(ticket.clone());
     s.save_and_backup()?;
     s.log(format!("Created ticket {} from template '{}'", id, template_name));
-    if let Some(pp) = s.project_path() {
+    if let Some(dd) = s.data_dir() {
         activity::log_activity(
-            &pp,
+            &dd,
             "ticket_created",
             Some(&ticket.id),
             Some(&ticket.title),
@@ -1339,8 +1352,8 @@ pub async fn import_tickets(
 
     s.save_and_backup()?;
     s.log("Tickets imported".to_string());
-    if let Some(pp) = s.project_path() {
-        activity::log_activity(&pp, "tickets_imported", None, None, Some(&mode));
+    if let Some(dd) = s.data_dir() {
+        activity::log_activity(&dd, "tickets_imported", None, None, Some(&mode));
     }
     Ok(s.board.clone())
 }
@@ -1350,9 +1363,9 @@ pub async fn import_tickets(
 #[tauri::command]
 pub async fn get_deploy_config(state: State<'_>) -> Result<deploy::DeployConfig, String> {
     let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let data_dir = s.data_dir().ok_or("No project data directory")?;
     drop(s);
-    Ok(deploy::load_deploy_config(&project_path))
+    Ok(deploy::load_deploy_config(&data_dir))
 }
 
 #[tauri::command]
@@ -1361,9 +1374,9 @@ pub async fn save_deploy_config(
     state: State<'_>,
 ) -> Result<(), String> {
     let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let data_dir = s.data_dir().ok_or("No project data directory")?;
     drop(s);
-    deploy::save_deploy_config(&project_path, &config)
+    deploy::save_deploy_config(&data_dir, &config)
 }
 
 #[tauri::command]
@@ -1391,12 +1404,13 @@ pub async fn local_deploy(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<String, String> {
-    let (project_path, config, shell) = {
+    let (project_path, data_dir, config, shell) = {
         let s = state.lock().await;
         let pp = s.project_path().ok_or("No project selected")?;
-        let cfg = deploy::load_deploy_config(&pp);
+        let dd = s.data_dir().ok_or("No project data directory")?;
+        let cfg = deploy::load_deploy_config(&dd);
         let shell = s.settings.default_shell.clone();
-        (pp, cfg, shell)
+        (pp, dd, cfg, shell)
     };
 
     let cwd = project_path.to_string_lossy().to_string();
@@ -1410,9 +1424,7 @@ pub async fn local_deploy(
     s.terminals.insert(terminal_id.clone(), session);
     let cmd = deploy::build_compose_command(&config, &project_path, "up")?;
     s.log(format!("Local deploy started: {cmd}"));
-    if let Some(pp) = s.project_path() {
-        activity::log_activity(&pp, "local_deploy", None, None, Some(&cmd));
-    }
+    activity::log_activity(&data_dir, "local_deploy", None, None, Some(&cmd));
 
     Ok(terminal_id)
 }
@@ -1425,7 +1437,8 @@ pub async fn local_deploy_stop(
     let (project_path, config, shell) = {
         let s = state.lock().await;
         let pp = s.project_path().ok_or("No project selected")?;
-        let cfg = deploy::load_deploy_config(&pp);
+        let dd = s.data_dir().ok_or("No project data directory")?;
+        let cfg = deploy::load_deploy_config(&dd);
         let shell = s.settings.default_shell.clone();
         (pp, cfg, shell)
     };
@@ -1450,10 +1463,11 @@ pub async fn live_deploy(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<String, String> {
-    let (project_path, config, shell) = {
+    let (project_path, data_dir, config, shell) = {
         let s = state.lock().await;
         let pp = s.project_path().ok_or("No project selected")?;
-        let cfg = deploy::load_deploy_config(&pp);
+        let dd = s.data_dir().ok_or("No project data directory")?;
+        let cfg = deploy::load_deploy_config(&dd);
         if !cfg.live_enabled {
             return Err("Live deploy is not enabled".to_string());
         }
@@ -1461,7 +1475,7 @@ pub async fn live_deploy(
             return Err("SSH host is not configured".to_string());
         }
         let shell = s.settings.default_shell.clone();
-        (pp, cfg, shell)
+        (pp, dd, cfg, shell)
     };
 
     let cwd = project_path.to_string_lossy().to_string();
@@ -1474,15 +1488,13 @@ pub async fn live_deploy(
     let mut s = state.lock().await;
     s.terminals.insert(terminal_id.clone(), session);
     s.log(format!("Live deploy started to {}", config.ssh_host));
-    if let Some(pp) = s.project_path() {
-        activity::log_activity(
-            &pp,
-            "live_deploy",
-            None,
-            None,
-            Some(&format!("host: {}", config.ssh_host)),
-        );
-    }
+    activity::log_activity(
+        &data_dir,
+        "live_deploy",
+        None,
+        None,
+        Some(&format!("host: {}", config.ssh_host)),
+    );
 
     Ok(terminal_id)
 }

@@ -81,12 +81,12 @@ pub struct DeployEnvironment {
 
 // ── Config Persistence ──
 
-fn deploy_config_path(project_path: &Path) -> PathBuf {
-    project_path.join(".claude").join("deploy-config.json")
+fn deploy_config_path(data_dir: &Path) -> PathBuf {
+    data_dir.join("deploy-config.json")
 }
 
-pub fn load_deploy_config(project_path: &Path) -> DeployConfig {
-    let path = deploy_config_path(project_path);
+pub fn load_deploy_config(data_dir: &Path) -> DeployConfig {
+    let path = deploy_config_path(data_dir);
     if !path.exists() {
         return DeployConfig::default();
     }
@@ -96,8 +96,8 @@ pub fn load_deploy_config(project_path: &Path) -> DeployConfig {
         .unwrap_or_default()
 }
 
-pub fn save_deploy_config(project_path: &Path, config: &DeployConfig) -> Result<(), String> {
-    let path = deploy_config_path(project_path);
+pub fn save_deploy_config(data_dir: &Path, config: &DeployConfig) -> Result<(), String> {
+    let path = deploy_config_path(data_dir);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create deploy config dir: {e}"))?;

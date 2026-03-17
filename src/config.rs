@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::state::Settings;
 
@@ -19,6 +19,27 @@ pub fn config_path() -> Result<PathBuf, String> {
     let config_dir =
         dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())?;
     Ok(config_dir.join("kanban-runner").join("projects.json"))
+}
+
+/// Return the project-specific data directory under ~/.config/kanban-runner/projects/<name>/
+/// and ensure it exists.
+pub fn project_data_dir(project_name: &str) -> Result<PathBuf, String> {
+    let safe_name: String = project_name
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+        .collect();
+    if safe_name.is_empty() {
+        return Err("Project name is empty".to_string());
+    }
+    let config_dir =
+        dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())?;
+    let dir = config_dir
+        .join("kanban-runner")
+        .join("projects")
+        .join(&safe_name);
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create project data dir: {e}"))?;
+    Ok(dir)
 }
 
 pub fn load_projects() -> Result<ProjectsConfig, String> {
@@ -48,21 +69,26 @@ pub fn add_project(name: &str, path: &str) -> Result<(), String> {
     let abs_path =
         std::fs::canonicalize(path).map_err(|e| format!("Invalid path '{}': {e}", path))?;
 
-    // Auto-create .claude/kanban.json if it doesn't exist
-    let claude_dir = abs_path.join(".claude");
-    let kanban_file = claude_dir.join("kanban.json");
+    // Auto-create kanban.json in project data dir if it doesn't exist
+    let data_dir = project_data_dir(name)?;
+    let kanban_file = data_dir.join("kanban.json");
     if !kanban_file.exists() {
-        std::fs::create_dir_all(&claude_dir)
-            .map_err(|e| format!("Failed to create .claude dir: {e}"))?;
-        let default_board = serde_json::json!({
-            "project_name": name,
-            "tickets": []
-        });
-        let json = serde_json::to_string_pretty(&default_board)
-            .map_err(|e| format!("Failed to serialize default board: {e}"))?;
-        std::fs::write(&kanban_file, json)
-            .map_err(|e| format!("Failed to write kanban.json: {e}"))?;
-        eprintln!("[kanban-runner] Created default kanban.json at {}", kanban_file.display());
+        // Migrate from old location if it exists there
+        let old_kanban = abs_path.join(".claude").join("kanban.json");
+        if old_kanban.exists() {
+            migrate_project_data(&abs_path, &data_dir)?;
+            eprintln!("[kanban-runner] Migrated runtime data from .claude/ to {}", data_dir.display());
+        } else {
+            let default_board = serde_json::json!({
+                "project_name": name,
+                "tickets": []
+            });
+            let json = serde_json::to_string_pretty(&default_board)
+                .map_err(|e| format!("Failed to serialize default board: {e}"))?;
+            std::fs::write(&kanban_file, json)
+                .map_err(|e| format!("Failed to write kanban.json: {e}"))?;
+            eprintln!("[kanban-runner] Created default kanban.json at {}", kanban_file.display());
+        }
     }
 
     config.projects.retain(|p| p.name != name);
@@ -138,8 +164,8 @@ pub struct TicketTemplate {
     pub description_template: String,
 }
 
-fn templates_path(project_path: &std::path::Path) -> PathBuf {
-    project_path.join(".claude").join("ticket-templates.json")
+fn templates_path(data_dir: &Path) -> PathBuf {
+    data_dir.join("ticket-templates.json")
 }
 
 fn default_templates() -> Vec<TicketTemplate> {
@@ -175,12 +201,12 @@ fn default_templates() -> Vec<TicketTemplate> {
     ]
 }
 
-pub fn load_templates(project_path: &std::path::Path) -> Vec<TicketTemplate> {
-    let path = templates_path(project_path);
+pub fn load_templates(data_dir: &Path) -> Vec<TicketTemplate> {
+    let path = templates_path(data_dir);
     if !path.exists() {
         // Create default templates on first access
         let defaults = default_templates();
-        let _ = save_templates(project_path, &defaults);
+        let _ = save_templates(data_dir, &defaults);
         return defaults;
     }
     std::fs::read_to_string(&path)
@@ -190,13 +216,76 @@ pub fn load_templates(project_path: &std::path::Path) -> Vec<TicketTemplate> {
 }
 
 pub fn save_templates(
-    project_path: &std::path::Path,
+    data_dir: &Path,
     templates: &[TicketTemplate],
 ) -> Result<(), String> {
-    let path = templates_path(project_path);
+    let path = templates_path(data_dir);
     let json =
         serde_json::to_string_pretty(templates).map_err(|e| format!("Serialize templates: {e}"))?;
     std::fs::write(&path, json).map_err(|e| format!("Write templates: {e}"))
+}
+
+/// Migrate runtime data from .claude/ to the new project data directory.
+/// Only moves files that exist in the old location but not in the new one.
+/// Returns true if any files were migrated.
+pub fn migrate_project_data(project_path: &Path, data_dir: &Path) -> Result<bool, String> {
+    let claude_dir = project_path.join(".claude");
+    let files = [
+        "kanban.json",
+        "activity-log.json",
+        "ticket-templates.json",
+        "deploy-config.json",
+    ];
+    let mut migrated = false;
+
+    for file in &files {
+        let old = claude_dir.join(file);
+        let new = data_dir.join(file);
+        if old.exists() && !new.exists() {
+            std::fs::copy(&old, &new)
+                .map_err(|e| format!("Migration failed for {}: {e}", file))?;
+            let _ = std::fs::remove_file(&old);
+            migrated = true;
+        }
+    }
+
+    // Migrate kanban-backups/ directory
+    let old_backups = claude_dir.join("kanban-backups");
+    let new_backups = data_dir.join("kanban-backups");
+    if old_backups.exists() && !new_backups.exists() {
+        copy_dir_sync(&old_backups, &new_backups)?;
+        let _ = std::fs::remove_dir_all(&old_backups);
+        migrated = true;
+    }
+
+    if migrated {
+        eprintln!(
+            "[kanban-runner] Migrated runtime data from {} to {}",
+            claude_dir.display(),
+            data_dir.display()
+        );
+    }
+
+    Ok(migrated)
+}
+
+fn copy_dir_sync(src: &Path, dst: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(dst)
+        .map_err(|e| format!("Failed to create dir {}: {e}", dst.display()))?;
+    let entries = std::fs::read_dir(src)
+        .map_err(|e| format!("Failed to read dir {}: {e}", src.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {e}"))?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            copy_dir_sync(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)
+                .map_err(|e| format!("Failed to copy {}: {e}", src_path.display()))?;
+        }
+    }
+    Ok(())
 }
 
 fn read_md_filenames(dir: &std::path::Path) -> Vec<String> {

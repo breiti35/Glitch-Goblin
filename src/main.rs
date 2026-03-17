@@ -30,15 +30,18 @@ fn main() {
             let project = config::resolve_default_project().unwrap_or(None);
 
             // Load board if project exists
-            let (board, kanban_path) = match &project {
+            let (board, kanban_path, data_dir) = match &project {
                 Some(p) => {
-                    let kp = p.path.join(".claude").join("kanban.json");
+                    let dd = config::project_data_dir(&p.name).unwrap_or_default();
+                    // Migrate old runtime data from .claude/ if needed
+                    let _ = config::migrate_project_data(&p.path, &dd);
+                    let kp = dd.join("kanban.json");
                     let board = kanban::load_board(&kp).unwrap_or(kanban::KanbanBoard {
                         project_name: String::new(),
                         tickets: Vec::new(),
                         next_ticket_id: 1,
                     });
-                    (board, kp)
+                    (board, kp, dd)
                 }
                 None => (
                     kanban::KanbanBoard {
@@ -46,6 +49,7 @@ fn main() {
                         tickets: Vec::new(),
                         next_ticket_id: 1,
                     },
+                    std::path::PathBuf::new(),
                     std::path::PathBuf::new(),
                 ),
             };
@@ -57,6 +61,7 @@ fn main() {
             s.project = project;
             s.projects = projects;
             s.kanban_path = kanban_path.clone();
+            s.data_dir = data_dir;
             s.settings = settings;
 
             // Start file watcher
