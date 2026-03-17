@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Runner</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="vendor/xterm/xterm.css">
+</head>
+<body data-theme="dark">
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span class="app-title">Kanban Runner</span>
+        <button id="btn-app-settings" class="icon-btn" title="App Settings">&#9881;</button>
+      </div>
+
+      <!-- Project Selector -->
+      <button id="project-selector" class="sidebar-project">
+        <span class="project-icon">&#9660;</span>
+        <div>
+          <div id="sidebar-project-name" class="project-name">No project</div>
+          <div id="sidebar-project-path" class="project-path">&mdash;</div>
+        </div>
+      </button>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">PROJECT</div>
+        <button data-view="dashboard" class="nav-item">
+          <span class="nav-icon">&#9632;</span> Dashboard
+        </button>
+        <button data-view="board" class="nav-item active">
+          <span class="nav-icon">&#9632;</span> Kanban Board <span class="nav-badge" id="ticket-count">0</span>
+        </button>
+        <button data-view="statistics" class="nav-item">
+          <span class="nav-icon">&#9636;</span> Statistics <span class="nav-badge" id="stats-badge">-</span>
+        </button>
+        <button id="nav-terminal" class="nav-item">
+          <span class="nav-icon">&#9002;</span> Terminal
+        </button>
+        <button data-view="git" class="nav-item">
+          <span class="nav-icon">&#8644;</span> Git <span class="nav-badge" id="branch-count">0</span>
+        </button>
+        <button data-view="activity" class="nav-item">
+          <span class="nav-icon">&#9776;</span> Activity
+        </button>
+        <button data-view="agents" class="nav-item">
+          <span class="nav-icon">&#9655;</span> Agents <span class="nav-badge" id="agent-count">0</span>
+        </button>
+        <button data-view="commands" class="nav-item">
+          <span class="nav-icon">&#8984;</span> Commands <span class="nav-badge" id="command-count">0</span>
+        </button>
+      </nav>
+
+      <!-- Footer -->
+      <div class="sidebar-footer">
+        <button data-view="settings" class="nav-item">
+          <span class="nav-icon">&#9881;</span> Settings
+        </button>
+        <button id="theme-toggle" class="nav-item" title="Toggle Theme">
+          <span class="nav-icon" id="theme-icon">&#9790;</span> <span id="theme-label">Dark Mode</span>
+        </button>
+        <button id="btn-new-task" class="btn-new-task">+ New Task</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content">
+      <!-- View: Dashboard (Phase 3 - Block D) -->
+      <section id="view-dashboard" class="view">
+        <div class="view-header"><h1 id="dashboard-project-name">Dashboard</h1></div>
+        <div class="dashboard-grid">
+          <div class="dash-card" id="dash-tech-stack">
+            <div class="dash-card-title">Tech Stack</div>
+            <div class="dash-card-body" id="dash-tech-badges"></div>
+          </div>
+          <div class="dash-card" id="dash-quick-stats">
+            <div class="dash-card-title">Quick Stats</div>
+            <div class="dash-card-body" id="dash-stats-body"></div>
+          </div>
+          <div class="dash-card dash-wide" id="dash-readme">
+            <div class="dash-card-title">README</div>
+            <div class="dash-card-body dash-readme-content" id="dash-readme-body"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-title">Recent Commits</div>
+            <div class="dash-card-body" id="dash-commits-body"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-title">Recent Activity</div>
+            <div class="dash-card-body" id="dash-activity-body"></div>
+          </div>
+          <button id="dash-goto-board" class="btn-primary" style="margin-top:12px">Zum Board &rarr;</button>
+        </div>
+      </section>
+
+      <!-- View: Kanban Board -->
+      <section id="view-board" class="view active">
+        <div class="view-header">
+          <h1 id="board-title">Kanban Board</h1>
+          <div class="header-actions">
+            <button id="btn-export-tickets" class="icon-btn" title="Export">&#128190;</button>
+            <button id="btn-import-tickets" class="icon-btn" title="Import">&#128194;</button>
+            <button id="btn-filter-toggle" class="icon-btn" title="Filter (Ctrl+F)">&#128269;</button>
+            <span id="git-status" class="git-badge clean">&#9679; clean</span>
+            <span id="running-badge" class="running-badge hidden">&#9881; Running...</span>
+          </div>
+        </div>
+        <!-- Filter Bar (Block B2) -->
+        <div id="filter-bar" class="filter-bar hidden">
+          <input type="text" id="filter-input" class="filter-input" placeholder="Search tickets...">
+          <div class="filter-toggles">
+            <button class="filter-toggle" data-filter-type="feature">feat</button>
+            <button class="filter-toggle" data-filter-type="bugfix">fix</button>
+            <button class="filter-toggle" data-filter-type="security">sec</button>
+            <button class="filter-toggle" data-filter-type="docs">docs</button>
+          </div>
+          <div class="filter-toggles">
+            <button class="filter-toggle" data-filter-prio="high">high</button>
+            <button class="filter-toggle" data-filter-prio="medium">med</button>
+            <button class="filter-toggle" data-filter-prio="low">low</button>
+          </div>
+          <button id="filter-clear" class="icon-btn" title="Clear Filters">&#10005;</button>
+          <span id="filter-badge" class="filter-badge hidden">0</span>
+        </div>
+        <div id="board">
+          <div class="column" data-column="backlog">
+            <div class="column-header">
+              <span class="column-title">Backlog</span>
+              <span class="column-count" data-count="backlog">0</span>
+            </div>
+            <div class="column-body" data-drop="backlog"></div>
+          </div>
+          <div class="column" data-column="progress">
+            <div class="column-header">
+              <span class="column-title">Progress</span>
+              <span class="column-count" data-count="progress">0</span>
+            </div>
+            <div class="column-body" data-drop="progress"></div>
+          </div>
+          <div class="column" data-column="review">
+            <div class="column-header">
+              <span class="column-title">Review</span>
+              <span class="column-count" data-count="review">0</span>
+            </div>
+            <div class="column-body" data-drop="review"></div>
+          </div>
+          <div class="column" data-column="done">
+            <div class="column-header">
+              <span class="column-title">Done</span>
+              <span class="column-count" data-count="done">0</span>
+            </div>
+            <div class="column-body" data-drop="done"></div>
+          </div>
+        </div>
+        <div id="log-panel">
+          <div class="log-header">
+            <span>Claude Output</span>
+            <div class="log-actions">
+              <button id="log-export" class="icon-btn" title="Export Log">&#128190;</button>
+              <button id="log-clear" class="icon-btn" title="Clear">&#10005;</button>
+            </div>
+          </div>
+          <div id="log-body"></div>
+        </div>
+      </section>
+
+      <!-- View: Settings -->
+      <section id="view-settings" class="view">
+        <div class="view-header"><h1>Settings</h1></div>
+        <div class="settings-form">
+          <label class="settings-label">
+            Claude CLI Path
+            <input type="text" id="set-claude-path" class="settings-input" placeholder="claude">
+          </label>
+          <label class="settings-label">
+            Commit Prefix
+            <input type="text" id="set-commit-prefix" class="settings-input" placeholder="kanban:">
+          </label>
+          <label class="settings-label">
+            Auto-Execute Types (comma-separated)
+            <input type="text" id="set-auto-execute" class="settings-input" placeholder="docs, security">
+          </label>
+          <label class="settings-label">
+            Accent Color
+            <div class="color-row">
+              <input type="color" id="set-accent-color" value="#F97316">
+              <span id="accent-color-label">#F97316</span>
+            </div>
+          </label>
+          <label class="settings-label">
+            Theme
+            <select id="set-theme" class="settings-input">
+              <option value="dark">Dark</option>
+              <option value="light">Light (Cream)</option>
+            </select>
+          </label>
+          <hr class="settings-divider">
+          <label class="settings-label">
+            <span class="toggle-row">
+              Desktop Notifications
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-notifications" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </span>
+          </label>
+          <label class="settings-label">
+            <span class="toggle-row">
+              Sound Effects
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-sounds" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </span>
+          </label>
+          <label class="settings-label">
+            <span class="toggle-row">
+              Auto-Backup
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-backups" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </span>
+          </label>
+          <label class="settings-label">
+            Max Backups
+            <div class="settings-range-row">
+              <input type="range" id="set-max-backups" class="settings-range" min="1" max="20" value="10">
+              <span id="max-backups-label">10</span>
+            </div>
+          </label>
+          <hr class="settings-divider">
+          <div class="settings-section-title">Claude Model &amp; Costs</div>
+          <label class="settings-label">
+            Claude Model
+            <select id="set-claude-model" class="settings-input">
+              <option value="sonnet">Sonnet 4.6 ($3/$15 per MTok)</option>
+              <option value="opus">Opus 4.6 ($15/$75 per MTok)</option>
+            </select>
+          </label>
+          <label class="settings-label">
+            Input Cost ($/MTok)
+            <input type="number" id="set-cost-input" class="settings-input" step="0.1" min="0" value="3">
+          </label>
+          <label class="settings-label">
+            Output Cost ($/MTok)
+            <input type="number" id="set-cost-output" class="settings-input" step="0.1" min="0" value="15">
+          </label>
+          <hr class="settings-divider">
+          <div class="settings-section-title">Terminal</div>
+          <label class="settings-label">
+            Default Shell
+            <select id="set-default-shell" class="settings-input"></select>
+          </label>
+          <label class="settings-label">
+            Terminal Font Size
+            <div class="settings-range-row">
+              <input type="range" id="set-terminal-fontsize" class="settings-range" min="10" max="20" value="14">
+              <span id="terminal-fontsize-label">14px</span>
+            </div>
+          </label>
+          <hr class="settings-divider">
+          <button id="btn-open-backups" class="btn-secondary" style="margin-bottom:16px">Backup wiederherstellen...</button>
+          <button id="btn-save-settings" class="btn-primary">Save Settings</button>
+        </div>
+      </section>
+
+      <!-- View: Statistics (Block D2) -->
+      <section id="view-statistics" class="view">
+        <div class="view-header"><h1>Statistics</h1></div>
+        <div class="stats-dashboard">
+          <div class="stats-row">
+            <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Tickets</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-done">0</div><div class="stat-label">Completed</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-cycle">-</div><div class="stat-label">Avg Cycle Time</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-review">-</div><div class="stat-label">Avg Review Time</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-total-cost">-</div><div class="stat-label">Total Cost</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-avg-cost">-</div><div class="stat-label">Avg Cost/Ticket</div></div>
+          </div>
+          <div class="stats-row">
+            <div class="stat-card chart-card">
+              <div class="stat-label">By Type</div>
+              <div id="pie-chart" class="pie-chart"></div>
+              <div id="pie-legend" class="pie-legend"></div>
+            </div>
+            <div class="stat-card chart-card">
+              <div class="stat-label">By Column</div>
+              <div id="bar-chart" class="bar-chart"></div>
+            </div>
+          </div>
+          <div class="stats-row">
+            <div class="stat-card" style="flex:1">
+              <div class="stat-label">Recent Completed</div>
+              <div id="recent-completed" class="recent-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Git (Phase 3 - Block B) -->
+      <section id="view-git" class="view">
+        <div class="view-header">
+          <h1>Git</h1>
+          <button id="btn-refresh-branches" class="icon-btn" title="Refresh">&#8635;</button>
+        </div>
+        <div class="git-layout">
+          <div id="git-branch-list" class="git-branches">
+            <p class="empty-state">Loading branches...</p>
+          </div>
+          <div id="git-detail" class="git-detail hidden">
+            <div class="git-detail-header">
+              <h2 id="git-branch-name"></h2>
+              <div class="git-detail-actions">
+                <button id="btn-git-merge" class="btn-primary">Merge nach main</button>
+                <button id="btn-git-terminal" class="btn-secondary">Im Terminal</button>
+                <button id="btn-git-delete" class="btn-danger">Branch l&ouml;schen</button>
+              </div>
+            </div>
+            <div class="git-section">
+              <h3>Commits</h3>
+              <div id="git-commits" class="git-commits"></div>
+            </div>
+            <div class="git-section">
+              <h3>Changed Files</h3>
+              <div id="git-diff-stats" class="git-diff-stats"></div>
+              <div id="git-diff-files" class="git-diff-files"></div>
+            </div>
+            <div id="git-diff-content" class="git-diff-content hidden">
+              <div class="git-diff-content-header">
+                <span id="git-diff-filename"></span>
+                <button id="btn-close-diff" class="icon-btn">&#10005;</button>
+              </div>
+              <pre id="git-diff-body" class="git-diff-body"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Activity (Phase 3 - Block C) -->
+      <section id="view-activity" class="view">
+        <div class="view-header">
+          <h1>Activity</h1>
+          <div class="activity-filters">
+            <button class="activity-filter active" data-activity-filter="all">All</button>
+            <button class="activity-filter" data-activity-filter="ticket_created">Created</button>
+            <button class="activity-filter" data-activity-filter="ticket_completed">Completed</button>
+            <button class="activity-filter" data-activity-filter="ticket_merged">Merged</button>
+            <button class="activity-filter" data-activity-filter="ticket_failed">Failed</button>
+          </div>
+        </div>
+        <div id="activity-list" class="activity-timeline"></div>
+      </section>
+
+      <!-- View: Agents (Block E - Editor Layout) -->
+      <section id="view-agents" class="view">
+        <div class="view-header">
+          <h1>Agents</h1>
+          <button id="btn-new-agent" class="btn-primary">+ New Agent</button>
+        </div>
+        <div class="editor-layout">
+          <div id="agents-list" class="editor-list">
+            <p class="empty-state">No agents found in .claude/agents/</p>
+          </div>
+          <div id="agent-editor" class="editor-pane hidden">
+            <div class="editor-toolbar">
+              <span class="editor-filename" id="agent-editor-name"></span>
+              <div class="editor-toolbar-actions">
+                <button id="btn-save-agent" class="btn-primary">Save</button>
+                <button id="btn-delete-agent" class="btn-danger">Delete</button>
+              </div>
+            </div>
+            <textarea id="agent-editor-content" class="editor-textarea" spellcheck="false"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- View: Commands (Block E - Editor Layout) -->
+      <section id="view-commands" class="view">
+        <div class="view-header">
+          <h1>Commands</h1>
+          <button id="btn-new-command" class="btn-primary">+ New Command</button>
+        </div>
+        <div class="editor-layout">
+          <div id="commands-list" class="editor-list">
+            <p class="empty-state">No commands found in .claude/commands/</p>
+          </div>
+          <div id="command-editor" class="editor-pane hidden">
+            <div class="editor-toolbar">
+              <span class="editor-filename" id="command-editor-name"></span>
+              <div class="editor-toolbar-actions">
+                <button id="btn-save-command" class="btn-primary">Save</button>
+                <button id="btn-delete-command" class="btn-danger">Delete</button>
+              </div>
+            </div>
+            <textarea id="command-editor-content" class="editor-textarea" spellcheck="false"></textarea>
+          </div>
+        </div>
+      </section>
+      <!-- Global Terminal Panel (collapsible, visible in all views) -->
+      <div id="board-terminal-panel" class="board-terminal-panel collapsed">
+        <div class="board-terminal-drag" id="board-terminal-drag"></div>
+        <div class="board-terminal-bar">
+          <button id="board-terminal-toggle" class="board-terminal-toggle-btn" title="Toggle Terminal (Ctrl+`)">&#9654; Terminal</button>
+          <div class="board-terminal-tabs" id="board-terminal-tabs"></div>
+          <div class="board-terminal-actions">
+            <select id="board-terminal-shell-select" class="settings-input terminal-shell-select"></select>
+            <button id="board-terminal-new" class="btn-primary" style="padding:3px 10px;font-size:12px">+ New</button>
+          </div>
+        </div>
+        <div class="board-terminal-body" id="board-terminal-instances">
+          <div class="terminal-empty-state" id="board-terminal-empty">
+            <p>Press <kbd>Ctrl+`</kbd> or click <strong>+ New</strong></p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal: Project Picker -->
+    <div id="modal-picker" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-picker-content">
+        <div class="modal-header">
+          <h2>Select Project</h2>
+          <button class="modal-close icon-btn">&#10005;</button>
+        </div>
+        <div id="picker-list" class="picker-list"></div>
+        <div class="modal-footer">
+          <button id="btn-add-project" class="btn-secondary">+ Add Project</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Confirm -->
+    <div id="modal-confirm" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-confirm-content">
+        <div class="modal-header">
+          <h2>Confirm Execution</h2>
+        </div>
+        <p id="confirm-message">Execute this ticket?</p>
+        <div class="modal-actions">
+          <button id="btn-confirm-yes" class="btn-primary">Yes, Execute</button>
+          <button id="btn-confirm-no" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: New Task -->
+    <div id="modal-new-task" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>New Task</h2>
+          <button class="modal-close icon-btn">&#10005;</button>
+        </div>
+        <label class="settings-label">
+          Template
+          <select id="new-task-template" class="settings-input">
+            <option value="">Kein Template</option>
+          </select>
+        </label>
+        <label class="settings-label">
+          Title
+          <input type="text" id="new-task-title" class="settings-input" placeholder="Task title...">
+        </label>
+        <label class="settings-label">
+          Type
+          <select id="new-task-type" class="settings-input">
+            <option value="feature">Feature</option>
+            <option value="bugfix">Bugfix</option>
+            <option value="security">Security</option>
+            <option value="docs">Docs</option>
+          </select>
+        </label>
+        <label class="settings-label">
+          Priority
+          <select id="new-task-prio" class="settings-input">
+            <option value="">None</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+        <label class="settings-label">
+          Description
+          <textarea id="new-task-desc" class="settings-input settings-textarea" rows="4" placeholder="Describe the task..."></textarea>
+        </label>
+        <div class="modal-actions">
+          <button id="btn-create-task" class="btn-primary">Create Task</button>
+          <button id="btn-cancel-task" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Backup Restore (Block A2) -->
+    <div id="modal-backup" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Backup wiederherstellen</h2>
+          <button class="modal-close icon-btn">&#10005;</button>
+        </div>
+        <div id="backup-list" class="backup-list">
+          <p class="empty-state">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Shortcut Help (Block C1) -->
+    <div id="shortcut-help" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Keyboard Shortcuts</h2>
+          <button class="modal-close icon-btn">&#10005;</button>
+        </div>
+        <div class="shortcut-grid">
+          <div class="shortcut-row"><kbd>Ctrl+N</kbd><span>New Task</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+F</kbd><span>Toggle Filter</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+P</kbd><span>Project Picker</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+,</kbd><span>Settings</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+L</kbd><span>Toggle Log Panel</span></div>
+          <div class="shortcut-row"><kbd>Escape</kbd><span>Close Panel/Modal</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+`</kbd><span>Toggle Terminal</span></div>
+          <div class="shortcut-row"><kbd>?</kbd><span>This Help</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide Panel: Ticket Detail -->
+    <div id="panel-detail" class="slide-panel hidden">
+      <div class="panel-header">
+        <h2 id="detail-title">Ticket</h2>
+        <button id="panel-close" class="icon-btn">&#10005;</button>
+      </div>
+      <div class="panel-body">
+        <label class="settings-label">
+          Title
+          <input type="text" id="detail-edit-title" class="settings-input">
+        </label>
+        <label class="settings-label">
+          Type
+          <select id="detail-edit-type" class="settings-input">
+            <option value="feature">Feature</option>
+            <option value="bugfix">Bugfix</option>
+            <option value="security">Security</option>
+            <option value="docs">Docs</option>
+          </select>
+        </label>
+        <label class="settings-label">
+          Priority
+          <select id="detail-edit-prio" class="settings-input">
+            <option value="">None</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+        <label class="settings-label">
+          Description
+          <textarea id="detail-edit-desc" class="settings-input settings-textarea" rows="6"></textarea>
+        </label>
+        <div class="panel-info">
+          <div><strong>ID:</strong> <span id="detail-id"></span></div>
+          <div><strong>Column:</strong> <span id="detail-column"></span></div>
+          <div><strong>Branch:</strong> <span id="detail-branch"></span></div>
+        </div>
+        <!-- Token/Cost Info -->
+        <div id="detail-cost-info" class="panel-cost-info hidden">
+          <div><strong>Model:</strong> <span id="detail-model"></span></div>
+          <div><strong>Tokens:</strong> <span id="detail-tokens"></span></div>
+          <div><strong>Cost:</strong> <span id="detail-cost"></span></div>
+        </div>
+        <!-- Timeline (Block A1) -->
+        <div id="detail-timeline" class="panel-timeline"></div>
+        <!-- Comments -->
+        <div class="panel-comments">
+          <h3>Comments</h3>
+          <div id="detail-comments-list"></div>
+          <div class="comment-add">
+            <textarea id="detail-comment-input" class="settings-input settings-textarea" rows="2" placeholder="Add a comment..."></textarea>
+            <button id="btn-add-comment" class="btn-secondary">Add Comment</button>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button id="btn-detail-save" class="btn-primary">Save Changes</button>
+          <button id="btn-detail-delete" class="btn-danger">Delete Ticket</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Context Menu (Block B3) -->
+    <div id="context-menu" class="context-menu hidden">
+      <div class="ctx-item" data-action="start">&#9655; Start</div>
+      <div class="ctx-item" data-action="edit">&#9998; Bearbeiten</div>
+      <div class="ctx-item ctx-has-submenu" data-action="move-to">&#8644; Verschieben nach
+        <div class="ctx-submenu">
+          <div class="ctx-sub-item" data-move="backlog">Backlog</div>
+          <div class="ctx-sub-item" data-move="progress">Progress</div>
+          <div class="ctx-sub-item" data-move="review">Review</div>
+          <div class="ctx-sub-item" data-move="done">Done</div>
+        </div>
+      </div>
+      <div class="ctx-item" data-action="merge">&#10003; Merge</div>
+      <div class="ctx-divider"></div>
+      <div class="ctx-item" data-action="export-log">&#128190; Log exportieren</div>
+      <div class="ctx-item" data-action="copy">&#128203; Kopieren</div>
+      <div class="ctx-item ctx-has-submenu" data-action="move-project">&#128193; Projekt verschieben
+        <div class="ctx-submenu" id="ctx-project-submenu"></div>
+      </div>
+      <div class="ctx-divider"></div>
+      <div class="ctx-item ctx-danger" data-action="delete">&#128465; L&ouml;schen</div>
+    </div>
+  </div>
+
+  <script src="vendor/xterm/xterm.js"></script>
+  <script src="vendor/xterm/xterm-addon-fit.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
