@@ -1,0 +1,240 @@
+[
+  {
+    "timestamp": "2026-03-17T06:44:15.496268300+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-001",
+    "ticket_title": "Model-Auswahl vor Ticket-Execution.",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T06:44:23.319724+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-001",
+    "ticket_title": "Model-Auswahl vor Ticket-Execution.",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T06:58:40.390413200+00:00",
+    "action": "ticket_completed",
+    "ticket_id": "KANBAN-001",
+    "ticket_title": "Model-Auswahl vor Ticket-Execution.",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T06:58:43.669471500+00:00",
+    "action": "ticket_merged",
+    "ticket_id": "KANBAN-001",
+    "ticket_title": "Model-Auswahl vor Ticket-Execution.",
+    "details": "kanban/KANBAN-001-model-auswahl-vor-ticket"
+  },
+  {
+    "timestamp": "2026-03-17T07:22:08.653306300+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-002",
+    "ticket_title": "[FIX]  Terminal-Panel Einklappen nach Resize defekt",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T07:23:43.082083900+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-002",
+    "ticket_title": "[FIX]  Terminal-Panel Einklappen nach Resize defekt",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T07:32:56.009393700+00:00",
+    "action": "ticket_completed",
+    "ticket_id": "KANBAN-002",
+    "ticket_title": "[FIX]  Terminal-Panel Einklappen nach Resize defekt",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T07:34:01.263140300+00:00",
+    "action": "ticket_merged",
+    "ticket_id": "KANBAN-002",
+    "ticket_title": "[FIX]  Terminal-Panel Einklappen nach Resize defekt",
+    "details": "kanban/KANBAN-002-fix-terminal-panel-einklappen"
+  },
+  {
+    "timestamp": "2026-03-17T07:46:38.116018900+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-003",
+    "ticket_title": "[SEC]",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T07:46:45.915991700+00:00",
+    "action": "ticket_deleted",
+    "ticket_id": "KANBAN-003",
+    "ticket_title": "[SEC]",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T07:47:23.798203500+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-003",
+    "ticket_title": "Docker-Deploy Integration (Phase 4)",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T07:47:36.443928900+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-003",
+    "ticket_title": "Docker-Deploy Integration (Phase 4)",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T08:09:55.905436200+00:00",
+    "action": "ticket_completed",
+    "ticket_id": "KANBAN-003",
+    "ticket_title": "Docker-Deploy Integration (Phase 4)",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T08:11:42.930252400+00:00",
+    "action": "ticket_merged",
+    "ticket_id": "KANBAN-003",
+    "ticket_title": "Docker-Deploy Integration (Phase 4)",
+    "details": "kanban/KANBAN-003-docker-deploy-integration"
+  },
+  {
+    "timestamp": "2026-03-17T10:14:58.914007500+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-004",
+    "ticket_title": "[FIX] copy_claude_config kopiert Runtime-Daten in Worktree",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:15:05.742925800+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-004",
+    "ticket_title": "[FIX] copy_claude_config kopiert Runtime-Daten in Worktree",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:26:31.540909900+00:00",
+    "action": "ticket_completed",
+    "ticket_id": "KANBAN-004",
+    "ticket_title": "[FIX] copy_claude_config kopiert Runtime-Daten in Worktree",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:27:19.076696400+00:00",
+    "action": "ticket_merged",
+    "ticket_id": "KANBAN-004",
+    "ticket_title": "[FIX] copy_claude_config kopiert Runtime-Daten in Worktree",
+    "details": "kanban/KANBAN-004-fix-copy-claude-config"
+  },
+  {
+    "timestamp": "2026-03-17T10:47:55.556862+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[SEC] Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:47:58.100241100+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[SEC] Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:48:07.466803400+00:00",
+    "action": "ticket_deleted",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[SEC] Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:50:23.405858300+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[SEC] Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:51:14.684967800+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[SEC] Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:52:30.997823700+00:00",
+    "action": "ticket_deleted",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[SEC] Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:52:54.658070600+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[FIX] tes",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:53:19.267885+00:00",
+    "action": "ticket_deleted",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "[FIX] tes",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:53:44.298870300+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "Wäre schön, wenn ich die Farbe verändern könnte.",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:54:15.994185600+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-006",
+    "ticket_title": "[DOC] Eine schönere Dokumentation",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:54:54.534686500+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-006",
+    "ticket_title": "[DOC] Eine schönere Dokumentation",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T10:54:58.784998700+00:00",
+    "action": "ticket_deleted",
+    "ticket_id": "KANBAN-006",
+    "ticket_title": "[DOC] Eine schönere Dokumentation",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T11:02:15.954914200+00:00",
+    "action": "ticket_deleted",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "Wäre schön, wenn ich die Farbe verändern könnte.",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T11:02:52.352306100+00:00",
+    "action": "ticket_created",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T11:03:00.185953600+00:00",
+    "action": "ticket_started",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "Vollständiger Codebase Audit",
+    "details": null
+  },
+  {
+    "timestamp": "2026-03-17T11:39:40.188566400+00:00",
+    "action": "ticket_completed",
+    "ticket_id": "KANBAN-005",
+    "ticket_title": "Vollständiger Codebase Audit",
+    "details": null
+  }
+]

@@ -642,14 +642,10 @@ function setupDragDrop() {
 
 // ── Execution ──
 function confirmExecute(ticket) {
-  const needsConfirm = ticket.ticket_type === "feature" || ticket.ticket_type === "bugfix";
-  if (!needsConfirm && isAutoExecuteType(ticket.ticket_type)) {
-    executeTicket(ticket.id, state.settings.claude_model || "sonnet");
-    return;
-  }
-
+  const isCodeChanging = ticket.ticket_type === "feature" || ticket.ticket_type === "bugfix";
+  const warning = isCodeChanging ? " ⚠ Dieses Ticket ändert Code." : "";
   document.getElementById("confirm-message").textContent =
-    `Execute ticket ${ticket.id} - "${ticket.title}"?`;
+    `Execute ticket ${ticket.id} - "${ticket.title}"?${warning}`;
   const modelSelect = document.getElementById("confirm-model-select");
   modelSelect.value = state.settings.claude_model || "sonnet";
   document.getElementById("btn-confirm-yes").onclick = () => {
