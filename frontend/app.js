@@ -695,6 +695,10 @@ async function openTicketTerminal(startResult, model) {
   if (panel.classList.contains("collapsed")) {
     panel.classList.remove("collapsed");
     document.getElementById("board-terminal-toggle").innerHTML = "&#9660; Terminal";
+    // Restore drag-resized height if available
+    if (panel.dataset.savedHeight) {
+      panel.style.height = panel.dataset.savedHeight;
+    }
     void panel.offsetHeight;
   }
 
@@ -2027,6 +2031,10 @@ function toggleBoardTerminalPanel() {
   const toggleBtn = document.getElementById("board-terminal-toggle");
   if (wasCollapsed) {
     toggleBtn.innerHTML = "&#9660; Terminal";
+    // Restore drag-resized height if available
+    if (panel.dataset.savedHeight) {
+      panel.style.height = panel.dataset.savedHeight;
+    }
     // Auto-open a terminal if none exist
     if (Object.keys(state.terminals).length === 0) {
       openBoardTerminal();
@@ -2036,6 +2044,11 @@ function toggleBoardTerminalPanel() {
     }
   } else {
     toggleBtn.innerHTML = "&#9654; Terminal";
+    // Save and clear inline height so collapsed state can anchor to bottom
+    if (panel.style.height) {
+      panel.dataset.savedHeight = panel.style.height;
+      panel.style.height = "";
+    }
   }
 }
 
@@ -2046,6 +2059,10 @@ async function openBoardTerminal(shell) {
   if (wasCollapsed) {
     panel.classList.remove("collapsed");
     document.getElementById("board-terminal-toggle").innerHTML = "&#9660; Terminal";
+    // Restore drag-resized height if available
+    if (panel.dataset.savedHeight) {
+      panel.style.height = panel.dataset.savedHeight;
+    }
     // Force synchronous reflow so .board-terminal-body gets display:flex
     // before xterm.open() measures container dimensions
     void panel.offsetHeight;
