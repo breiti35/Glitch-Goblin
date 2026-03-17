@@ -104,6 +104,9 @@
             <button id="btn-export-tickets" class="icon-btn" title="Export">&#128190;</button>
             <button id="btn-import-tickets" class="icon-btn" title="Import">&#128194;</button>
             <button id="btn-filter-toggle" class="icon-btn" title="Filter (Ctrl+F)">&#128269;</button>
+            <button id="btn-local-deploy" class="deploy-btn local-deploy-btn hidden" title="Lokal testen (Docker)">&#129514; Lokal testen</button>
+            <button id="btn-live-deploy" class="deploy-btn live-deploy-btn hidden" title="Live deployen">&#128640; Live deployen</button>
+            <span id="deploy-status-badge" class="deploy-badge hidden"></span>
             <span id="git-status" class="git-badge clean">&#9679; clean</span>
             <span id="running-badge" class="running-badge hidden">&#9881; Running...</span>
           </div>
@@ -263,6 +266,78 @@
               <span id="terminal-fontsize-label">14px</span>
             </div>
           </label>
+          <hr class="settings-divider">
+          <div class="settings-section-title">Docker Deploy</div>
+          <label class="settings-label">
+            Deploy-Typ
+            <select id="set-deploy-type" class="settings-input">
+              <option value="compose">Docker Compose</option>
+              <option value="dockerfile">Dockerfile</option>
+            </select>
+          </label>
+          <label class="settings-label">
+            Compose Files (comma-separated)
+            <input type="text" id="set-compose-files" class="settings-input" placeholder="docker-compose.yml">
+          </label>
+          <label class="settings-label">
+            Env File
+            <input type="text" id="set-env-file" class="settings-input" placeholder=".env">
+          </label>
+          <label class="settings-label">
+            Local URL (nach Deploy)
+            <input type="text" id="set-local-url" class="settings-input" placeholder="http://localhost:3000">
+          </label>
+          <button id="btn-detect-env" class="btn-secondary" style="margin-bottom:8px">Umgebung erkennen</button>
+          <div id="deploy-detection-info" class="deploy-detection-info hidden"></div>
+          <hr class="settings-divider">
+          <div class="settings-section-title">Live Server (SSH)</div>
+          <label class="settings-label">
+            <span class="toggle-row">
+              Live Deploy aktivieren
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-live-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+            </span>
+          </label>
+          <div id="live-settings-panel">
+            <label class="settings-label">
+              SSH Host (user@host)
+              <input type="text" id="set-ssh-host" class="settings-input" placeholder="user@example.com">
+            </label>
+            <label class="settings-label">
+              SSH Key
+              <input type="text" id="set-ssh-key" class="settings-input" placeholder="~/.ssh/id_rsa">
+            </label>
+            <label class="settings-label">
+              SSH Port
+              <input type="number" id="set-ssh-port" class="settings-input" value="22" min="1" max="65535">
+            </label>
+            <label class="settings-label">
+              Server-Pfad
+              <input type="text" id="set-server-path" class="settings-input" placeholder="/var/www/myapp">
+            </label>
+            <label class="settings-label">
+              Branch
+              <input type="text" id="set-server-branch" class="settings-input" placeholder="main">
+            </label>
+            <label class="settings-label">
+              Pre-Commands (one per line)
+              <textarea id="set-pre-commands" class="settings-input settings-textarea" rows="2" placeholder="git pull origin main"></textarea>
+            </label>
+            <label class="settings-label">
+              Deploy-Commands (one per line)
+              <textarea id="set-deploy-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose up --build -d"></textarea>
+            </label>
+            <label class="settings-label">
+              Post-Commands (one per line)
+              <textarea id="set-post-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose logs -f --tail=50"></textarea>
+            </label>
+            <label class="settings-label">
+              Live URL
+              <input type="text" id="set-live-url" class="settings-input" placeholder="https://example.com">
+            </label>
+          </div>
           <hr class="settings-divider">
           <button id="btn-open-backups" class="btn-secondary" style="margin-bottom:16px">Backup wiederherstellen...</button>
           <button id="btn-save-settings" class="btn-primary">Save Settings</button>
@@ -453,6 +528,22 @@
         <div class="modal-actions">
           <button id="btn-confirm-yes" class="btn-primary">Yes, Execute</button>
           <button id="btn-confirm-no" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Deploy Confirm -->
+    <div id="modal-deploy-confirm" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-confirm-content">
+        <div class="modal-header">
+          <h2 id="deploy-confirm-title">Deploy</h2>
+        </div>
+        <p id="deploy-confirm-message"></p>
+        <pre id="deploy-confirm-details" class="deploy-confirm-details"></pre>
+        <div class="modal-actions">
+          <button id="btn-deploy-confirm-yes" class="btn-primary">Ja, deployen</button>
+          <button id="btn-deploy-confirm-no" class="btn-secondary">Abbrechen</button>
         </div>
       </div>
     </div>

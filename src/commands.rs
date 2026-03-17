@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 
 use crate::activity;
 use crate::config::{self, ProjectEntry};
+use crate::deploy;
 use crate::git;
 use crate::kanban::{self, Column, KanbanBoard, Ticket, TicketType};
 use crate::state::{AppState, Settings};
@@ -1297,4 +1298,166 @@ pub async fn import_tickets(
         activity::log_activity(&pp, "tickets_imported", None, None, Some(&mode));
     }
     Ok(s.board.clone())
+}
+
+// ── Deploy Commands (Phase 4) ──
+
+#[tauri::command]
+pub async fn get_deploy_config(state: State<'_>) -> Result<deploy::DeployConfig, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    Ok(deploy::load_deploy_config(&project_path))
+}
+
+#[tauri::command]
+pub async fn save_deploy_config(
+    config: deploy::DeployConfig,
+    state: State<'_>,
+) -> Result<(), String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    deploy::save_deploy_config(&project_path, &config)
+}
+
+#[tauri::command]
+pub async fn detect_deploy_env(
+    state: State<'_>,
+) -> Result<deploy::DeployEnvironment, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    Ok(deploy::detect_deploy_environment(&project_path).await)
+}
+
+#[tauri::command]
+pub async fn check_docker_status(
+    state: State<'_>,
+) -> Result<deploy::DockerStatus, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    Ok(deploy::check_docker(&project_path).await)
+}
+
+#[tauri::command]
+pub async fn local_deploy(
+    state: State<'_>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let (project_path, config, shell) = {
+        let s = state.lock().await;
+        let pp = s.project_path().ok_or("No project selected")?;
+        let cfg = deploy::load_deploy_config(&pp);
+        let shell = s.settings.default_shell.clone();
+        (pp, cfg, shell)
+    };
+
+    let cwd = project_path.to_string_lossy().to_string();
+    let shell = if shell.is_empty() {
+        detect_default_shell()
+    } else {
+        shell
+    };
+
+    let terminal_id = uuid::Uuid::new_v4().to_string();
+    let session =
+        terminal::spawn_terminal(&shell, &cwd, terminal_id.clone(), app).await?;
+
+    let mut s = state.lock().await;
+    s.terminals.insert(terminal_id.clone(), session);
+    let cmd = deploy::build_compose_command(&config, &project_path, "up");
+    s.log(format!("Local deploy started: {cmd}"));
+    if let Some(pp) = s.project_path() {
+        activity::log_activity(&pp, "local_deploy", None, None, Some(&cmd));
+    }
+
+    Ok(terminal_id)
+}
+
+#[tauri::command]
+pub async fn local_deploy_stop(
+    state: State<'_>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let (project_path, config, shell) = {
+        let s = state.lock().await;
+        let pp = s.project_path().ok_or("No project selected")?;
+        let cfg = deploy::load_deploy_config(&pp);
+        let shell = s.settings.default_shell.clone();
+        (pp, cfg, shell)
+    };
+
+    let cwd = project_path.to_string_lossy().to_string();
+    let shell = if shell.is_empty() {
+        detect_default_shell()
+    } else {
+        shell
+    };
+
+    let terminal_id = uuid::Uuid::new_v4().to_string();
+    let session =
+        terminal::spawn_terminal(&shell, &cwd, terminal_id.clone(), app).await?;
+
+    let mut s = state.lock().await;
+    s.terminals.insert(terminal_id.clone(), session);
+    let cmd = deploy::build_compose_command(&config, &project_path, "down");
+    s.log(format!("Local deploy stop: {cmd}"));
+
+    Ok(terminal_id)
+}
+
+#[tauri::command]
+pub async fn live_deploy(
+    state: State<'_>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let (project_path, config, shell) = {
+        let s = state.lock().await;
+        let pp = s.project_path().ok_or("No project selected")?;
+        let cfg = deploy::load_deploy_config(&pp);
+        if !cfg.live_enabled {
+            return Err("Live deploy is not enabled".to_string());
+        }
+        if cfg.ssh_host.is_empty() {
+            return Err("SSH host is not configured".to_string());
+        }
+        let shell = s.settings.default_shell.clone();
+        (pp, cfg, shell)
+    };
+
+    let cwd = project_path.to_string_lossy().to_string();
+    let shell = if shell.is_empty() {
+        detect_default_shell()
+    } else {
+        shell
+    };
+
+    let terminal_id = uuid::Uuid::new_v4().to_string();
+    let session =
+        terminal::spawn_terminal(&shell, &cwd, terminal_id.clone(), app).await?;
+
+    let mut s = state.lock().await;
+    s.terminals.insert(terminal_id.clone(), session);
+    s.log(format!("Live deploy started to {}", config.ssh_host));
+    if let Some(pp) = s.project_path() {
+        activity::log_activity(
+            &pp,
+            "live_deploy",
+            None,
+            None,
+            Some(&format!("host: {}", config.ssh_host)),
+        );
+    }
+
+    Ok(terminal_id)
+}
+
+fn detect_default_shell() -> String {
+    if cfg!(windows) {
+        "powershell.exe".to_string()
+    } else {
+        std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
+    }
 }
