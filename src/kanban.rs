@@ -100,6 +100,10 @@ pub struct Ticket {
     pub model_used: Option<String>,
     #[serde(default)]
     pub comments: Option<Vec<TicketComment>>,
+    #[serde(default)]
+    pub portal_bug_id: Option<u64>,
+    #[serde(default)]
+    pub portal_bug_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

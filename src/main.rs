@@ -1,4 +1,5 @@
 mod activity;
+mod bugsync;
 mod commands;
 mod config;
 mod deploy;
@@ -9,6 +10,8 @@ mod state;
 mod terminal;
 
 use state::AppState;
+use tauri::Emitter;
+use tauri::Manager;
 use tokio::sync::Mutex;
 
 fn main() {
@@ -17,8 +20,6 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .manage(Mutex::new(AppState::new()))
         .setup(|app| {
-            use tauri::Manager;
-
             // Load settings
             let settings = config::load_settings().unwrap_or_default();
 
@@ -54,6 +55,9 @@ fn main() {
                 ),
             };
 
+            // Get owned AppHandle (it is 'static and Clone)
+            let app_handle = app.handle().clone();
+
             // Initialize state
             let state = app.state::<Mutex<AppState>>();
             let mut s = tauri::async_runtime::block_on(state.lock());
@@ -67,9 +71,44 @@ fn main() {
             // Start file watcher
             if kanban_path.exists() {
                 let stop = s.watcher_stop.clone();
-                if let Err(e) = kanban::watch_kanban(&kanban_path, app.handle().clone(), stop) {
+                if let Err(e) = kanban::watch_kanban(&kanban_path, app_handle.clone(), stop) {
                     s.log(format!("File watcher error: {e}"));
                 }
+            }
+
+            // Extract bug-sync config while we hold the lock
+            let bug_sync_enabled = s.settings.bug_sync.enabled;
+            let bug_sync_url_empty = s.settings.bug_sync.api_url.is_empty();
+            let bug_sync_interval = s.settings.bug_sync.interval_secs.max(60);
+
+            // Drop the lock and state borrow explicitly
+            drop(s);
+
+            // Start Bug-Sync auto timer if enabled
+            if bug_sync_enabled && !bug_sync_url_empty {
+                let handle = app_handle;
+                tauri::async_runtime::spawn(async move {
+                    let mut tick = tokio::time::interval(tokio::time::Duration::from_secs(bug_sync_interval));
+                    tick.tick().await; // skip first immediate tick
+                    loop {
+                        tick.tick().await;
+                        let (api_url, api_token, enabled) = {
+                            let state = handle.state::<Mutex<AppState>>();
+                            let s = state.lock().await;
+                            let bs = &s.settings.bug_sync;
+                            (bs.api_url.clone(), bs.api_token.clone(), bs.enabled)
+                        };
+                        if !enabled || api_url.is_empty() {
+                            continue;
+                        }
+                        match crate::bugsync::fetch_unsynced_bugs(&api_url, &api_token).await {
+                            Ok(bugs) if !bugs.is_empty() => {
+                                let _ = handle.emit("bug-sync-available", bugs.len());
+                            }
+                            _ => {}
+                        }
+                    }
+                });
             }
 
             Ok(())
@@ -149,6 +188,9 @@ fn main() {
             commands::local_deploy,
             commands::local_deploy_stop,
             commands::live_deploy,
+            // Bug-Sync (Portal Bug-Tracker)
+            commands::sync_portal_bugs,
+            commands::get_bug_sync_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

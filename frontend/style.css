@@ -2193,3 +2193,45 @@ kbd {
   max-height: 0;
   overflow: hidden;
 }
+
+/* -- Bug-Sync -- */
+.bug-sync-btn {
+  background: var(--danger) !important;
+  color: #fff !important;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.bug-sync-btn:hover { opacity: 0.9; }
+.bug-sync-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.bug-sync-badge {
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.badge-portal-bug {
+  background: var(--danger) !important;
+  color: #fff !important;
+  font-size: 10px;
+  cursor: default;
+}
+
+.portal-link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.portal-link:hover {
+  color: var(--accent-hover);
+}

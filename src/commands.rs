@@ -9,6 +9,7 @@ use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex;
 
 use crate::activity;
+use crate::bugsync;
 use crate::config::{self, ProjectEntry};
 use crate::deploy;
 use crate::git;
@@ -178,6 +179,8 @@ pub async fn create_ticket(
         cost_usd: None,
         model_used: None,
         comments: None,
+        portal_bug_id: None,
+        portal_bug_url: None,
     };
     s.board.tickets.push(ticket.clone());
     s.save_and_backup()?;
@@ -1179,6 +1182,8 @@ pub async fn create_ticket_from_template(
         cost_usd: None,
         model_used: None,
         comments: None,
+        portal_bug_id: None,
+        portal_bug_url: None,
     };
 
     s.board.tickets.push(ticket.clone());
@@ -1326,6 +1331,8 @@ pub async fn import_tickets(
                 cost_usd: None,
                 model_used: None,
                 comments: None,
+                portal_bug_id: None,
+                portal_bug_url: None,
             });
         }
         s.board.tickets.extend(new_tickets);
@@ -1517,4 +1524,151 @@ fn resolve_validated_shell(shell: &str) -> Result<String, String> {
         return Err(format!("Shell '{}' is not in the list of known shells", resolved));
     }
     Ok(resolved)
+}
+
+// -- Bug-Sync (Portal Bug-Tracker) --
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BugSyncResult {
+    pub synced_count: usize,
+    pub tickets: Vec<Ticket>,
+    pub errors: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn sync_portal_bugs(
+    state: State<'_>,
+) -> Result<BugSyncResult, String> {
+    let (api_url, api_token) = {
+        let s = state.lock().await;
+        let bs = &s.settings.bug_sync;
+        if bs.api_url.is_empty() {
+            return Err("Bug-Sync: API URL not configured".to_string());
+        }
+        (bs.api_url.clone(), bs.api_token.clone())
+    };
+
+    // Fetch unsynced bugs from portal
+    let bugs = bugsync::fetch_unsynced_bugs(&api_url, &api_token).await?;
+
+    if bugs.is_empty() {
+        return Ok(BugSyncResult {
+            synced_count: 0,
+            tickets: Vec::new(),
+            errors: Vec::new(),
+        });
+    }
+
+    let mut synced_tickets = Vec::new();
+    let mut bug_ids = Vec::new();
+    let mut ticket_ids = Vec::new();
+    let mut errors = Vec::new();
+
+    {
+        let mut s = state.lock().await;
+
+        // Check which bugs are already synced (by portal_bug_id)
+        let existing_bug_ids: std::collections::HashSet<u64> = s
+            .board
+            .tickets
+            .iter()
+            .filter_map(|t| t.portal_bug_id)
+            .collect();
+
+        for bug in &bugs {
+            if existing_bug_ids.contains(&bug.id) {
+                continue;
+            }
+
+            let next_num = s.board.next_ticket_id;
+            s.board.next_ticket_id += 1;
+            let id = format!("KANBAN-{:03}", next_num);
+            let slug = kanban::slugify(&bug.title);
+
+            // Build description from bug data
+            let mut desc_parts = Vec::new();
+            if !bug.description.is_empty() {
+                desc_parts.push(bug.description.clone());
+            }
+            if let Some(cat) = &bug.category {
+                desc_parts.push(format!("Kategorie: {cat}"));
+            }
+            if let Some(reporter) = &bug.reporter_name {
+                desc_parts.push(format!("Gemeldet von: {reporter}"));
+            }
+            if let Some(screenshot) = &bug.screenshot_url {
+                desc_parts.push(format!("Screenshot: {screenshot}"));
+            }
+            let description = desc_parts.join("
+
+");
+
+            let portal_url = bug.portal_url.clone();
+
+            let ticket = Ticket {
+                id: id.clone(),
+                title: bug.title.clone(),
+                slug,
+                ticket_type: kanban::TicketType::Bugfix,
+                column: kanban::Column::Backlog,
+                description,
+                prio: Some("high".to_string()),
+                created_at: Some(kanban::now_iso()),
+                started_at: None,
+                review_at: None,
+                done_at: None,
+                has_changes: None,
+                branch: None,
+                tokens_used: None,
+                cost_usd: None,
+                model_used: None,
+                comments: None,
+                portal_bug_id: Some(bug.id),
+                portal_bug_url: portal_url,
+            };
+
+            s.board.tickets.push(ticket.clone());
+            synced_tickets.push(ticket.clone());
+            bug_ids.push(bug.id);
+            ticket_ids.push(id.clone());
+
+            s.log(format!("Bug-Sync: Created ticket {id} from Portal Bug #{}", bug.id));
+
+            if let Some(dd) = s.data_dir() {
+                activity::log_activity(
+                    &dd,
+                    "bug_synced",
+                    Some(&ticket.id),
+                    Some(&ticket.title),
+                    Some(&format!("Portal Bug #{}", bug.id)),
+                );
+            }
+        }
+
+        if !synced_tickets.is_empty() {
+            s.save_and_backup()?;
+        }
+    }
+
+    // Mark bugs as synced on the portal (non-blocking, errors are collected)
+    if !bug_ids.is_empty() {
+        if let Err(e) = bugsync::mark_bugs_synced(&api_url, &api_token, &bug_ids, &ticket_ids).await {
+            errors.push(e);
+        }
+    }
+
+    Ok(BugSyncResult {
+        synced_count: synced_tickets.len(),
+        tickets: synced_tickets,
+        errors,
+    })
+}
+
+#[tauri::command]
+pub async fn get_bug_sync_settings(
+    state: State<'_>,
+) -> Result<crate::state::BugSyncSettings, String> {
+    let s = state.lock().await;
+    Ok(s.settings.bug_sync.clone())
 }

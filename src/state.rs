@@ -32,6 +32,33 @@ fn default_cost_output() -> f64 {
     15.0
 }
 
+fn default_sync_interval() -> u64 {
+    300
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BugSyncSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub api_url: String,
+    #[serde(default)]
+    pub api_token: String,
+    #[serde(default = "default_sync_interval")]
+    pub interval_secs: u64,
+}
+
+impl Default for BugSyncSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            api_url: String::new(),
+            api_token: String::new(),
+            interval_secs: 300,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub auto_execute_types: Vec<String>,
@@ -57,6 +84,8 @@ pub struct Settings {
     pub cost_per_input_mtok: f64,
     #[serde(default = "default_cost_output")]
     pub cost_per_output_mtok: f64,
+    #[serde(default)]
+    pub bug_sync: BugSyncSettings,
 }
 
 impl Default for Settings {
@@ -76,6 +105,7 @@ impl Default for Settings {
             claude_model: "sonnet".into(),
             cost_per_input_mtok: 3.0,
             cost_per_output_mtok: 15.0,
+            bug_sync: BugSyncSettings::default(),
         }
     }
 }
