@@ -87,6 +87,7 @@ pub struct AppState {
     pub running_ticket: Option<String>,
     pub log_lines: VecDeque<String>,
     pub kanban_path: PathBuf,
+    pub data_dir: PathBuf,
     pub settings: Settings,
     pub watcher_stop: Arc<AtomicBool>,
     pub terminals: HashMap<String, TerminalSession>,
@@ -105,6 +106,7 @@ impl AppState {
             running_ticket: None,
             log_lines: VecDeque::new(),
             kanban_path: PathBuf::new(),
+            data_dir: PathBuf::new(),
             settings: Settings::default(),
             watcher_stop: Arc::new(AtomicBool::new(false)),
             terminals: HashMap::new(),
@@ -120,6 +122,14 @@ impl AppState {
 
     pub fn project_path(&self) -> Option<PathBuf> {
         self.project.as_ref().map(|p| p.path.clone())
+    }
+
+    pub fn data_dir(&self) -> Option<PathBuf> {
+        if self.data_dir.as_os_str().is_empty() {
+            None
+        } else {
+            Some(self.data_dir.clone())
+        }
     }
 
     pub fn save_and_backup(&self) -> Result<(), String> {

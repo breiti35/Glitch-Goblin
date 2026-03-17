@@ -12,12 +12,12 @@ pub struct ActivityEntry {
 
 const MAX_ENTRIES: usize = 500;
 
-fn activity_path(project_path: &Path) -> std::path::PathBuf {
-    project_path.join(".claude").join("activity-log.json")
+fn activity_path(data_dir: &Path) -> std::path::PathBuf {
+    data_dir.join("activity-log.json")
 }
 
-fn load_entries(project_path: &Path) -> Vec<ActivityEntry> {
-    let path = activity_path(project_path);
+fn load_entries(data_dir: &Path) -> Vec<ActivityEntry> {
+    let path = activity_path(data_dir);
     if !path.exists() {
         return Vec::new();
     }
@@ -27,8 +27,8 @@ fn load_entries(project_path: &Path) -> Vec<ActivityEntry> {
         .unwrap_or_default()
 }
 
-fn save_entries(project_path: &Path, entries: &[ActivityEntry]) -> Result<(), String> {
-    let path = activity_path(project_path);
+fn save_entries(data_dir: &Path, entries: &[ActivityEntry]) -> Result<(), String> {
+    let path = activity_path(data_dir);
     let json =
         serde_json::to_string_pretty(entries).map_err(|e| format!("Serialize activity: {e}"))?;
     std::fs::write(&path, json).map_err(|e| format!("Write activity log: {e}"))
@@ -36,13 +36,13 @@ fn save_entries(project_path: &Path, entries: &[ActivityEntry]) -> Result<(), St
 
 /// Append an activity entry (called internally, not a Tauri command)
 pub fn log_activity(
-    project_path: &Path,
+    data_dir: &Path,
     action: &str,
     ticket_id: Option<&str>,
     ticket_title: Option<&str>,
     details: Option<&str>,
 ) {
-    let mut entries = load_entries(project_path);
+    let mut entries = load_entries(data_dir);
     entries.push(ActivityEntry {
         timestamp: chrono::Utc::now().to_rfc3339(),
         action: action.to_string(),
@@ -56,12 +56,12 @@ pub fn log_activity(
         entries.remove(0);
     }
 
-    let _ = save_entries(project_path, &entries);
+    let _ = save_entries(data_dir, &entries);
 }
 
 /// Get recent activity entries (newest first)
-pub fn get_activity(project_path: &Path, limit: usize) -> Vec<ActivityEntry> {
-    let entries = load_entries(project_path);
+pub fn get_activity(data_dir: &Path, limit: usize) -> Vec<ActivityEntry> {
+    let entries = load_entries(data_dir);
     let start = entries.len().saturating_sub(limit);
     entries[start..].iter().rev().cloned().collect()
 }
