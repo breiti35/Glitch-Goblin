@@ -30,6 +30,8 @@ const state = {
   deployConfig: null,
   deployingLocal: false,
   deployingLive: false,
+  // Bug-Sync
+  bugSyncCount: 0,
 };
 
 let contextTicket = null;
@@ -48,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupTemplateListener();
   setupImportExportListeners();
   setupDeployListeners();
+  setupBugSyncListeners();
   loadDeployConfig();
   renderBoard();
   updateSidebar();
@@ -274,6 +277,13 @@ async function setupListeners() {
     const { terminalId } = event.payload;
     cleanupTerminal(terminalId);
   });
+
+  // Bug-Sync: new bugs available from auto-poll
+  await listen("bug-sync-available", (event) => {
+    const count = event.payload;
+    updateBugSyncBadge(count);
+    appendLog(`Bug-Sync: ${count} neue Bugs im Portal verfuegbar`);
+  });
 }
 
 // ── View Routing ──
@@ -388,6 +398,7 @@ function createCard(ticket, col) {
       ${prioBadge}
       ${ticket.cost_usd ? `<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>` : ""}
       ${(ticket.comments && ticket.comments.length > 0) ? `<span class="comment-count-badge">\u{1F4AC} ${ticket.comments.length}</span>` : ""}
+      ${ticket.portal_bug_id ? `<span class="badge badge-portal-bug" title="Portal-Bug #${ticket.portal_bug_id}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>` : ""}
     </div>
     ${progressHTML}
     <div class="card-footer">
@@ -1008,6 +1019,22 @@ function openDetailPanel(ticket) {
     costInfo.classList.add("hidden");
   }
 
+  // Portal Bug info
+  const portalInfo = document.getElementById("detail-portal-info");
+  if (portalInfo) {
+    if (ticket.portal_bug_id) {
+      portalInfo.classList.remove("hidden");
+      document.getElementById("detail-portal-id").textContent = "#" + ticket.portal_bug_id;
+      const urlEl = document.getElementById("detail-portal-url");
+      const rawUrl = ticket.portal_bug_url || "";
+      const safeUrl = /^https?:\/\//.test(rawUrl) ? rawUrl : "";
+      urlEl.textContent = safeUrl || "-";
+      urlEl.href = safeUrl || "#";
+    } else {
+      portalInfo.classList.add("hidden");
+    }
+  }
+
   // Render timeline (Block A1)
   renderTimeline(ticket);
 
@@ -1148,6 +1175,16 @@ function loadSettingsForm() {
   document.getElementById("set-terminal-fontsize").value = s.terminal_font_size || 14;
   document.getElementById("terminal-fontsize-label").textContent = (s.terminal_font_size || 14) + "px";
   loadShellOptions("set-default-shell", s.default_shell || "");
+  // Bug-Sync settings
+  const bs = s.bug_sync || {};
+  document.getElementById("set-bugsync-enabled").checked = !!bs.enabled;
+  document.getElementById("set-bugsync-url").value = bs.api_url || "";
+  // Token is never sent back from backend for security; only show placeholder if set
+  document.getElementById("set-bugsync-token").value = "";
+  document.getElementById("set-bugsync-token").placeholder = bs.api_token_set ? "(Token gesetzt)" : "Secret oder JWT Token";
+  document.getElementById("set-bugsync-interval").value = bs.interval_secs || 300;
+  const bsInterval = bs.interval_secs || 300;
+  document.getElementById("bugsync-interval-label").textContent = bsInterval >= 60 ? Math.round(bsInterval / 60) + " min" : bsInterval + " s";
 }
 
 async function saveSettingsForm() {
@@ -1166,6 +1203,12 @@ async function saveSettingsForm() {
     cost_per_output_mtok: parseFloat(document.getElementById("set-cost-output").value) || 15,
     default_shell: document.getElementById("set-default-shell").value,
     terminal_font_size: parseInt(document.getElementById("set-terminal-fontsize").value) || 14,
+    bug_sync: {
+      enabled: document.getElementById("set-bugsync-enabled").checked,
+      api_url: document.getElementById("set-bugsync-url").value.trim(),
+      api_token: document.getElementById("set-bugsync-token").value.trim(),
+      interval_secs: parseInt(document.getElementById("set-bugsync-interval").value) || 300,
+    },
   };
 
   try {
@@ -1174,6 +1217,7 @@ async function saveSettingsForm() {
     document.body.dataset.theme = settings.theme;
     updateThemeUI();
     applyAccentColor(settings.accent_color);
+    updateBugSyncVisibility();
     await saveDeploySettingsForm();
     appendLog("Settings saved");
   } catch (err) {
@@ -2674,5 +2718,95 @@ function timeAgo(dateStr) {
     return Math.floor(diff / 86400) + "d ago";
   } catch {
     return "";
+  }
+}
+
+// ── Bug-Sync (Portal Bug-Tracker) ──
+
+function setupBugSyncListeners() {
+  const syncBtn = document.getElementById("btn-bug-sync");
+  if (syncBtn) syncBtn.addEventListener("click", performBugSync);
+
+  const testBtn = document.getElementById("btn-bugsync-test");
+  if (testBtn) testBtn.addEventListener("click", performBugSync);
+
+  const navBtn = document.getElementById("nav-bug-sync");
+  if (navBtn) navBtn.addEventListener("click", performBugSync);
+
+  const intervalRange = document.getElementById("set-bugsync-interval");
+  if (intervalRange) {
+    intervalRange.addEventListener("input", () => {
+      const secs = parseInt(intervalRange.value);
+      document.getElementById("bugsync-interval-label").textContent =
+        secs >= 60 ? Math.round(secs / 60) + " min" : secs + " s";
+    });
+  }
+
+  updateBugSyncVisibility();
+}
+
+function updateBugSyncVisibility() {
+  const bs = state.settings.bug_sync || {};
+  const syncBtn = document.getElementById("btn-bug-sync");
+  const navBtn = document.getElementById("nav-bug-sync");
+  const show = bs.enabled && bs.api_url;
+  if (syncBtn) syncBtn.classList.toggle("hidden", !show);
+  if (navBtn) navBtn.classList.toggle("hidden", !show);
+}
+
+function updateBugSyncBadge(count) {
+  state.bugSyncCount = count;
+  const badge = document.getElementById("bug-sync-badge");
+  const navBadge = document.getElementById("bug-sync-count");
+  if (badge) {
+    badge.textContent = count;
+    badge.classList.toggle("hidden", count <= 0);
+  }
+  if (navBadge) navBadge.textContent = count;
+}
+
+async function performBugSync() {
+  const syncBtn = document.getElementById("btn-bug-sync");
+  const statusEl = document.getElementById("bugsync-status");
+
+  if (syncBtn) {
+    syncBtn.disabled = true;
+    syncBtn.textContent = "\u{1F504} Synchronisiere...";
+  }
+
+  try {
+    const result = await invoke("sync_portal_bugs");
+
+    if (result.syncedCount > 0) {
+      appendLog(`Bug-Sync: ${result.syncedCount} neue Bugs synchronisiert`);
+      state.board = await invoke("get_board");
+      renderBoard();
+      updateBugSyncBadge(0);
+    } else {
+      appendLog("Bug-Sync: Keine neuen Bugs");
+    }
+
+    if (result.errors && result.errors.length > 0) {
+      result.errors.forEach(e => appendLog("Bug-Sync Warning: " + e, true));
+    }
+
+    if (statusEl) {
+      statusEl.textContent = result.syncedCount > 0
+        ? `${result.syncedCount} Bugs synchronisiert`
+        : "Keine neuen Bugs gefunden";
+      statusEl.classList.remove("hidden");
+      setTimeout(() => statusEl.classList.add("hidden"), 5000);
+    }
+  } catch (err) {
+    appendLog("Bug-Sync error: " + err, true);
+    if (statusEl) {
+      statusEl.textContent = "Fehler: " + err;
+      statusEl.classList.remove("hidden");
+    }
+  } finally {
+    if (syncBtn) {
+      syncBtn.disabled = false;
+      syncBtn.textContent = "\u{1F41B} Bugs synchen";
+    }
   }
 }

@@ -47,6 +47,9 @@
         <button data-view="activity" class="nav-item">
           <span class="nav-icon">&#9776;</span> Activity
         </button>
+        <button class="nav-item hidden" id="nav-bug-sync">
+          <span class="nav-icon">&#128027;</span> Bug-Sync <span class="nav-badge" id="bug-sync-count">0</span>
+        </button>
         <button data-view="agents" class="nav-item">
           <span class="nav-icon">&#9655;</span> Agents <span class="nav-badge" id="agent-count">0</span>
         </button>
@@ -108,6 +111,8 @@
             <button id="btn-local-deploy" class="deploy-btn local-deploy-btn hidden" title="Lokal testen (Docker)">&#129514; Lokal testen</button>
             <button id="btn-live-deploy" class="deploy-btn live-deploy-btn hidden" title="Live deployen">&#128640; Live deployen</button>
             <span id="deploy-status-badge" class="deploy-badge hidden"></span>
+            <button id="btn-bug-sync" class="deploy-btn bug-sync-btn hidden" title="Portal Bugs synchronisieren">&#128027; Bugs synchen</button>
+            <span id="bug-sync-badge" class="bug-sync-badge hidden">0</span>
             <span id="git-status" class="git-badge clean">&#9679; clean</span>
             <span id="running-badge" class="running-badge hidden">&#9881; Running...</span>
           </div>
@@ -267,6 +272,34 @@
               <span id="terminal-fontsize-label">14px</span>
             </div>
           </label>
+          <hr class="settings-divider">
+          <div class="settings-section-title">Bug-Sync (Portal)</div>
+          <label class="settings-label">
+            <span class="toggle-row">
+              Bug-Sync aktivieren
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-bugsync-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+            </span>
+          </label>
+          <label class="settings-label">
+            API URL
+            <input type="text" id="set-bugsync-url" class="settings-input" placeholder="https://example.com/api/internal/bugs">
+          </label>
+          <label class="settings-label">
+            API Token
+            <input type="password" id="set-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token">
+          </label>
+          <label class="settings-label">
+            Sync-Intervall (Sekunden)
+            <div class="settings-range-row">
+              <input type="range" id="set-bugsync-interval" class="settings-range" min="60" max="1800" step="60" value="300">
+              <span id="bugsync-interval-label">5 min</span>
+            </div>
+          </label>
+          <button id="btn-bugsync-test" class="btn-secondary" style="margin-bottom:8px">Jetzt synchronisieren</button>
+          <div id="bugsync-status" class="deploy-detection-info hidden"></div>
           <hr class="settings-divider">
           <div class="settings-section-title">Docker Deploy</div>
           <label class="settings-label">
@@ -674,6 +707,11 @@
           <div><strong>Model:</strong> <span id="detail-model"></span></div>
           <div><strong>Tokens:</strong> <span id="detail-tokens"></span></div>
           <div><strong>Cost:</strong> <span id="detail-cost"></span></div>
+        </div>
+        <!-- Portal Bug Info -->
+        <div id="detail-portal-info" class="panel-cost-info hidden">
+          <div><strong>Portal Bug:</strong> <span id="detail-portal-id"></span></div>
+          <div><strong>Portal URL:</strong> <a id="detail-portal-url" href="#" target="_blank" class="portal-link"></a></div>
         </div>
         <!-- Timeline (Block A1) -->
         <div id="detail-timeline" class="panel-timeline"></div>

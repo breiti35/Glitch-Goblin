@@ -1,4 +1,5 @@
 mod activity;
+mod bugsync;
 mod commands;
 mod config;
 mod deploy;
@@ -17,6 +18,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .manage(Mutex::new(AppState::new()))
         .setup(|app| {
+            use tauri::Emitter;
             use tauri::Manager;
 
             // Load settings
@@ -70,6 +72,45 @@ fn main() {
                 if let Err(e) = kanban::watch_kanban(&kanban_path, app.handle().clone(), stop) {
                     s.log(format!("File watcher error: {e}"));
                 }
+            }
+
+            // Start Bug-Sync auto-poll timer (always runs, checks settings on each tick)
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let mut tick =
+                        tokio::time::interval(tokio::time::Duration::from_secs(60));
+                    tick.tick().await; // skip immediate first tick
+                    loop {
+                        tick.tick().await;
+                        let state_ref = app_handle.state::<Mutex<AppState>>();
+                        let (api_url, api_token, enabled, interval) = {
+                            let s = state_ref.lock().await;
+                            let bs = &s.settings.bug_sync;
+                            (
+                                bs.api_url.clone(),
+                                bs.api_token.clone(),
+                                bs.enabled,
+                                bs.interval_secs.max(60),
+                            )
+                        };
+                        if !enabled || api_url.is_empty() {
+                            continue;
+                        }
+                        if interval > 60 {
+                            tokio::time::sleep(tokio::time::Duration::from_secs(
+                                interval - 60,
+                            ))
+                            .await;
+                        }
+                        match bugsync::fetch_unsynced_bugs(&api_url, &api_token).await {
+                            Ok(bugs) if !bugs.is_empty() => {
+                                let _ = app_handle.emit("bug-sync-available", bugs.len());
+                            }
+                            _ => {}
+                        }
+                    }
+                });
             }
 
             Ok(())
@@ -149,6 +190,9 @@ fn main() {
             commands::local_deploy,
             commands::local_deploy_stop,
             commands::live_deploy,
+            // Bug-Sync (Portal Bug-Tracker)
+            commands::sync_portal_bugs,
+            commands::get_bug_sync_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,6 +7,22 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+- **Bug-Sync (Portal Bug-Tracker):** Bugs aus der Portal `alpha_bugs`-Tabelle koennen automatisch als Bugfix-Tickets ins Kanban Board importiert werden
+  - Neues Rust-Modul `bugsync.rs` mit HTTP-Client (reqwest) fuer Portal API
+  - Neue Tauri-Commands: `sync_portal_bugs` (synchronisiert Bugs und erstellt Tickets), `get_bug_sync_settings` (liest aktuelle Sync-Konfiguration)
+  - Settings-Abschnitt "Bug-Sync (Portal)" mit API URL, API Token, Sync-Intervall und Enable/Disable Toggle
+  - Board-Header Button "Bugs synchen" fuer manuellen Sync
+  - Sidebar-Badge zeigt Anzahl verfuegbarer Bugs
+  - Auto-Sync Timer mit konfigurierbarem Intervall (Standard: 5 min, Minimum: 60 s)
+  - Portal-Bugs werden als Bugfix-Tickets im Backlog angelegt mit "Portal-Bug" Badge
+  - Ticket-Detail zeigt Portal Bug ID und URL an
+  - Neue Felder auf Ticket: `portal_bug_id`, `portal_bug_url`
+  - Duplikat-Erkennung: bereits synchronisierte Bugs (gleiche `portal_bug_id`) werden uebersprungen
+  - Portal API Endpunkte: `GET /unsynced` (Bugs abrufen), `POST /mark-synced` (Bugs als gesynct markieren mit `kanban_ticket_id`)
+  - Plattformuebergreifend (HTTP-basiert, funktioniert auf Windows + Linux)
+  - Dependency hinzugefuegt: `reqwest 0.12` mit `json` und `rustls-tls` Features
+
 ### Security
 - **[KRITISCH]** Path Traversal in Agent/Command Editor und Backup-Restore: Namen mit `../` konnten beliebige Dateien lesen/schreiben/löschen. Fix: `validate_safe_name()` und `validate_backup_filename()` prüfen alle Eingaben
 - **[KRITISCH]** Command Injection in SSH Deploy: User-Input wurde unescaped in Shell-Befehle interpoliert. Fix: `shell_escape()` und `validate_deploy_param()` in Backend und Frontend
