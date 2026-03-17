@@ -239,6 +239,7 @@
             <select id="set-claude-model" class="settings-input">
               <option value="sonnet">Sonnet 4.6 ($3/$15 per MTok)</option>
               <option value="opus">Opus 4.6 ($15/$75 per MTok)</option>
+              <option value="haiku">Haiku 4.5 ($0.80/$4 per MTok)</option>
             </select>
           </label>
           <label class="settings-label">
@@ -441,6 +442,14 @@
           <h2>Confirm Execution</h2>
         </div>
         <p id="confirm-message">Execute this ticket?</p>
+        <label class="settings-label">
+          Claude Model
+          <select id="confirm-model-select" class="settings-input">
+            <option value="sonnet">Sonnet 4.6</option>
+            <option value="opus">Opus 4.6</option>
+            <option value="haiku">Haiku 4.5</option>
+          </select>
+        </label>
         <div class="modal-actions">
           <button id="btn-confirm-yes" class="btn-primary">Yes, Execute</button>
           <button id="btn-confirm-no" class="btn-secondary">Cancel</button>

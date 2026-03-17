@@ -249,6 +249,7 @@ pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), St
 #[tauri::command]
 pub async fn start_ticket(
     ticket_id: String,
+    model: Option<String>,
     state: State<'_>,
     app: AppHandle,
 ) -> Result<StartTicketResult, String> {
@@ -266,6 +267,7 @@ pub async fn start_ticket(
             .ok_or_else(|| "Ticket not found".to_string())?;
         s.board.tickets[idx].column = Column::Progress;
         s.board.tickets[idx].started_at = Some(kanban::now_iso());
+        s.board.tickets[idx].model_used = model;
         s.running_ticket = Some(ticket_id.clone());
         let ticket = s.board.tickets[idx].clone();
         let project_path = s.project_path().ok_or("No project selected")?;

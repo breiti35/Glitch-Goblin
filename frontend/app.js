@@ -638,15 +638,18 @@ function setupDragDrop() {
 function confirmExecute(ticket) {
   const needsConfirm = ticket.ticket_type === "feature" || ticket.ticket_type === "bugfix";
   if (!needsConfirm && isAutoExecuteType(ticket.ticket_type)) {
-    executeTicket(ticket.id);
+    executeTicket(ticket.id, state.settings.claude_model || "sonnet");
     return;
   }
 
   document.getElementById("confirm-message").textContent =
     `Execute ticket ${ticket.id} - "${ticket.title}"?`;
+  const modelSelect = document.getElementById("confirm-model-select");
+  modelSelect.value = state.settings.claude_model || "sonnet";
   document.getElementById("btn-confirm-yes").onclick = () => {
+    const selectedModel = modelSelect.value;
     closeModal("modal-confirm");
-    executeTicket(ticket.id);
+    executeTicket(ticket.id, selectedModel);
   };
   openModal("modal-confirm");
 }
@@ -655,9 +658,15 @@ function isAutoExecuteType(type) {
   return (state.settings.auto_execute_types || state.settings.autoExecuteTypes || []).includes(type);
 }
 
-async function executeTicket(ticketId) {
+function modelToFlag(model) {
+  const map = { opus: "claude-opus-4-6", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5" };
+  return map[model] || "claude-sonnet-4-6";
+}
+
+async function executeTicket(ticketId, model) {
   const ticket = (state.board.tickets || []).find(t => t.id === ticketId);
   const ticketTitle = ticket ? ticket.title : ticketId;
+  const selectedModel = model || state.settings.claude_model || "sonnet";
 
   state.runningTicket = ticketId;
   renderBoard();
@@ -665,12 +674,12 @@ async function executeTicket(ticketId) {
   try {
     // Phase 1: Git setup (branch, worktree, copy .claude)
     appendLog(`Starting ${ticketId} - ${ticketTitle}...`);
-    const result = await invoke("start_ticket", { ticketId });
+    const result = await invoke("start_ticket", { ticketId, model: selectedModel });
     appendLog(`Branch: ${result.branch}`);
     appendLog(`Worktree: ${result.worktreePath}`);
 
     // Phase 2: Open terminal tab with Claude Code in the worktree
-    await openTicketTerminal(result);
+    await openTicketTerminal(result, selectedModel);
   } catch (err) {
     state.runningTicket = null;
     appendLog("Start error: " + err, true);
@@ -680,7 +689,7 @@ async function executeTicket(ticketId) {
   }
 }
 
-async function openTicketTerminal(startResult) {
+async function openTicketTerminal(startResult, model) {
   // Ensure terminal panel is visible
   const panel = document.getElementById("board-terminal-panel");
   if (panel.classList.contains("collapsed")) {
@@ -748,7 +757,7 @@ async function openTicketTerminal(startResult) {
 
   // Start Claude Code interactively after shell is ready
   setTimeout(() => {
-    const claudeCmd = (state.settings.claude_cli_path || "claude") + " --dangerously-skip-permissions\r";
+    const claudeCmd = (state.settings.claude_cli_path || "claude") + " --dangerously-skip-permissions --model " + modelToFlag(model || state.settings.claude_model || "sonnet") + "\r";
     invoke("write_terminal", { terminalId, data: claudeCmd }).catch(() => {});
 
     // Send the prompt after Claude has started
