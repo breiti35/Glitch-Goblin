@@ -131,14 +131,21 @@ pub async fn copy_claude_config(src: &Path, dst: &Path) -> Result<(), String> {
         return Ok(()); // Nothing to copy
     }
 
-    copy_dir_recursive(&src_claude, &dst_claude, &["kanban.json"]).await?;
+    // Only copy agents/ and commands/ — skip all runtime data
+    for subdir in &["agents", "commands"] {
+        let src_sub = src_claude.join(subdir);
+        let dst_sub = dst_claude.join(subdir);
+        if src_sub.exists() {
+            copy_dir_recursive(&src_sub, &dst_sub, &[]).await?;
+        }
+    }
 
     // Ensure .claude/ is in worktree .gitignore so git add -A won't stage it
     let gitignore_path = dst.join(".gitignore");
     let mut content = if gitignore_path.exists() {
         tokio::fs::read_to_string(&gitignore_path)
             .await
-            .unwrap_or_default()
+            .map_err(|e| format!("Failed to read .gitignore: {e}"))?
     } else {
         String::new()
     };
