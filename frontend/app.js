@@ -419,6 +419,12 @@ function createCard(ticket, col) {
     showContextMenu(e, ticket);
   });
 
+  // Portal-Bug badge - show URL tooltip
+  const portalBadge = card.querySelector(".badge-portal-bug");
+  if (portalBadge && portalBadge.dataset.portalUrl) {
+    portalBadge.title = "Portal-Bug: " + portalBadge.dataset.portalUrl;
+  }
+
   // Execute button
   const execBtn = card.querySelector("[data-execute]");
   if (execBtn) {

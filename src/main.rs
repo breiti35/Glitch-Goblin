@@ -10,6 +10,8 @@ mod state;
 mod terminal;
 
 use state::AppState;
+use tauri::Emitter;
+use tauri::Manager;
 use tokio::sync::Mutex;
 
 fn main() {
@@ -18,9 +20,6 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .manage(Mutex::new(AppState::new()))
         .setup(|app| {
-            use tauri::Emitter;
-            use tauri::Manager;
-
             // Load settings
             let settings = config::load_settings().unwrap_or_default();
 
@@ -56,6 +55,9 @@ fn main() {
                 ),
             };
 
+            // Get owned AppHandle (it is 'static and Clone)
+            let app_handle = app.handle().clone();
+
             // Initialize state
             let state = app.state::<Mutex<AppState>>();
             let mut s = tauri::async_runtime::block_on(state.lock());
@@ -69,7 +71,7 @@ fn main() {
             // Start file watcher
             if kanban_path.exists() {
                 let stop = s.watcher_stop.clone();
-                if let Err(e) = kanban::watch_kanban(&kanban_path, app.handle().clone(), stop) {
+                if let Err(e) = kanban::watch_kanban(&kanban_path, app_handle.clone(), stop) {
                     s.log(format!("File watcher error: {e}"));
                 }
             }
