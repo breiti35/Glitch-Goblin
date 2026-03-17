@@ -2072,3 +2072,124 @@ kbd {
   gap: 8px;
   align-items: center;
 }
+
+/* ── Deploy (Phase 4) ── */
+.deploy-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
+}
+
+.local-deploy-btn {
+  background: var(--success);
+  color: #fff;
+}
+
+.local-deploy-btn:hover {
+  opacity: 0.85;
+}
+
+.live-deploy-btn {
+  background: var(--info);
+  color: #fff;
+}
+
+.live-deploy-btn:hover {
+  opacity: 0.85;
+}
+
+.deploy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.deploy-badge.deploying {
+  background: var(--warning);
+  color: #000;
+  animation: deploy-pulse 1.2s ease-in-out infinite;
+}
+
+.deploy-badge.success {
+  background: var(--success);
+  color: #fff;
+}
+
+.deploy-badge.error {
+  background: var(--danger);
+  color: #fff;
+}
+
+@keyframes deploy-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.deploy-detection-info {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.detect-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.detect-ok {
+  color: var(--success);
+}
+
+.detect-warn {
+  color: var(--warning);
+}
+
+.detect-missing {
+  color: var(--text-muted);
+}
+
+.deploy-confirm-details {
+  background: var(--log-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.settings-textarea {
+  resize: vertical;
+  min-height: 48px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+#live-settings-panel {
+  transition: opacity 0.2s, max-height 0.3s;
+}
+
+#live-settings-panel.collapsed {
+  opacity: 0.4;
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden;
+}

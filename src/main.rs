@@ -1,6 +1,7 @@
 mod activity;
 mod commands;
 mod config;
+mod deploy;
 mod git;
 mod kanban;
 mod runner;
@@ -133,6 +134,14 @@ fn main() {
             commands::create_ticket_from_template,
             commands::export_tickets,
             commands::import_tickets,
+            // Deploy (Phase 4)
+            commands::get_deploy_config,
+            commands::save_deploy_config,
+            commands::detect_deploy_env,
+            commands::check_docker_status,
+            commands::local_deploy,
+            commands::local_deploy_stop,
+            commands::live_deploy,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
