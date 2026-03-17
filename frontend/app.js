@@ -674,13 +674,12 @@ async function executeTicket(ticketId, model) {
   renderBoard();
 
   try {
-    // Phase 1: Git setup (branch, worktree, copy .claude)
+    // Phase 1: Git setup (branch checkout)
     appendLog(`Starting ${ticketId} - ${ticketTitle}...`);
     const result = await invoke("start_ticket", { ticketId, model: selectedModel });
     appendLog(`Branch: ${result.branch}`);
-    appendLog(`Worktree: ${result.worktreePath}`);
 
-    // Phase 2: Open terminal tab with Claude Code in the worktree
+    // Phase 2: Open terminal tab with Claude Code
     await openTicketTerminal(result, selectedModel);
   } catch (err) {
     state.runningTicket = null;
@@ -716,7 +715,7 @@ async function openTicketTerminal(startResult, model) {
   }
   if (!shell) return;
 
-  const cwd = startResult.worktreePath;
+  const cwd = startResult.projectPath;
   const terminalId = await invoke("spawn_terminal", { shell, cwd });
   state.terminalCounter++;
   const name = startResult.ticketId;
@@ -768,7 +767,7 @@ async function openTicketTerminal(startResult, model) {
 
     // Send the prompt after Claude has started
     setTimeout(() => {
-      const prompt = "Du arbeitest in einem Git Worktree. \u00C4ndere NUR Dateien die zum Projekt geh\u00F6ren, NICHT den .claude/ Ordner.\n\n" + startResult.prompt + "\r";
+      const prompt = startResult.prompt + "\r";
       invoke("write_terminal", { terminalId, data: prompt }).catch(() => {});
     }, 3500);
   }, 2500);

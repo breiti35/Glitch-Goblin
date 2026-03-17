@@ -46,7 +46,7 @@ fn validate_backup_filename(filename: &str) -> Result<(), String> {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartTicketResult {
-    pub worktree_path: String,
+    pub project_path: String,
     pub prompt: String,
     pub branch: String,
     pub ticket_id: String,
@@ -322,14 +322,12 @@ pub async fn start_ticket(
         (ticket, project_path, kanban_path)
     }; // Lock released
 
-    // Phase 2: Git setup (no lock held)
-    git::create_branch(&project_path, &ticket).await?;
-    let wt_path = git::create_worktree(&project_path, &ticket).await?;
-    git::copy_claude_config(&project_path, &wt_path).await?;
+    // Phase 2: Git setup — checkout ticket branch (no lock held)
+    git::checkout_branch(&project_path, &ticket).await?;
 
     let prompt = kanban::build_prompt_for(&ticket);
     let branch = git::branch_name(&ticket);
-    let wt_str = git::strip_unc_prefix(&wt_path)
+    let pp_str = git::strip_unc_prefix(&project_path)
         .to_string_lossy()
         .to_string();
 
@@ -344,7 +342,7 @@ pub async fn start_ticket(
     );
 
     Ok(StartTicketResult {
-        worktree_path: wt_str,
+        project_path: pp_str,
         prompt,
         branch,
         ticket_id,
@@ -373,13 +371,12 @@ pub async fn finish_ticket(
         (ticket, project_path, kanban_path, commit_prefix, data_dir)
     };
 
-    // Auto-commit changes from worktree
-    let wt_path = git::worktree_dir(&project_path, &ticket);
-    if wt_path.exists() {
-        let commit_msg = format!("{} {} - {}", commit_prefix, ticket.id, ticket.title);
-        let _ = git::auto_commit(&wt_path, &commit_msg).await;
-        let _ = git::cleanup_worktree(&project_path, &ticket).await;
-    }
+    // Auto-commit changes on the ticket branch
+    let commit_msg = format!("{} {} - {}", commit_prefix, ticket.id, ticket.title);
+    let _ = git::auto_commit(&project_path, &commit_msg).await;
+
+    // Return to main branch
+    git::checkout_main(&project_path).await?;
 
     // Update state
     {
@@ -438,6 +435,7 @@ pub async fn merge_ticket(
         (branch, project_path, s.kanban_path.clone())
     };
 
+    git::checkout_main(&project_path).await?;
     git::merge_branch(&project_path, &branch).await?;
 
     {

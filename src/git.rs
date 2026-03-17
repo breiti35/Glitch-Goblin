@@ -67,15 +67,11 @@ pub struct CommitInfo {
     pub date: String,
 }
 
-pub fn worktree_dir(project_path: &Path, ticket: &Ticket) -> PathBuf {
-    project_path.join(".worktrees").join(format!("{}-{}", ticket.id, ticket.slug))
-}
-
 pub fn branch_name(ticket: &Ticket) -> String {
     format!("kanban/{}-{}", ticket.id, ticket.slug)
 }
 
-pub async fn create_branch(project_path: &Path, ticket: &Ticket) -> Result<String, String> {
+pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<String, String> {
     let branch = branch_name(ticket);
     let clean_project = strip_unc_prefix(project_path);
 
@@ -89,11 +85,23 @@ pub async fn create_branch(project_path: &Path, ticket: &Ticket) -> Result<Strin
 
     let output = String::from_utf8_lossy(&check.stdout);
     if !output.trim().is_empty() {
-        return Ok(branch); // Branch already exists
+        // Branch exists — just checkout
+        let co = Command::new("git")
+            .args(["checkout", &branch])
+            .current_dir(&clean_project)
+            .output()
+            .await
+            .map_err(|e| format!("git checkout failed: {e}"))?;
+        if !co.status.success() {
+            let stderr = String::from_utf8_lossy(&co.stderr);
+            return Err(format!("git checkout failed: {stderr}"));
+        }
+        return Ok(branch);
     }
 
+    // Create and checkout new branch
     let result = Command::new("git")
-        .args(["branch", &branch])
+        .args(["checkout", "-b", &branch])
         .current_dir(&clean_project)
         .output()
         .await
@@ -101,126 +109,35 @@ pub async fn create_branch(project_path: &Path, ticket: &Ticket) -> Result<Strin
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        return Err(format!("git branch failed: {stderr}"));
+        return Err(format!("git checkout -b failed: {stderr}"));
     }
 
     Ok(branch)
 }
 
-pub async fn create_worktree(project_path: &Path, ticket: &Ticket) -> Result<PathBuf, String> {
-    let wt_path = worktree_dir(project_path, ticket);
-    let branch = branch_name(ticket);
-
-    // Ensure .worktrees directory exists
-    tokio::fs::create_dir_all(project_path.join(".worktrees"))
-        .await
-        .map_err(|e| format!("Failed to create .worktrees dir: {e}"))?;
-
-    // Check if worktree already exists
-    if wt_path.exists() {
-        return Ok(wt_path);
-    }
-
-    let clean_wt = strip_unc_prefix(&wt_path);
-    let wt_str = clean_wt.to_string_lossy().to_string();
+pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
+    let branch = default_branch(project_path).await;
     let clean_project = strip_unc_prefix(project_path);
-
     let result = Command::new("git")
-        .args(["worktree", "add", &wt_str, &branch])
+        .args(["checkout", &branch])
         .current_dir(&clean_project)
         .output()
         .await
-        .map_err(|e| format!("Failed to create worktree: {e}"))?;
+        .map_err(|e| format!("git checkout failed: {e}"))?;
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        return Err(format!("git worktree add failed: {stderr}"));
-    }
-
-    Ok(wt_path)
-}
-
-pub async fn copy_claude_config(src: &Path, dst: &Path) -> Result<(), String> {
-    let src_claude = src.join(".claude");
-    let dst_claude = dst.join(".claude");
-
-    if !src_claude.exists() {
-        return Ok(()); // Nothing to copy
-    }
-
-    // Only copy agents/ and commands/ — skip all runtime data
-    for subdir in &["agents", "commands"] {
-        let src_sub = src_claude.join(subdir);
-        let dst_sub = dst_claude.join(subdir);
-        if src_sub.exists() {
-            copy_dir_recursive(&src_sub, &dst_sub, &[]).await?;
-        }
-    }
-
-    // Ensure .claude/ is in worktree .gitignore so git add -A won't stage it
-    let gitignore_path = dst.join(".gitignore");
-    let mut content = if gitignore_path.exists() {
-        tokio::fs::read_to_string(&gitignore_path)
-            .await
-            .map_err(|e| format!("Failed to read .gitignore: {e}"))?
-    } else {
-        String::new()
-    };
-    if !content.lines().any(|l| l.trim() == ".claude/" || l.trim() == ".claude") {
-        if !content.is_empty() && !content.ends_with('\n') {
-            content.push('\n');
-        }
-        content.push_str(".claude/\n");
-        tokio::fs::write(&gitignore_path, &content)
-            .await
-            .map_err(|e| format!("Failed to write .gitignore: {e}"))?;
+        return Err(format!("git checkout {branch} failed: {stderr}"));
     }
 
     Ok(())
 }
 
-async fn copy_dir_recursive(src: &Path, dst: &Path, exclude: &[&str]) -> Result<(), String> {
-    tokio::fs::create_dir_all(dst)
-        .await
-        .map_err(|e| format!("Failed to create dir {}: {e}", dst.display()))?;
-
-    let mut entries = tokio::fs::read_dir(src)
-        .await
-        .map_err(|e| format!("Failed to read dir {}: {e}", src.display()))?;
-
-    while let Some(entry) = entries.next_entry().await
-        .map_err(|e| format!("Failed to read entry: {e}"))?
-    {
-        let file_name = entry.file_name();
-        let name_str = file_name.to_string_lossy();
-
-        if exclude.iter().any(|ex| *ex == name_str.as_ref()) {
-            continue;
-        }
-
-        let src_path = entry.path();
-        let dst_path = dst.join(&file_name);
-
-        let file_type = entry.file_type().await
-            .map_err(|e| format!("Failed to get file type: {e}"))?;
-
-        if file_type.is_dir() {
-            Box::pin(copy_dir_recursive(&src_path, &dst_path, exclude)).await?;
-        } else {
-            tokio::fs::copy(&src_path, &dst_path)
-                .await
-                .map_err(|e| format!("Failed to copy {}: {e}", src_path.display()))?;
-        }
-    }
-
-    Ok(())
-}
-
-pub async fn auto_commit(wt_path: &Path, msg: &str) -> Result<bool, String> {
-    // Stage all changes except .gitignore (which may have been created by copy_claude_config)
+pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String> {
+    // Stage all changes
     let add = Command::new("git")
-        .args(["add", "-A", "--", ".", ":!.gitignore"])
-        .current_dir(wt_path)
+        .args(["add", "-A"])
+        .current_dir(project_path)
         .output()
         .await
         .map_err(|e| format!("git add failed: {e}"))?;
@@ -233,7 +150,7 @@ pub async fn auto_commit(wt_path: &Path, msg: &str) -> Result<bool, String> {
     // Check if there's anything to commit
     let status = Command::new("git")
         .args(["status", "--porcelain"])
-        .current_dir(wt_path)
+        .current_dir(project_path)
         .output()
         .await
         .map_err(|e| format!("git status failed: {e}"))?;
@@ -244,7 +161,7 @@ pub async fn auto_commit(wt_path: &Path, msg: &str) -> Result<bool, String> {
 
     let commit = Command::new("git")
         .args(["commit", "-m", msg])
-        .current_dir(wt_path)
+        .current_dir(project_path)
         .output()
         .await
         .map_err(|e| format!("git commit failed: {e}"))?;
@@ -255,54 +172,6 @@ pub async fn auto_commit(wt_path: &Path, msg: &str) -> Result<bool, String> {
     }
 
     Ok(true)
-}
-
-pub async fn cleanup_worktree(project_path: &Path, ticket: &Ticket) -> Result<(), String> {
-    let wt_path = worktree_dir(project_path, ticket);
-    let clean_wt = strip_unc_prefix(&wt_path);
-    let wt_str = clean_wt.to_string_lossy().to_string();
-    let clean_project = strip_unc_prefix(project_path);
-
-    // Try normal remove first
-    let result = Command::new("git")
-        .args(["worktree", "remove", &wt_str])
-        .current_dir(&clean_project)
-        .output()
-        .await;
-
-    match result {
-        Ok(output) if output.status.success() => return Ok(()),
-        _ => {}
-    }
-
-    // Force remove as fallback
-    let result = Command::new("git")
-        .args(["worktree", "remove", "--force", &wt_str])
-        .current_dir(&clean_project)
-        .output()
-        .await;
-
-    match result {
-        Ok(output) if output.status.success() => return Ok(()),
-        _ => {}
-    }
-
-    // Windows fallback: wait briefly then prune
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-    if wt_path.exists() {
-        tokio::fs::remove_dir_all(&wt_path)
-            .await
-            .map_err(|e| format!("Failed to remove worktree dir: {e}"))?;
-    }
-
-    let _ = Command::new("git")
-        .args(["worktree", "prune"])
-        .current_dir(project_path)
-        .output()
-        .await;
-
-    Ok(())
 }
 
 pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
