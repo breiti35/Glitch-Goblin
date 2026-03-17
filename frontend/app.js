@@ -2379,21 +2379,36 @@ async function executeLiveDeploy() {
     const terminalId = await invoke("live_deploy");
     openDeployTerminal(terminalId, "Live Deploy");
 
-    // Build and inject SSH command
+    // Build and inject SSH command with input validation
     const cfg = state.deployConfig;
+    if (!validateDeployParam("SSH host", cfg.sshHost) ||
+        !validateDeployParam("SSH key", cfg.sshKey) ||
+        !validateDeployParam("Server path", cfg.serverPath)) {
+      state.deployingLive = false;
+      updateDeployBadge("error", "Invalid deploy config");
+      return;
+    }
     const allCmds = [
       ...(cfg.preCommands || []),
       ...(cfg.deployCommands || []),
       ...(cfg.postCommands || []),
     ].filter(Boolean);
 
+    for (const cmd of allCmds) {
+      if (!validateDeployParam("Deploy command", cmd)) {
+        state.deployingLive = false;
+        updateDeployBadge("error", "Invalid deploy command");
+        return;
+      }
+    }
+
     let sshCmd = "ssh";
-    if (cfg.sshKey) sshCmd += ` -i ${cfg.sshKey}`;
+    if (cfg.sshKey) sshCmd += ` -i ${shellEscape(cfg.sshKey)}`;
     if (cfg.sshPort && cfg.sshPort !== 22) sshCmd += ` -p ${cfg.sshPort}`;
-    sshCmd += ` ${cfg.sshHost}`;
+    sshCmd += ` ${shellEscape(cfg.sshHost)}`;
     if (cfg.serverPath || allCmds.length > 0) {
       const remoteParts = [];
-      if (cfg.serverPath) remoteParts.push(`cd ${cfg.serverPath}`);
+      if (cfg.serverPath) remoteParts.push(`cd ${shellEscape(cfg.serverPath)}`);
       remoteParts.push(...allCmds);
       sshCmd += ` "${remoteParts.join(" && ")}"`;
     }
@@ -2631,6 +2646,21 @@ function esc(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+
+function shellEscape(s) {
+  if (!s) return "''";
+  if (/^[a-zA-Z0-9._\-\/~@:+]+$/.test(s)) return s;
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+function validateDeployParam(name, value) {
+  if (!value) return true;
+  if (/[;\|&\$`\n\r\0]/.test(value)) {
+    appendLog(`Security: ${name} contains forbidden characters`, true);
+    return false;
+  }
+  return true;
 }
 
 function timeAgo(dateStr) {

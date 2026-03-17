@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -85,7 +85,7 @@ pub struct AppState {
     pub project: Option<ProjectEntry>,
     pub projects: Vec<ProjectEntry>,
     pub running_ticket: Option<String>,
-    pub log_lines: Vec<String>,
+    pub log_lines: VecDeque<String>,
     pub kanban_path: PathBuf,
     pub settings: Settings,
     pub watcher_stop: Arc<AtomicBool>,
@@ -98,11 +98,12 @@ impl AppState {
             board: KanbanBoard {
                 project_name: String::new(),
                 tickets: Vec::new(),
+                next_ticket_id: 1,
             },
             project: None,
             projects: Vec::new(),
             running_ticket: None,
-            log_lines: Vec::new(),
+            log_lines: VecDeque::new(),
             kanban_path: PathBuf::new(),
             settings: Settings::default(),
             watcher_stop: Arc::new(AtomicBool::new(false)),
@@ -111,9 +112,9 @@ impl AppState {
     }
 
     pub fn log(&mut self, msg: String) {
-        self.log_lines.push(msg);
+        self.log_lines.push_back(msg);
         if self.log_lines.len() > 500 {
-            self.log_lines.remove(0);
+            self.log_lines.pop_front();
         }
     }
 

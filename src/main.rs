@@ -36,6 +36,7 @@ fn main() {
                     let board = kanban::load_board(&kp).unwrap_or(kanban::KanbanBoard {
                         project_name: String::new(),
                         tickets: Vec::new(),
+                        next_ticket_id: 1,
                     });
                     (board, kp)
                 }
@@ -43,6 +44,7 @@ fn main() {
                     kanban::KanbanBoard {
                         project_name: String::new(),
                         tickets: Vec::new(),
+                        next_ticket_id: 1,
                     },
                     std::path::PathBuf::new(),
                 ),

@@ -160,26 +160,27 @@ pub async fn detect_deploy_environment(project_path: &Path) -> DeployEnvironment
 
 // ── Command Builders ──
 
-pub fn build_compose_command(config: &DeployConfig, project_path: &Path, action: &str) -> String {
+pub fn build_compose_command(config: &DeployConfig, project_path: &Path, action: &str) -> Result<String, String> {
     let mut parts = vec!["docker".to_string(), "compose".to_string()];
 
     if config.compose_files.is_empty() {
-        // Auto-detect compose files
         let detected = scan_compose_files(project_path);
         for f in &detected {
             parts.push("-f".into());
-            parts.push(f.clone());
+            parts.push(shell_escape(f));
         }
     } else {
         for f in &config.compose_files {
+            validate_deploy_param("Compose file", f)?;
             parts.push("-f".into());
-            parts.push(f.clone());
+            parts.push(shell_escape(f));
         }
     }
 
     if !config.env_file.is_empty() {
+        validate_deploy_param("Env file", &config.env_file)?;
         parts.push("--env-file".into());
-        parts.push(config.env_file.clone());
+        parts.push(shell_escape(&config.env_file));
     }
 
     parts.push(action.to_string());
@@ -189,16 +190,45 @@ pub fn build_compose_command(config: &DeployConfig, project_path: &Path, action:
         parts.push("-d".into());
     }
 
-    parts.join(" ")
+    Ok(parts.join(" "))
+}
+
+/// Shell-escape a string for safe inclusion in shell commands.
+fn shell_escape(s: &str) -> String {
+    if s.is_empty() {
+        return "''".to_string();
+    }
+    if s.chars().all(|c| c.is_alphanumeric() || "-_./~@:+".contains(c)) {
+        return s.to_string();
+    }
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
+/// Validate that a deploy parameter doesn't contain shell metacharacters.
+fn validate_deploy_param(name: &str, value: &str) -> Result<(), String> {
+    if value.contains('\0') {
+        return Err(format!("{} must not contain null bytes", name));
+    }
+    let forbidden = [';', '|', '&', '$', '`', '\n', '\r'];
+    for c in &forbidden {
+        if value.contains(*c) {
+            return Err(format!("{} contains forbidden character '{}'", name, c));
+        }
+    }
+    Ok(())
 }
 
 #[allow(dead_code)]
-pub fn build_ssh_command(config: &DeployConfig, commands: &[String]) -> String {
+pub fn build_ssh_command(config: &DeployConfig, commands: &[String]) -> Result<String, String> {
+    validate_deploy_param("SSH host", &config.ssh_host)?;
+    validate_deploy_param("SSH key", &config.ssh_key)?;
+    validate_deploy_param("Server path", &config.server_path)?;
+
     let mut parts = vec!["ssh".to_string()];
 
     if !config.ssh_key.is_empty() {
         parts.push("-i".into());
-        parts.push(config.ssh_key.clone());
+        parts.push(shell_escape(&config.ssh_key));
     }
 
     if config.ssh_port != 22 && config.ssh_port != 0 {
@@ -206,19 +236,22 @@ pub fn build_ssh_command(config: &DeployConfig, commands: &[String]) -> String {
         parts.push(config.ssh_port.to_string());
     }
 
-    parts.push(config.ssh_host.clone());
+    parts.push(shell_escape(&config.ssh_host));
 
     // Build remote command string
     let mut remote_cmds = Vec::new();
     if !config.server_path.is_empty() {
-        remote_cmds.push(format!("cd {}", config.server_path));
+        remote_cmds.push(format!("cd {}", shell_escape(&config.server_path)));
     }
-    remote_cmds.extend(commands.iter().cloned());
+    for cmd in commands {
+        validate_deploy_param("Deploy command", cmd)?;
+        remote_cmds.push(cmd.clone());
+    }
 
     let joined = remote_cmds.join(" && ");
     parts.push(format!("\"{}\"", joined));
 
-    parts.join(" ")
+    Ok(parts.join(" "))
 }
 
 // ── Helpers ──
