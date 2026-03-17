@@ -4,6 +4,23 @@ use tokio::process::Command;
 
 use crate::kanban::Ticket;
 
+/// Validate a git ref name to prevent option injection and invalid characters.
+fn validate_git_ref(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Branch name must not be empty".to_string());
+    }
+    if name.starts_with('-') {
+        return Err("Branch name must not start with '-'".to_string());
+    }
+    if name.contains("..") || name.contains('\0') {
+        return Err(format!("Invalid branch name '{}'", name));
+    }
+    if !name.chars().all(|c| c.is_alphanumeric() || "-/_. ".contains(c)) {
+        return Err(format!("Branch name '{}' contains invalid characters", name));
+    }
+    Ok(())
+}
+
 /// Strip Windows UNC prefix (\\?\ or //?/) that git cannot handle.
 pub fn strip_unc_prefix(path: &Path) -> PathBuf {
     let s = path.to_string_lossy();
@@ -300,8 +317,9 @@ pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
 }
 
 pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), String> {
+    validate_git_ref(branch)?;
     let result = Command::new("git")
-        .args(["merge", "--no-ff", branch])
+        .args(["merge", "--no-ff", "--", branch])
         .current_dir(project_path)
         .output()
         .await
@@ -397,6 +415,7 @@ pub async fn get_branch_diff(
     project_path: &Path,
     branch: &str,
 ) -> Result<DiffInfo, String> {
+    validate_git_ref(branch)?;
     let base = default_branch(project_path).await;
 
     let output = Command::new("git")
@@ -453,6 +472,7 @@ pub async fn get_file_diff(
     branch: &str,
     file: &str,
 ) -> Result<String, String> {
+    validate_git_ref(branch)?;
     let base = default_branch(project_path).await;
 
     let output = Command::new("git")
@@ -475,9 +495,10 @@ pub async fn delete_branch(
     branch: &str,
     force: bool,
 ) -> Result<(), String> {
+    validate_git_ref(branch)?;
     let flag = if force { "-D" } else { "-d" };
     let result = Command::new("git")
-        .args(["branch", flag, branch])
+        .args(["branch", flag, "--", branch])
         .current_dir(project_path)
         .output()
         .await
@@ -496,11 +517,12 @@ pub async fn get_commit_log(
     branch: &str,
     limit: u32,
 ) -> Result<Vec<CommitInfo>, String> {
+    validate_git_ref(branch)?;
     let output = Command::new("git")
         .args([
             "log",
             branch,
-            &format!("--format=%H|%s|%an|%ci"),
+            "--format=%H|%s|%an|%ci",
             "-n",
             &limit.to_string(),
         ])

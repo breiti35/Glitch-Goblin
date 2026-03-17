@@ -134,6 +134,8 @@ pub struct KanbanBoard {
     #[serde(alias = "project")]
     pub project_name: String,
     pub tickets: Vec<Ticket>,
+    #[serde(default)]
+    pub next_ticket_id: u32,
 }
 
 pub fn load_board(path: &Path) -> Result<KanbanBoard, String> {
@@ -145,6 +147,19 @@ pub fn load_board(path: &Path) -> Result<KanbanBoard, String> {
         if ticket.slug.is_empty() {
             ticket.slug = slugify(&ticket.title);
         }
+    }
+    // Compute next_ticket_id from existing tickets if not set (legacy files)
+    if board.next_ticket_id == 0 {
+        let max_id = board
+            .tickets
+            .iter()
+            .filter_map(|t| {
+                t.id.strip_prefix("KANBAN-")
+                    .and_then(|n| n.parse::<u32>().ok())
+            })
+            .max()
+            .unwrap_or(0);
+        board.next_ticket_id = max_id + 1;
     }
     Ok(board)
 }

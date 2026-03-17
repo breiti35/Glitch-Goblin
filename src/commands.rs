@@ -16,6 +16,33 @@ use crate::kanban::{self, Column, KanbanBoard, Ticket, TicketType};
 use crate::state::{AppState, Settings};
 use crate::terminal;
 
+// ── Input Validation Helpers ──
+
+/// Validate names used for agent/command file paths to prevent path traversal.
+fn validate_safe_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Name must not be empty".to_string());
+    }
+    if name.contains("..") || name.contains('/') || name.contains('\\') || name.contains('\0') {
+        return Err(format!("Invalid name '{}': contains forbidden characters", name));
+    }
+    Ok(())
+}
+
+/// Validate backup filenames to prevent path traversal.
+fn validate_backup_filename(filename: &str) -> Result<(), String> {
+    if filename.is_empty() {
+        return Err("Filename must not be empty".to_string());
+    }
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') || filename.contains('\0') {
+        return Err(format!("Invalid filename '{}': contains forbidden characters", filename));
+    }
+    if !filename.ends_with(".json") {
+        return Err("Backup filename must end with .json".to_string());
+    }
+    Ok(())
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartTicketResult {
@@ -125,7 +152,8 @@ pub async fn create_ticket(
     state: State<'_>,
 ) -> Result<Ticket, String> {
     let mut s = state.lock().await;
-    let next_num = s.board.tickets.len() + 1;
+    let next_num = s.board.next_ticket_id;
+    s.board.next_ticket_id += 1;
     let id = format!("KANBAN-{:03}", next_num);
     let slug = kanban::slugify(&title);
     let ticket = Ticket {
@@ -305,6 +333,7 @@ pub async fn start_ticket(
         &kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
             project_name: String::new(),
             tickets: Vec::new(),
+            next_ticket_id: 1,
         }),
     );
 
@@ -371,6 +400,7 @@ pub async fn finish_ticket(
         &kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
             project_name: String::new(),
             tickets: Vec::new(),
+            next_ticket_id: 1,
         }),
     );
 
@@ -433,7 +463,7 @@ pub async fn check_uncommitted(state: State<'_>) -> Result<bool, String> {
 #[tauri::command]
 pub async fn get_log_lines(state: State<'_>) -> Result<Vec<String>, String> {
     let s = state.lock().await;
-    Ok(s.log_lines.clone())
+    Ok(s.log_lines.iter().cloned().collect())
 }
 
 #[tauri::command]
@@ -525,6 +555,7 @@ pub async fn restore_backup(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<KanbanBoard, String> {
+    validate_backup_filename(&filename)?;
     let mut s = state.lock().await;
     let backup_dir = s
         .kanban_path
@@ -584,6 +615,7 @@ pub async fn export_log(
 
 #[tauri::command]
 pub async fn read_agent(name: String, state: State<'_>) -> Result<String, String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let agent_path = project_path
@@ -597,6 +629,7 @@ pub async fn read_agent(name: String, state: State<'_>) -> Result<String, String
 
 #[tauri::command]
 pub async fn save_agent(name: String, content: String, state: State<'_>) -> Result<(), String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let agents_dir = project_path.join(".claude").join("agents");
@@ -611,6 +644,7 @@ pub async fn save_agent(name: String, content: String, state: State<'_>) -> Resu
 
 #[tauri::command]
 pub async fn create_agent(name: String, state: State<'_>) -> Result<String, String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let agents_dir = project_path.join(".claude").join("agents");
@@ -633,6 +667,7 @@ pub async fn create_agent(name: String, state: State<'_>) -> Result<String, Stri
 
 #[tauri::command]
 pub async fn delete_agent(name: String, state: State<'_>) -> Result<(), String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let agent_path = project_path
@@ -648,6 +683,7 @@ pub async fn delete_agent(name: String, state: State<'_>) -> Result<(), String> 
 
 #[tauri::command]
 pub async fn read_command(name: String, state: State<'_>) -> Result<String, String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let cmd_path = project_path
@@ -661,6 +697,7 @@ pub async fn read_command(name: String, state: State<'_>) -> Result<String, Stri
 
 #[tauri::command]
 pub async fn save_command(name: String, content: String, state: State<'_>) -> Result<(), String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let cmds_dir = project_path.join(".claude").join("commands");
@@ -675,6 +712,7 @@ pub async fn save_command(name: String, content: String, state: State<'_>) -> Re
 
 #[tauri::command]
 pub async fn create_command(name: String, state: State<'_>) -> Result<String, String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let cmds_dir = project_path.join(".claude").join("commands");
@@ -694,6 +732,7 @@ pub async fn create_command(name: String, state: State<'_>) -> Result<String, St
 
 #[tauri::command]
 pub async fn delete_command(name: String, state: State<'_>) -> Result<(), String> {
+    validate_safe_name(&name)?;
     let s = state.lock().await;
     let project_path = s.project_path().ok_or("No project selected")?;
     let cmd_path = project_path
@@ -738,7 +777,8 @@ pub async fn move_ticket_to_project(
     let mut target_board = kanban::load_board(&target_kanban_path)?;
 
     // Re-generate ticket ID based on target board
-    let next_num = target_board.tickets.len() + 1;
+    let next_num = target_board.next_ticket_id;
+    target_board.next_ticket_id += 1;
     ticket.id = format!("KANBAN-{:03}", next_num);
     ticket.column = Column::Backlog;
     ticket.branch = None;
@@ -768,6 +808,11 @@ pub async fn spawn_terminal(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<String, String> {
+    // Validate shell against known shells to prevent arbitrary program execution
+    let known_shells = terminal::detect_shells();
+    if !known_shells.iter().any(|s| s.path == shell) {
+        return Err(format!("Shell '{}' is not in the list of known shells", shell));
+    }
     let terminal_id = uuid::Uuid::new_v4().to_string();
     let session =
         terminal::spawn_terminal(&shell, &cwd, terminal_id.clone(), app).await?;
@@ -1355,11 +1400,7 @@ pub async fn local_deploy(
     };
 
     let cwd = project_path.to_string_lossy().to_string();
-    let shell = if shell.is_empty() {
-        detect_default_shell()
-    } else {
-        shell
-    };
+    let shell = resolve_validated_shell(&shell)?;
 
     let terminal_id = uuid::Uuid::new_v4().to_string();
     let session =
@@ -1367,7 +1408,7 @@ pub async fn local_deploy(
 
     let mut s = state.lock().await;
     s.terminals.insert(terminal_id.clone(), session);
-    let cmd = deploy::build_compose_command(&config, &project_path, "up");
+    let cmd = deploy::build_compose_command(&config, &project_path, "up")?;
     s.log(format!("Local deploy started: {cmd}"));
     if let Some(pp) = s.project_path() {
         activity::log_activity(&pp, "local_deploy", None, None, Some(&cmd));
@@ -1390,11 +1431,7 @@ pub async fn local_deploy_stop(
     };
 
     let cwd = project_path.to_string_lossy().to_string();
-    let shell = if shell.is_empty() {
-        detect_default_shell()
-    } else {
-        shell
-    };
+    let shell = resolve_validated_shell(&shell)?;
 
     let terminal_id = uuid::Uuid::new_v4().to_string();
     let session =
@@ -1402,7 +1439,7 @@ pub async fn local_deploy_stop(
 
     let mut s = state.lock().await;
     s.terminals.insert(terminal_id.clone(), session);
-    let cmd = deploy::build_compose_command(&config, &project_path, "down");
+    let cmd = deploy::build_compose_command(&config, &project_path, "down")?;
     s.log(format!("Local deploy stop: {cmd}"));
 
     Ok(terminal_id)
@@ -1428,11 +1465,7 @@ pub async fn live_deploy(
     };
 
     let cwd = project_path.to_string_lossy().to_string();
-    let shell = if shell.is_empty() {
-        detect_default_shell()
-    } else {
-        shell
-    };
+    let shell = resolve_validated_shell(&shell)?;
 
     let terminal_id = uuid::Uuid::new_v4().to_string();
     let session =
@@ -1460,4 +1493,18 @@ fn detect_default_shell() -> String {
     } else {
         std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
     }
+}
+
+/// Resolve and validate the shell to use, falling back to default if empty.
+fn resolve_validated_shell(shell: &str) -> Result<String, String> {
+    let resolved = if shell.is_empty() {
+        detect_default_shell()
+    } else {
+        shell.to_string()
+    };
+    let known_shells = terminal::detect_shells();
+    if !known_shells.iter().any(|s| s.path == resolved) {
+        return Err(format!("Shell '{}' is not in the list of known shells", resolved));
+    }
+    Ok(resolved)
 }
