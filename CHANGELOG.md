@@ -30,6 +30,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
   - Verhindert Zombie-Shell-Prozesse nach App-Exit
 
 ### Fixed
+- **[MITTEL]** [UI] Terminal-Theme: xterm.js verwendete hardcodierte Dunkel-Farben und blieb im Light Mode schwarz. Terminal-Theme-Farben werden jetzt dynamisch aus CSS-Variablen (`--terminal-bg`, `--terminal-fg`, `--terminal-cursor`) gelesen; alle aktiven Terminal-Instanzen werden beim Theme-Wechsel live aktualisiert (`app.js`, KANBAN-013)
 - **[HOCH]** `restore_backup` schrieb das wiederhergestellte Board nur in JSON, nicht in SQLite — bei aktiver DB-Verbindung hatte die Wiederherstellung daher keinen Effekt. Fix: `kanban::save_board()` durch `s.save_and_backup()` ersetzt, das je nach Runtime-Kontext SQLite und/oder JSON beschreibt (`src/commands.rs`, KANBAN-010)
 - **[MITTEL]** Frontend: `loadInitialState()` catch verwendete `console.error` statt `appendLog` — Initialisierungsfehler waren für den User unsichtbar (`app.js`)
 - **[MITTEL]** Frontend: `spawn_terminal` hatte kein `try/catch` — Fehler beim Terminal-Start brach die Funktion still ab ohne User-Feedback (`app.js`)

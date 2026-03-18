@@ -788,7 +788,7 @@ async function openTicketTerminal(startResult, model) {
     cursorBlink: true,
     fontSize: state.settings.terminal_font_size || 14,
     fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-    theme: { background: "#000000", foreground: "#E2E8F0", cursor: "#F97316" },
+    theme: getTerminalTheme(),
   });
   const fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);
@@ -970,6 +970,7 @@ function toggleTheme() {
   const next = current === "dark" ? "light" : "dark";
   document.body.dataset.theme = next;
   updateThemeUI();
+  applyTerminalTheme();
   state.settings.theme = next;
   invoke("save_settings", { settings: state.settings }).catch(console.error);
 }
@@ -978,6 +979,22 @@ function updateThemeUI() {
   const theme = document.body.dataset.theme;
   document.getElementById("theme-icon").textContent = theme === "dark" ? "\u263E" : "\u2600";
   document.getElementById("theme-label").textContent = theme === "dark" ? "Dark Mode" : "Light Mode";
+}
+
+function getTerminalTheme() {
+  const style = getComputedStyle(document.body);
+  return {
+    background: style.getPropertyValue("--terminal-bg").trim(),
+    foreground: style.getPropertyValue("--terminal-fg").trim(),
+    cursor: style.getPropertyValue("--terminal-cursor").trim(),
+  };
+}
+
+function applyTerminalTheme() {
+  const theme = getTerminalTheme();
+  Object.values(state.terminals).forEach(inst => {
+    inst.term.options = { theme };
+  });
 }
 
 function applyAccentColor(color) {
@@ -1312,6 +1329,7 @@ async function saveSettingsForm() {
     state.settings.bug_sync.api_token = "";
     document.body.dataset.theme = settings.theme;
     updateThemeUI();
+    applyTerminalTheme();
     applyAccentColor(settings.accent_color);
     updateBugSyncVisibility();
     await saveDeploySettingsForm();
@@ -2301,7 +2319,7 @@ async function openBoardTerminal(shell) {
       cursorBlink: true,
       fontSize: state.settings.terminal_font_size || 14,
       fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-      theme: { background: "#000000", foreground: "#E2E8F0", cursor: "#F97316" },
+      theme: getTerminalTheme(),
     });
     const fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
@@ -2690,7 +2708,7 @@ async function openDeployTerminal(terminalId, name) {
     cursorBlink: true,
     fontSize: state.settings.terminal_font_size || 14,
     fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-    theme: { background: "#000000", foreground: "#E2E8F0", cursor: "#F97316" },
+    theme: getTerminalTheme(),
   });
   const fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);
