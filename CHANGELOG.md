@@ -8,6 +8,40 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Added
+- **SQLite-Persistenz (`src/db.rs`):** Alle Projektdaten (Board, Aktivitätslog, Deploy-Konfiguration, Templates) werden in einer SQLite-Datenbank gespeichert statt in fragilen JSON-Dateien
+  - Datei: `~/.config/kanban-runner/projects/<name>/kanban.db`
+  - WAL-Modus für bessere Nebenläufigkeit und schnellere Writes
+  - Vollständige atomare Transaktionen – kein Datenverlust mehr bei Absturz mid-Write
+  - Einmalige automatische Migration: bestehende JSON-Dateien werden importiert und zu `*.migrated` umbenannt
+  - `rusqlite 0.32` mit `bundled`-Feature (statisches SQLite, kein System-Package nötig)
+- **Strukturierte Error-Typen (`src/error.rs`):** `AppError`-Enum mit 22 Varianten und deutschsprachigen Fehlermeldungen
+  - Alle Commands bleiben `Result<T, String>` (kein Breaking Change)
+  - `From<AppError> for String` erlaubt `?`-Operator ohne Typ-Konvertierung
+  - Fehler enthalten jetzt Kontext (Dateiname, Ticket-ID, Branch-Name)
+- **API-Token-Verschlüsselung (`src/crypto.rs`):** Bug-Sync API-Token wird verschlüsselt gespeichert
+  - ChaCha20-Poly1305 Algorithmus
+  - Schlüssel aus `/etc/machine-id` + Salt via SHA-256 abgeleitet (maschinengebunden)
+  - Format: `v1:<nonce_hex>: <cipher_hex>` — rückwärtskompatibel zu Plaintext-Tokens
+  - Bestehende Plaintext-Tokens werden beim nächsten Save automatisch migriert
+- **Terminal-Cleanup beim App-Exit (`src/state.rs`, `src/main.rs`):**
+  - `AppState::cleanup_terminals()` sendet `Close`-Signal an alle laufenden PTY-Sessions
+  - `Drop`-Implementierung auf `AppState` als sicherer Fallback
+  - `on_window_event(Destroyed)` am Hauptfenster als primärer Cleanup-Pfad
+  - Verhindert Zombie-Shell-Prozesse nach App-Exit
+
+### Fixed
+- **[MITTEL]** Frontend: `loadInitialState()` catch verwendete `console.error` statt `appendLog` — Initialisierungsfehler waren für den User unsichtbar (`app.js`)
+- **[MITTEL]** Frontend: `spawn_terminal` hatte kein `try/catch` — Fehler beim Terminal-Start brach die Funktion still ab ohne User-Feedback (`app.js`)
+- **[MITTEL]** Frontend: `loadDeployConfig()` catch verwendete `console.error` statt `appendLog` (`app.js`)
+- **[MITTEL]** `activity::log_activity` Aufrufe zentralisiert in `AppState::log_activity()` — routet automatisch zu SQLite oder JSON-Fallback je nach verfügbarer DB-Verbindung
+- **[NIEDRIG]** `AppState::log_activity()` wird nicht mehr aufgerufen wenn kein Projekt aktiv ist (vorher: silent no-op)
+
+### Security
+- **[HOCH]** API-Token im Klartext in `settings.json`: Token wird jetzt mit ChaCha20-Poly1305 verschlüsselt gespeichert, maschinengebunden via `/etc/machine-id`
+
+
+
+### Added
 - **Bug-Sync (Portal Bug-Tracker):** Bugs aus der Portal `alpha_bugs`-Tabelle koennen automatisch als Bugfix-Tickets ins Kanban Board importiert werden
   - Neues Rust-Modul `bugsync.rs` mit HTTP-Client (reqwest) fuer Portal API
   - Neue Tauri-Commands: `sync_portal_bugs` (synchronisiert Bugs und erstellt Tickets), `get_bug_sync_settings` (liest aktuelle Sync-Konfiguration)

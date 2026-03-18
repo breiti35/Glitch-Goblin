@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use crate::error::AppError;
 use crate::state::Settings;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,8 +17,8 @@ pub struct ProjectsConfig {
 }
 
 pub fn config_path() -> Result<PathBuf, String> {
-    let config_dir =
-        dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())?;
+    let config_dir = dirs::config_dir()
+        .ok_or_else(|| AppError::ConfigLoad("Konfigurationsverzeichnis nicht gefunden".into()))?;
     Ok(config_dir.join("kanban-runner").join("projects.json"))
 }
 
@@ -62,20 +63,27 @@ pub fn load_projects() -> Result<ProjectsConfig, String> {
     if !path.exists() {
         return Ok(ProjectsConfig::default());
     }
-    let content =
-        std::fs::read_to_string(&path).map_err(|e| format!("Failed to read config: {e}"))?;
-    serde_json::from_str(&content).map_err(|e| format!("Failed to parse config: {e}"))
+    let content = std::fs::read_to_string(&path).map_err(|e| AppError::FileRead {
+        path: path.display().to_string(),
+        cause: e.to_string(),
+    })?;
+    serde_json::from_str(&content)
+        .map_err(|e| AppError::Deserialize(format!("projects.json: {e}")).to_string())
 }
 
 pub fn save_projects(config: &ProjectsConfig) -> Result<(), String> {
     let path = config_path()?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create config dir: {e}"))?;
+            .map_err(|e| AppError::ConfigSave(format!("Verzeichnis erstellen: {e}")))?;
     }
     let json = serde_json::to_string_pretty(config)
-        .map_err(|e| format!("Failed to serialize config: {e}"))?;
-    std::fs::write(&path, json).map_err(|e| format!("Failed to write config: {e}"))
+        .map_err(|e| AppError::Serialize(e.to_string()))?;
+    std::fs::write(&path, json).map_err(|e| AppError::FileWrite {
+        path: path.display().to_string(),
+        cause: e.to_string(),
+    })?;
+    Ok(())
 }
 
 pub fn add_project(name: &str, path: &str) -> Result<(), String> {
@@ -132,8 +140,8 @@ pub fn resolve_default_project() -> Result<Option<ProjectEntry>, String> {
 }
 
 pub fn settings_path() -> Result<PathBuf, String> {
-    let config_dir =
-        dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())?;
+    let config_dir = dirs::config_dir()
+        .ok_or_else(|| AppError::ConfigLoad("Konfigurationsverzeichnis nicht gefunden".into()))?;
     Ok(config_dir.join("kanban-runner").join("settings.json"))
 }
 
@@ -142,20 +150,42 @@ pub fn load_settings() -> Result<Settings, String> {
     if !path.exists() {
         return Ok(Settings::default());
     }
-    let content =
-        std::fs::read_to_string(&path).map_err(|e| format!("Failed to read settings: {e}"))?;
-    serde_json::from_str(&content).map_err(|e| format!("Failed to parse settings: {e}"))
+    let content = std::fs::read_to_string(&path).map_err(|e| AppError::FileRead {
+        path: path.display().to_string(),
+        cause: e.to_string(),
+    })?;
+    let mut settings: Settings = serde_json::from_str(&content)
+        .map_err(|e| AppError::Deserialize(format!("settings.json: {e}")))?;
+    // Decrypt API token if it was stored encrypted
+    if !settings.bug_sync.api_token.is_empty() {
+        settings.bug_sync.api_token =
+            crate::crypto::decrypt_token(&settings.bug_sync.api_token).unwrap_or_else(|_| {
+                settings.bug_sync.api_token.clone()
+            });
+    }
+    Ok(settings)
 }
 
 pub fn save_settings_to_disk(settings: &Settings) -> Result<(), String> {
     let path = settings_path()?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create settings dir: {e}"))?;
+            .map_err(|e| AppError::ConfigSave(format!("Verzeichnis erstellen: {e}")))?;
     }
-    let json = serde_json::to_string_pretty(settings)
-        .map_err(|e| format!("Failed to serialize settings: {e}"))?;
-    std::fs::write(&path, json).map_err(|e| format!("Failed to write settings: {e}"))
+    // Encrypt the API token before persisting
+    let mut settings_to_save = settings.clone();
+    if !settings.bug_sync.api_token.is_empty() {
+        settings_to_save.bug_sync.api_token =
+            crate::crypto::encrypt_token(&settings.bug_sync.api_token)
+                .unwrap_or_else(|_| settings.bug_sync.api_token.clone());
+    }
+    let json = serde_json::to_string_pretty(&settings_to_save)
+        .map_err(|e| AppError::Serialize(e.to_string()))?;
+    std::fs::write(&path, json).map_err(|e| AppError::FileWrite {
+        path: path.display().to_string(),
+        cause: e.to_string(),
+    })?;
+    Ok(())
 }
 
 pub fn list_agents(project_path: &std::path::Path) -> Vec<String> {
@@ -181,6 +211,10 @@ pub struct TicketTemplate {
 
 fn templates_path(data_dir: &Path) -> PathBuf {
     data_dir.join("ticket-templates.json")
+}
+
+pub fn default_templates_pub() -> Vec<TicketTemplate> {
+    default_templates()
 }
 
 fn default_templates() -> Vec<TicketTemplate> {

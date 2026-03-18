@@ -2,12 +2,16 @@ mod activity;
 mod bugsync;
 mod commands;
 mod config;
+mod crypto;
+mod db;
 mod deploy;
+mod error;
 mod git;
 mod kanban;
 mod state;
 mod terminal;
 
+use std::sync::atomic::Ordering;
 use state::AppState;
 use tauri::Emitter;
 use tauri::Manager;
@@ -19,8 +23,13 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .manage(Mutex::new(AppState::new()))
         .setup(|app| {
-            // Load settings
+            // Load settings (decrypts API token on the fly)
             let settings = config::load_settings().unwrap_or_default();
+
+            // One-time migration: if token is plain-text, re-save encrypted
+            if !settings.bug_sync.api_token.is_empty() {
+                let _ = config::save_settings_to_disk(&settings);
+            }
 
             // Load projects config
             let projects_config = config::load_projects().unwrap_or_default();
@@ -29,19 +38,35 @@ fn main() {
             // Resolve default project
             let project = config::resolve_default_project().unwrap_or(None);
 
-            // Load board if project exists
-            let (board, kanban_path, data_dir) = match &project {
+            // Open SQLite DB + migrate JSON → SQLite if needed
+            let (board, kanban_path, data_dir, db_conn) = match &project {
                 Some(p) => {
                     let dd = config::project_data_dir(&p.name).unwrap_or_default();
                     // Migrate old runtime data from .claude/ if needed
                     let _ = config::migrate_project_data(&p.path, &dd);
+
+                    let conn = db::open(&dd).ok();
+
+                    // Run JSON → SQLite migration (no-op if already done)
+                    if let Some(ref c) = conn {
+                        let _ = db::migrate_from_json(c, &dd);
+                    }
+
+                    // Load board from DB (fallback: kanban.json)
+                    let board = conn
+                        .as_ref()
+                        .and_then(|c| db::load_board(c).ok())
+                        .unwrap_or_else(|| {
+                            let kp = dd.join("kanban.json");
+                            kanban::load_board(&kp).unwrap_or(kanban::KanbanBoard {
+                                project_name: String::new(),
+                                tickets: Vec::new(),
+                                next_ticket_id: 1,
+                            })
+                        });
+
                     let kp = dd.join("kanban.json");
-                    let board = kanban::load_board(&kp).unwrap_or(kanban::KanbanBoard {
-                        project_name: String::new(),
-                        tickets: Vec::new(),
-                        next_ticket_id: 1,
-                    });
-                    (board, kp, dd)
+                    (board, kp, dd, conn)
                 }
                 None => (
                     kanban::KanbanBoard {
@@ -51,6 +76,7 @@ fn main() {
                     },
                     std::path::PathBuf::new(),
                     std::path::PathBuf::new(),
+                    None,
                 ),
             };
 
@@ -66,13 +92,30 @@ fn main() {
             s.kanban_path = kanban_path.clone();
             s.data_dir = data_dir;
             s.settings = settings;
+            s.db = db_conn;
 
-            // Start file watcher
-            if kanban_path.exists() {
+            // File watcher: only start when DB is unavailable (JSON fallback)
+            if s.db.is_none() && kanban_path.exists() {
                 let stop = s.watcher_stop.clone();
                 if let Err(e) = kanban::watch_kanban(&kanban_path, app_handle.clone(), stop) {
                     s.log(format!("File watcher error: {e}"));
                 }
+            }
+
+            // Register window-destroyed handler for terminal cleanup (primary path).
+            // The Drop impl on AppState serves as an additional fallback.
+            if let Some(main_win) = app.get_webview_window("main") {
+                let ah = app.handle().clone();
+                main_win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Destroyed = event {
+                        let state_ref = ah.state::<Mutex<AppState>>();
+                        // try_lock: Tokio executor may already be shutting down
+                        if let Ok(mut st) = state_ref.try_lock() {
+                            st.cleanup_terminals();
+                            st.watcher_stop.store(true, Ordering::Relaxed);
+                        };
+                    }
+                });
             }
 
             // Start Bug-Sync auto-poll timer (always runs, checks settings on each tick)

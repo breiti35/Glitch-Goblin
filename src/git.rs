@@ -2,21 +2,27 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
+use crate::error::AppError;
 use crate::kanban::Ticket;
 
 /// Validate a git ref name to prevent option injection and invalid characters.
 fn validate_git_ref(name: &str) -> Result<(), String> {
     if name.is_empty() {
-        return Err("Branch name must not be empty".to_string());
+        return Err(AppError::InvalidInput("Branch-Name darf nicht leer sein".into()).into());
     }
     if name.starts_with('-') {
-        return Err("Branch name must not start with '-'".to_string());
+        return Err(
+            AppError::InvalidInput("Branch-Name darf nicht mit '-' beginnen".into()).into(),
+        );
     }
     if name.contains("..") || name.contains('\0') {
-        return Err(format!("Invalid branch name '{}'", name));
+        return Err(AppError::InvalidInput(format!("Ungültiger Branch-Name '{name}'")).into());
     }
     if !name.chars().all(|c| c.is_alphanumeric() || "-/_.".contains(c)) {
-        return Err(format!("Branch name '{}' contains invalid characters", name));
+        return Err(
+            AppError::InvalidInput(format!("Branch-Name '{name}' enthält ungültige Zeichen"))
+                .into(),
+        );
     }
     Ok(())
 }
@@ -81,7 +87,7 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
         .current_dir(&clean_project)
         .output()
         .await
-        .map_err(|e| format!("Failed to check branch: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("branch list: {e}")))?;
 
     let output = String::from_utf8_lossy(&check.stdout);
     if !output.trim().is_empty() {
@@ -91,10 +97,10 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
             .current_dir(&clean_project)
             .output()
             .await
-            .map_err(|e| format!("git checkout failed: {e}"))?;
+            .map_err(|e| AppError::GitCheckout(e.to_string()))?;
         if !co.status.success() {
             let stderr = String::from_utf8_lossy(&co.stderr);
-            return Err(format!("git checkout failed: {stderr}"));
+            return Err(AppError::GitCheckout(stderr.trim().to_string()).into());
         }
         return Ok(branch);
     }
@@ -105,11 +111,11 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
         .current_dir(&clean_project)
         .output()
         .await
-        .map_err(|e| format!("Failed to create branch: {e}"))?;
+        .map_err(|e| AppError::GitCheckout(e.to_string()))?;
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        return Err(format!("git checkout -b failed: {stderr}"));
+        return Err(AppError::GitCheckout(stderr.trim().to_string()).into());
     }
 
     Ok(branch)
@@ -123,11 +129,11 @@ pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
         .current_dir(&clean_project)
         .output()
         .await
-        .map_err(|e| format!("git checkout failed: {e}"))?;
+        .map_err(|e| AppError::GitCheckout(e.to_string()))?;
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        return Err(format!("git checkout {branch} failed: {stderr}"));
+        return Err(AppError::GitCheckout(format!("{branch}: {}", stderr.trim())).into());
     }
 
     Ok(())
@@ -140,11 +146,11 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git add failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("add: {e}")))?;
 
     if !add.status.success() {
         let stderr = String::from_utf8_lossy(&add.stderr);
-        return Err(format!("git add failed: {stderr}"));
+        return Err(AppError::GitCommand(format!("add: {}", stderr.trim())).into());
     }
 
     // Check if there's anything to commit
@@ -153,7 +159,7 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git status failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("status: {e}")))?;
 
     if String::from_utf8_lossy(&status.stdout).trim().is_empty() {
         return Ok(false); // Nothing to commit
@@ -164,11 +170,11 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git commit failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("commit: {e}")))?;
 
     if !commit.status.success() {
         let stderr = String::from_utf8_lossy(&commit.stderr);
-        return Err(format!("git commit failed: {stderr}"));
+        return Err(AppError::GitCommand(format!("commit: {}", stderr.trim())).into());
     }
 
     Ok(true)
@@ -180,7 +186,7 @@ pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git status failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("status: {e}")))?;
 
     Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
 }
@@ -192,11 +198,11 @@ pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), Strin
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git merge failed: {e}"))?;
+        .map_err(|e| AppError::GitMerge(e.to_string()))?;
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        return Err(format!("git merge failed: {stderr}"));
+        return Err(AppError::GitMerge(stderr.trim().to_string()).into());
     }
 
     Ok(())
@@ -245,11 +251,11 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git branch failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("branch: {e}")))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("git branch failed: {stderr}"));
+        return Err(AppError::GitCommand(format!("branch: {}", stderr.trim())).into());
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -292,7 +298,7 @@ pub async fn get_branch_diff(
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git diff failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("diff: {e}")))?;
 
     // --numstat output: "additions\tdeletions\tfilepath"
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -345,16 +351,11 @@ pub async fn get_file_diff(
     let base = default_branch(project_path).await;
 
     let output = Command::new("git")
-        .args([
-            "diff",
-            &format!("{}...{}", base, branch),
-            "--",
-            file,
-        ])
+        .args(["diff", &format!("{}...{}", base, branch), "--", file])
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git diff failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("diff: {e}")))?;
 
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
@@ -371,11 +372,11 @@ pub async fn delete_branch(
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git branch delete failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("branch delete: {e}")))?;
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr);
-        return Err(format!("git branch delete failed: {stderr}"));
+        return Err(AppError::GitCommand(format!("branch delete: {}", stderr.trim())).into());
     }
 
     Ok(())
@@ -398,11 +399,11 @@ pub async fn get_commit_log(
         .current_dir(project_path)
         .output()
         .await
-        .map_err(|e| format!("git log failed: {e}"))?;
+        .map_err(|e| AppError::GitCommand(format!("log: {e}")))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("git log failed: {stderr}"));
+        return Err(AppError::GitCommand(format!("log: {}", stderr.trim())).into());
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);

@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::config::ProjectEntry;
 use crate::kanban::{self, KanbanBoard};
-use crate::terminal::TerminalSession;
+use crate::terminal::{self, TerminalSession};
 
 fn default_true() -> bool {
     true
@@ -123,6 +123,8 @@ pub struct AppState {
     pub settings: Settings,
     pub watcher_stop: Arc<AtomicBool>,
     pub terminals: HashMap<String, TerminalSession>,
+    /// SQLite connection for the active project. `None` when no project is open.
+    pub db: Option<rusqlite::Connection>,
 }
 
 impl AppState {
@@ -142,6 +144,30 @@ impl AppState {
             settings: Settings::default(),
             watcher_stop: Arc::new(AtomicBool::new(false)),
             terminals: HashMap::new(),
+            db: None,
+        }
+    }
+
+    /// Send `Close` to all running terminal sessions.
+    pub fn cleanup_terminals(&mut self) {
+        for (_id, session) in self.terminals.drain() {
+            let _ = session.cmd_tx.send(terminal::TerminalCmd::Close);
+        }
+    }
+
+    /// Append an activity entry.  Uses the SQLite DB when available, falls
+    /// back to the JSON activity log otherwise.
+    pub fn log_activity(
+        &self,
+        action: &str,
+        ticket_id: Option<&str>,
+        ticket_title: Option<&str>,
+        details: Option<&str>,
+    ) {
+        if let Some(conn) = &self.db {
+            crate::db::log_activity(conn, action, ticket_id, ticket_title, details);
+        } else if let Some(dd) = self.data_dir() {
+            crate::activity::log_activity(&dd, action, ticket_id, ticket_title, details);
         }
     }
 
@@ -165,10 +191,27 @@ impl AppState {
     }
 
     pub fn save_and_backup(&self) -> Result<(), String> {
-        kanban::save_board(&self.kanban_path, &self.board)?;
-        if self.settings.backups_enabled {
-            let _ = kanban::backup_board(&self.kanban_path, self.settings.max_backups);
+        if let Some(conn) = &self.db {
+            crate::db::save_board(conn, &self.board)?;
+            // Backup: write a JSON snapshot into kanban-backups/ for safety
+            if self.settings.backups_enabled && !self.kanban_path.as_os_str().is_empty() {
+                let _ = kanban::backup_board(&self.kanban_path, self.settings.max_backups);
+            }
+        } else {
+            kanban::save_board(&self.kanban_path, &self.board)?;
+            if self.settings.backups_enabled {
+                let _ = kanban::backup_board(&self.kanban_path, self.settings.max_backups);
+            }
         }
         Ok(())
+    }
+}
+
+impl Drop for AppState {
+    fn drop(&mut self) {
+        if !self.terminals.is_empty() {
+            self.cleanup_terminals();
+        }
+        self.watcher_stop.store(true, Ordering::Relaxed);
     }
 }

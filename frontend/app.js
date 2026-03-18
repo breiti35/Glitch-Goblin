@@ -81,7 +81,7 @@ async function loadInitialState() {
       }
     }
   } catch (e) {
-    console.error("Failed to load initial state:", e);
+    appendLog("Initialisierung fehlgeschlagen: " + e, true);
   }
 }
 
@@ -735,7 +735,15 @@ async function openTicketTerminal(startResult, model) {
   if (!shell) return;
 
   const cwd = startResult.projectPath;
-  const terminalId = await invoke("spawn_terminal", { shell, cwd });
+  let terminalId;
+  try {
+    terminalId = await invoke("spawn_terminal", { shell, cwd });
+  } catch (e) {
+    appendLog("Terminal konnte nicht gestartet werden: " + e, true);
+    state.runningTicket = null;
+    refreshBoard();
+    return;
+  }
   state.terminalCounter++;
   const name = startResult.ticketId;
 
@@ -2329,7 +2337,7 @@ async function loadDeployConfig() {
     updateDeployButtons();
     loadDeploySettingsForm();
   } catch (e) {
-    console.error("Load deploy config:", e);
+    appendLog("Deploy-Konfiguration konnte nicht geladen werden: " + e, true);
   }
 }
 
