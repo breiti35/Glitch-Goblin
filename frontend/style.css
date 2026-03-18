@@ -32,29 +32,29 @@ input, select, textarea { font: inherit; }
 
 /* ── Light Theme ── */
 [data-theme="light"] {
-  --bg:            #f5f7f9;
-  --sidebar-bg:    #e3eaef;
-  --surface:       #ffffff;
-  --card-bg:       #f1f3f5;
-  --surface-hover: #e8edf1;
-  --border:        #dde2e7;
-  --text:          #2a323c;
-  --text-muted:    #6d7882;
-  --text-inactive: #a3a8ad;
-  --accent:        var(--user-accent, #33a18e);
-  --accent-hover:  var(--user-accent-hover, #2b8a79);
-  --nav-active:    rgba(51, 161, 142, 0.12);
-  --active-blue:   #46b8da;
-  --danger:        #d9534f;
-  --warning:       #f0ad4e;
-  --success:       #5cb85c;
-  --info:          #2563EB;
-  --log-bg:        #e8ecf0;
-  --health-teal:   #33a18e;
-  --health-yellow: #f0ad4e;
-  --prio-high-bg:  #d9534f;
-  --prio-med-bg:   #f0ad4e;
-  --prio-low-bg:   #5cb85c;
+  --bg:            #fdf6e3;
+  --sidebar-bg:    #e8e2d0;
+  --surface:       #eee8d5;
+  --card-bg:       #f5f0e0;
+  --surface-hover: #e0dac8;
+  --border:        #cdc7b4;
+  --text:          #3a3228;
+  --text-muted:    #7a7060;
+  --text-inactive: #a09888;
+  --accent:        var(--user-accent, #2aa198);
+  --accent-hover:  var(--user-accent-hover, #238a82);
+  --nav-active:    rgba(42, 161, 152, 0.13);
+  --active-blue:   #268bd2;
+  --danger:        #dc322f;
+  --warning:       #b58900;
+  --success:       #859900;
+  --info:          #268bd2;
+  --log-bg:        #e0dac8;
+  --health-teal:   #2aa198;
+  --health-yellow: #b58900;
+  --prio-high-bg:  #dc322f;
+  --prio-med-bg:   #b58900;
+  --prio-low-bg:   #859900;
 }
 
 /* ── Smooth Transitions ── */
@@ -481,10 +481,10 @@ body {
 .badge-security { background: #EF4444; color: #FFF; }
 .badge-docs    { background: #EC4899; color: #FFF; }
 
-[data-theme="light"] .badge-feature { background: #2563EB; color: #FFF; }
-[data-theme="light"] .badge-bugfix  { background: #CA8A04; color: #FFF; }
-[data-theme="light"] .badge-security { background: #DC2626; color: #FFF; }
-[data-theme="light"] .badge-docs    { background: #DB2777; color: #FFF; }
+[data-theme="light"] .badge-feature  { background: #d4e8f5; color: #1a5282; }
+[data-theme="light"] .badge-bugfix   { background: #f0e0a8; color: #5a3800; }
+[data-theme="light"] .badge-security { background: #f5d0cc; color: #7a1a18; }
+[data-theme="light"] .badge-docs     { background: #eed0e8; color: #68184e; }
 
 /* Prio badges */
 .badge-high   { background: var(--prio-high-bg); color: #fff; }
