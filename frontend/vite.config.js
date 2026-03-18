@@ -21,11 +21,19 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: false,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === 'SOURCEMAP_ERROR') return;
+        warn(warning);
+      },
+    },
   },
   server: {
     strictPort: true,
     port: 5173,
     host: false,
+    sourcemapIgnoreList: (sourcePath) => sourcePath.includes('/vendor/'),
   },
   clearScreen: false,
 })
