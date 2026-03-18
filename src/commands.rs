@@ -939,6 +939,29 @@ pub async fn get_file_diff(
 }
 
 #[tauri::command]
+pub async fn get_commit_diff(
+    commit_hash: String,
+    state: State<'_>,
+) -> Result<git::DiffInfo, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    git::get_commit_diff(&project_path, &commit_hash).await
+}
+
+#[tauri::command]
+pub async fn get_commit_file_diff(
+    commit_hash: String,
+    file_path: String,
+    state: State<'_>,
+) -> Result<String, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    git::get_commit_file_diff(&project_path, &commit_hash, &file_path).await
+}
+
+#[tauri::command]
 pub async fn delete_branch_cmd(
     branch: String,
     force: bool,

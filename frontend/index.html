@@ -9,6 +9,32 @@
   <link rel="stylesheet" href="vendor/xterm/xterm.css">
 </head>
 <body data-theme="dark">
+  <header class="app-header">
+    <div class="app-header-left">
+      <span class="app-logo">✦</span>
+      <span class="app-name">Aufgabenhelfer</span>
+    </div>
+    <div class="app-header-center">
+      <div class="global-search">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="global-search-input" placeholder="Search...">
+      </div>
+    </div>
+    <div class="app-header-right">
+      <div class="header-user">
+        <div class="header-avatar" id="header-avatar">U</div>
+        <div class="header-user-info">
+          <div class="header-username" id="header-username">User</div>
+          <div class="header-status">● online</div>
+        </div>
+      </div>
+      <button class="header-notif-btn" id="header-notif-btn" title="Notifications">
+        🔔
+        <span class="header-notif-badge hidden" id="header-notif-badge">0</span>
+      </button>
+      <button class="btn-create-project" id="btn-header-add-project">+ Create Project</button>
+    </div>
+  </header>
   <div id="app">
     <!-- Sidebar -->
     <aside id="sidebar">
@@ -104,6 +130,15 @@
       <section id="view-board" class="view active">
         <div class="view-header">
           <h1 id="board-title">Kanban Board</h1>
+          <div class="board-header-meta">
+            <div class="health-bar-wrap">
+              <span class="health-label">Project health status</span>
+              <div class="health-bar-track" id="health-bar">
+                <div class="health-seg health-seg-teal"  id="health-teal"  style="width:60%"></div>
+                <div class="health-seg health-seg-yellow" id="health-yellow" style="width:25%"></div>
+                <div class="health-seg health-seg-empty" id="health-empty"  style="width:15%"></div>
+              </div>
+            </div>
           <div class="header-actions">
             <button id="btn-export-tickets" class="icon-btn" title="Export">&#128190;</button>
             <button id="btn-import-tickets" class="icon-btn" title="Import">&#128194;</button>
@@ -115,6 +150,7 @@
             <span id="bug-sync-badge" class="bug-sync-badge hidden">0</span>
             <span id="git-status" class="git-badge clean">&#9679; clean</span>
             <span id="running-badge" class="running-badge hidden">&#9881; Running...</span>
+          </div>
           </div>
         </div>
         <!-- Filter Bar (Block B2) -->
@@ -137,28 +173,40 @@
         <div id="board">
           <div class="column" data-column="backlog">
             <div class="column-header">
-              <span class="column-title">Backlog</span>
+              <div class="column-title-row">
+                <span class="col-icon col-icon-backlog">☰</span>
+                <span class="column-title">Backlog</span>
+              </div>
               <span class="column-count" data-count="backlog">0</span>
             </div>
             <div class="column-body" data-drop="backlog"></div>
           </div>
           <div class="column" data-column="progress">
             <div class="column-header">
-              <span class="column-title">Progress</span>
+              <div class="column-title-row">
+                <span class="col-icon col-icon-progress">▶</span>
+                <span class="column-title">Progress</span>
+              </div>
               <span class="column-count" data-count="progress">0</span>
             </div>
             <div class="column-body" data-drop="progress"></div>
           </div>
           <div class="column" data-column="review">
             <div class="column-header">
-              <span class="column-title">Review</span>
+              <div class="column-title-row">
+                <span class="col-icon col-icon-review">◎</span>
+                <span class="column-title">Review</span>
+              </div>
               <span class="column-count" data-count="review">0</span>
             </div>
             <div class="column-body" data-drop="review"></div>
           </div>
           <div class="column" data-column="done">
             <div class="column-header">
-              <span class="column-title">Done</span>
+              <div class="column-title-row">
+                <span class="col-icon col-icon-done">✓</span>
+                <span class="column-title">Done</span>
+              </div>
               <span class="column-count" data-count="done">0</span>
             </div>
             <div class="column-body" data-drop="done"></div>
@@ -173,6 +221,10 @@
             </div>
           </div>
           <div id="log-body"></div>
+        </div>
+        <div class="system-status-bar">
+          <span class="sys-label">System status</span>
+          <span class="sys-dot online" id="sys-status-dot"></span>
         </div>
       </section>
 

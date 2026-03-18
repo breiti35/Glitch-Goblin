@@ -74,6 +74,15 @@ async function loadInitialState() {
     // Apply accent color
     applyAccentColor(state.settings.accent_color || state.settings.accentColor);
 
+    // Username in header
+    const projectName = state.project?.name || "";
+    const initial = (projectName[0] || "U").toUpperCase();
+    const displayName = projectName || "User";
+    const usernameEl = document.getElementById("header-username");
+    const avatarEl   = document.getElementById("header-avatar");
+    if (usernameEl) usernameEl.textContent = displayName;
+    if (avatarEl)   avatarEl.textContent = initial;
+
     // Request notification permission
     if (state.settings.notifications_enabled !== false) {
       if ("Notification" in window && Notification.permission === "default") {
@@ -95,6 +104,18 @@ function bindEvents() {
   // Theme toggle
   document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
   document.getElementById("btn-app-settings").addEventListener("click", () => switchView("settings"));
+
+  // Global search → filter
+  document.getElementById("global-search-input")?.addEventListener("input", (e) => {
+    const filterInput = document.getElementById("filter-input");
+    if (filterInput) {
+      filterInput.value = e.target.value;
+      applyFilters();
+    }
+  });
+
+  // Header "+ Create Project" button
+  document.getElementById("btn-header-add-project")?.addEventListener("click", openProjectPicker);
 
   // Project selector
   document.getElementById("project-selector").addEventListener("click", openProjectPicker);
@@ -269,7 +290,10 @@ async function setupListeners() {
   await listen("terminal-output", (event) => {
     const { terminalId, data } = event.payload;
     const inst = state.terminals[terminalId];
-    if (inst) inst.term.write(data);
+    if (inst) {
+      inst.term.write(data);
+      if (inst.onOutput) inst.onOutput(data);
+    }
   });
 
   // Terminal closed by shell exit
@@ -336,8 +360,30 @@ function renderBoard() {
     runBadge.classList.add("hidden");
   }
 
+  updateHealthBar(tickets);
   setupDragDrop();
   applyFilters();
+  // Update header username from current project
+  const _projName = state.project?.name || "";
+  const _usernameEl = document.getElementById("header-username");
+  const _avatarEl   = document.getElementById("header-avatar");
+  if (_usernameEl) _usernameEl.textContent = _projName || "User";
+  if (_avatarEl)   _avatarEl.textContent = (_projName[0] || "U").toUpperCase();
+}
+
+function updateHealthBar(tickets) {
+  const total = tickets.length || 1;
+  const done    = tickets.filter(t => t.column === "done").length;
+  const review  = tickets.filter(t => t.column === "review").length;
+  const tealPct   = Math.round((done / total) * 100);
+  const yellowPct = Math.round((review / total) * 100);
+  const emptyPct  = Math.max(0, 100 - tealPct - yellowPct);
+  const tealEl   = document.getElementById("health-teal");
+  const yellowEl = document.getElementById("health-yellow");
+  const emptyEl  = document.getElementById("health-empty");
+  if (tealEl)   tealEl.style.width   = tealPct + "%";
+  if (yellowEl) yellowEl.style.width = yellowPct + "%";
+  if (emptyEl)  emptyEl.style.width  = emptyPct + "%";
 }
 
 function createCard(ticket, col) {
@@ -351,17 +397,19 @@ function createCard(ticket, col) {
   const isRunning = state.runningTicket === ticket.id;
   if (isRunning) card.classList.add("running");
 
-  // Type badge class
-  const typeClass = `badge-${ticket.ticket_type}`;
-  const typeLabel = { feature: "feat", bugfix: "fix", security: "sec", docs: "docs" }[ticket.ticket_type] || ticket.ticket_type;
+  // Type icon
+  const typeIcons  = { feature: "🔷", bugfix: "🐛", security: "🔒", docs: "📄" };
+  const typeColors = { feature: "#3B82F6", bugfix: "#f4a460", security: "#e04f5e", docs: "#a855f7" };
 
-  // Prio badge
-  let prioBadge = "";
-  if (ticket.prio) {
-    prioBadge = `<span class="badge badge-${ticket.prio}">${ticket.prio}</span>`;
-  }
+  // Progress per column
+  const colProgress = { backlog: 10, progress: 50, review: 80, done: 100 };
 
-  // Action button / status
+  // Date string
+  const dateStr = ticket.created_at
+    ? new Date(ticket.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+    : "";
+
+  // Action button
   let actionHTML = "";
   if (col === "backlog" && !state.runningTicket) {
     actionHTML = `<button class="card-action start" data-execute="${ticket.id}">\u25B7 Start</button>`;
@@ -369,41 +417,31 @@ function createCard(ticket, col) {
     actionHTML = `<button class="card-action finish" data-finish="${ticket.id}">\u2714 Ticket abschlie\u00DFen</button>`;
   } else if (col === "review") {
     actionHTML = `<button class="card-action merge" data-merge="${ticket.id}">Merge</button>`;
-  } else if (col === "done") {
-    actionHTML = `<span class="card-status complete-status">Complete</span>`;
   }
 
-  // Progress bar (Block B1)
-  let progressHTML = "";
-  if (col === "review") {
-    progressHTML = `
-      <div class="card-progress">
-        <div class="progress-track">
-          <div class="progress-fill full" style="width: 100%"></div>
-        </div>
-      </div>`;
-  }
-
-  // Time
-  const timeStr = ticket.created_at ? timeAgo(ticket.created_at) : "";
+  // Extra badges (cost, comments, portal-bug)
+  let extraBadgesHTML = "";
+  const extraParts = [];
+  if (ticket.cost_usd) extraParts.push(`<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>`);
+  if (ticket.comments && ticket.comments.length > 0) extraParts.push(`<span class="comment-count-badge">\u{1F4AC} ${ticket.comments.length}</span>`);
+  if (ticket.portal_bug_id) extraParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${ticket.portal_bug_id}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
+  if (extraParts.length > 0) extraBadgesHTML = `<div class="card-badges">${extraParts.join("")}</div>`;
 
   card.innerHTML = `
-    <div class="card-top">
+    <div class="card-header-row">
       <span class="card-title">${esc(ticket.title)}</span>
-      <span class="card-id">${esc(ticket.id)}</span>
+      <span class="card-type-icon" style="background:${typeColors[ticket.ticket_type] || '#666'}"
+            title="${ticket.ticket_type}">${typeIcons[ticket.ticket_type] || "●"}</span>
     </div>
     ${ticket.description ? `<div class="card-desc">${esc(ticket.description)}</div>` : ""}
-    <div class="card-badges">
-      <span class="badge ${typeClass}">${typeLabel}</span>
-      ${prioBadge}
-      ${ticket.cost_usd ? `<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>` : ""}
-      ${(ticket.comments && ticket.comments.length > 0) ? `<span class="comment-count-badge">\u{1F4AC} ${ticket.comments.length}</span>` : ""}
-      ${ticket.portal_bug_id ? `<span class="badge badge-portal-bug" title="Portal-Bug #${ticket.portal_bug_id}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>` : ""}
+    <div class="card-info-row">
+      ${ticket.prio ? `<span class="badge badge-${ticket.prio}">${ticket.prio}</span>` : ""}
+      <span class="card-date">⏰ ${dateStr}</span>
     </div>
-    ${progressHTML}
-    <div class="card-footer">
-      <span class="card-time">${timeStr}</span>
-      ${actionHTML}
+    ${extraBadgesHTML}
+    ${actionHTML ? `<div class="card-action-row">${actionHTML}</div>` : ""}
+    <div class="card-bottom-bar">
+      <div class="card-progress-fill" style="width:${colProgress[col] || 10}%"></div>
     </div>
   `;
 
@@ -418,12 +456,6 @@ function createCard(ticket, col) {
     e.preventDefault();
     showContextMenu(e, ticket);
   });
-
-  // Portal-Bug badge - show URL tooltip
-  const portalBadge = card.querySelector(".badge-portal-bug");
-  if (portalBadge && portalBadge.dataset.portalUrl) {
-    portalBadge.title = "Portal-Bug: " + portalBadge.dataset.portalUrl;
-  }
 
   // Execute button
   const execBtn = card.querySelector("[data-execute]");
@@ -787,17 +819,50 @@ async function openTicketTerminal(startResult, model) {
   state.terminals[terminalId] = { term, fitAddon, tabEl: tab, containerEl: container, name, ticketId: startResult.ticketId };
   state.activeTerminal = terminalId;
 
-  // Start Claude Code interactively after shell is ready
+  // Start Claude Code interactively, detect readiness via output, then send prompt
   setTimeout(() => {
-    const claudeCmd = (state.settings.claude_cli_path || "claude") + " --dangerously-skip-permissions --model " + modelToFlag(model || state.settings.claude_model || "claude-sonnet-4-6") + "\r";
+    const claudePath = state.settings.claude_cli_path || "claude";
+    const modelFlag = modelToFlag(model || state.settings.claude_model || "claude-sonnet-4-6");
+    const claudeCmd = `${claudePath} --dangerously-skip-permissions --model ${modelFlag}\r`;
     invoke("write_terminal", { terminalId, data: claudeCmd }).catch(() => {});
 
-    // Send the prompt after Claude has started
+    // Watch terminal output to detect when Claude is ready
+    const inst = state.terminals[terminalId];
+    if (!inst) return;
+
+    let promptSent = false;
+    let lastOutputTime = 0;
+    let outputReceived = false;
+
+    inst.onOutput = () => {
+      if (promptSent) return;
+      outputReceived = true;
+      lastOutputTime = Date.now();
+    };
+
+    // Poll: once output settles (2s silence after first output), send prompt
+    const checkInterval = setInterval(() => {
+      if (promptSent) { clearInterval(checkInterval); return; }
+      if (outputReceived && Date.now() - lastOutputTime > 2000) {
+        promptSent = true;
+        inst.onOutput = null;
+        clearInterval(checkInterval);
+        const prompt = startResult.prompt + "\r";
+        invoke("write_terminal", { terminalId, data: prompt }).catch(() => {});
+      }
+    }, 500);
+
+    // Fallback: send after 20s regardless
     setTimeout(() => {
-      const prompt = startResult.prompt + "\r";
-      invoke("write_terminal", { terminalId, data: prompt }).catch(() => {});
-    }, 3500);
-  }, 2500);
+      if (!promptSent) {
+        promptSent = true;
+        inst.onOutput = null;
+        clearInterval(checkInterval);
+        const prompt = startResult.prompt + "\r";
+        invoke("write_terminal", { terminalId, data: prompt }).catch(() => {});
+      }
+    }, 20000);
+  }, 1500);
 }
 
 async function finishTicket(ticketId) {
@@ -1927,12 +1992,16 @@ async function selectGitBranch(branch) {
     commitsEl.innerHTML = '<p class="empty-state" style="font-size:12px">No commits</p>';
   } else {
     commitsEl.innerHTML = commits.map(c => `
-      <div class="git-commit-item">
+      <div class="git-commit-item" data-commit="${esc(c.hash)}" style="cursor:pointer">
         <span class="commit-hash">${esc(c.hash)}</span>
         <span class="commit-msg">${esc(c.message)}</span>
         <span class="commit-date">${timeAgo(c.date)}</span>
       </div>
     `).join("");
+
+    commitsEl.querySelectorAll(".git-commit-item").forEach(el => {
+      el.addEventListener("click", () => showCommitDiff(el.dataset.commit));
+    });
   }
 
   // Render diff stats
@@ -1972,6 +2041,70 @@ async function showFileDiff(branch, filePath) {
       return;
     }
     // Syntax-highlight the diff
+    body.innerHTML = diff.split("\n").map(line => {
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        return `<span class="diff-line-add">${esc(line)}</span>`;
+      } else if (line.startsWith("-") && !line.startsWith("---")) {
+        return `<span class="diff-line-del">${esc(line)}</span>`;
+      } else if (line.startsWith("@@")) {
+        return `<span class="diff-line-hdr">${esc(line)}</span>`;
+      }
+      return esc(line);
+    }).join("\n");
+  } catch (e) {
+    document.getElementById("git-diff-body").textContent = "Error: " + e;
+  }
+}
+
+async function showCommitDiff(commitHash) {
+  // Highlight active commit
+  document.querySelectorAll(".git-commit-item").forEach(el => el.classList.remove("active"));
+  const active = document.querySelector(`.git-commit-item[data-commit="${CSS.escape(commitHash)}"]`);
+  if (active) active.classList.add("active");
+
+  // Hide file diff panel
+  document.getElementById("git-diff-content").classList.add("hidden");
+
+  try {
+    const diff = await invoke("get_commit_diff", { commitHash });
+
+    document.getElementById("git-diff-stats").innerHTML =
+      `<span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span> in ${diff.files.length} files`;
+
+    const filesEl = document.getElementById("git-diff-files");
+    if (diff.files.length === 0) {
+      filesEl.innerHTML = '<p class="empty-state" style="font-size:12px">No changes</p>';
+    } else {
+      filesEl.innerHTML = diff.files.map(f => `
+        <div class="git-file-item" data-commit="${esc(commitHash)}" data-file="${esc(f.filePath)}">
+          <span class="file-status ${esc(f.status)}">${esc(f.status)}</span>
+          <span class="file-path">${esc(f.filePath)}</span>
+          <span class="file-changes">+${f.additions} -${f.deletions}</span>
+        </div>
+      `).join("");
+
+      filesEl.querySelectorAll(".git-file-item").forEach(el => {
+        el.addEventListener("click", () => showCommitFileDiff(el.dataset.commit, el.dataset.file));
+      });
+    }
+  } catch (e) {
+    document.getElementById("git-diff-stats").textContent = "Error: " + e;
+  }
+}
+
+async function showCommitFileDiff(commitHash, filePath) {
+  const container = document.getElementById("git-diff-content");
+  container.classList.remove("hidden");
+  document.getElementById("git-diff-filename").textContent = filePath;
+  document.getElementById("git-diff-body").innerHTML = "Loading...";
+
+  try {
+    const diff = await invoke("get_commit_file_diff", { commitHash, filePath });
+    const body = document.getElementById("git-diff-body");
+    if (!diff.trim()) {
+      body.textContent = "(no diff available)";
+      return;
+    }
     body.innerHTML = diff.split("\n").map(line => {
       if (line.startsWith("+") && !line.startsWith("+++")) {
         return `<span class="diff-line-add">${esc(line)}</span>`;
@@ -2796,6 +2929,12 @@ function updateBugSyncBadge(count) {
     badge.classList.toggle("hidden", count <= 0);
   }
   if (navBadge) navBadge.textContent = count;
+  // sync bell badge
+  const bellBadge = document.getElementById("header-notif-badge");
+  if (bellBadge) {
+    bellBadge.textContent = count;
+    bellBadge.classList.toggle("hidden", count === 0);
+  }
 }
 
 async function performBugSync() {
