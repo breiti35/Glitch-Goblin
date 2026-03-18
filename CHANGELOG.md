@@ -40,6 +40,11 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Security
 - **[HOCH]** API-Token im Klartext in `settings.json`: Token wird jetzt mit ChaCha20-Poly1305 verschlüsselt gespeichert, maschinengebunden via `/etc/machine-id`
+- **[HOCH]** Crypto-KDF zu schwach: SHA-256 als Key-Derivation-Function für API-Token-Verschlüsselung ersetzt durch PBKDF2-HMAC-SHA256 mit 100.000 Runden (`src/crypto.rs`, KANBAN-011)
+  - Maschinengebundene ID jetzt plattformspezifisch: Linux `/etc/machine-id`, macOS `IOPlatformUUID` (via `ioreg`), Windows `MachineGuid` (Registry)
+  - Statischer Fallback-Key entfernt; fehlende Machine-ID erzeugt stattdessen eine zufällige UUID, die persistent in `~/.config/kanban-runner/machine-seed.txt` gespeichert wird
+  - Token-Format von `v1` auf `v2` angehoben; bestehende `v1`-Tokens werden weiterhin entschlüsselt (vollständige Rückwärtskompatibilität)
+  - Neue Abhängigkeit: `pbkdf2` crate
 
 
 
