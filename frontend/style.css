@@ -1703,9 +1703,40 @@ kbd {
   text-overflow: ellipsis;
 }
 
+.git-commit-item .commit-author {
+  color: var(--muted);
+  flex-shrink: 0;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .git-commit-item .commit-date {
   color: var(--muted);
   flex-shrink: 0;
+  min-width: 75px;
+  text-align: right;
+}
+
+.commit-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+.commit-badge.merge {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.git-commit-item.merge-commit {
+  opacity: 0.75;
+}
+.dash-commit-item.merge-commit {
+  opacity: 0.75;
 }
 
 .git-diff-stats {
