@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Kanban Runner",
+  "productName": "Aufgabenhelfer",
   "version": "0.2.0",
   "identifier": "com.kanban-runner.app",
   "build": {
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Kanban Runner",
+        "title": "Aufgabenhelfer",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
