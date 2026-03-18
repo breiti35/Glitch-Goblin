@@ -429,7 +429,7 @@ function createCard(ticket, col) {
   const extraParts = [];
   if (ticket.cost_usd) extraParts.push(`<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>`);
   if (ticket.comments && ticket.comments.length > 0) extraParts.push(`<span class="comment-count-badge">\u{1F4AC} ${ticket.comments.length}</span>`);
-  if (ticket.portal_bug_id) extraParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${ticket.portal_bug_id}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
+  if (ticket.portal_bug_id) extraParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
   if (extraParts.length > 0) extraBadgesHTML = `<div class="card-badges">${extraParts.join("")}</div>`;
 
   card.innerHTML = `
@@ -886,6 +886,7 @@ async function finishTicket(ticketId) {
 }
 
 async function mergeTicket(ticketId) {
+  if (!confirm(`Ticket ${ticketId} mergen?\nDer Branch wird in den Hauptbranch gemergt.`)) return;
   try {
     appendLog(`Merging ${ticketId}...`);
     await invoke("merge_ticket", { ticketId });
@@ -1043,7 +1044,6 @@ async function removeProjectFlow(name) {
 async function addProjectFlow() {
   try {
     const folder = await invoke("pick_folder");
-    console.log("pick_folder result:", folder, typeof folder);
     if (!folder) return;
 
     const parts = folder.replace(/\\/g, "/").split("/");
@@ -2535,8 +2535,8 @@ async function executeLocalDeploy() {
     const cfg = state.deployConfig;
     const files = (cfg.composeFiles?.length > 0) ? cfg.composeFiles : [];
     let cmd = "docker compose";
-    files.forEach(f => cmd += ` -f ${f}`);
-    if (cfg.envFile) cmd += ` --env-file ${cfg.envFile}`;
+    files.forEach(f => cmd += ` -f ${shellEscapeLocal(f)}`);
+    if (cfg.envFile) cmd += ` --env-file ${shellEscapeLocal(cfg.envFile)}`;
     cmd += " up --build -d\r";
     setTimeout(() => {
       invoke("write_terminal", { terminalId, data: cmd }).catch(() => {});

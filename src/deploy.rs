@@ -314,8 +314,7 @@ fn detect_ssh_keys() -> Vec<String> {
         .filter_map(|e| e.ok())
         .filter(|e| {
             let name = e.file_name().to_string_lossy().to_string();
-            (name.starts_with("id_") && !name.ends_with(".pub"))
-                || name == "config"
+            name.starts_with("id_") && !name.ends_with(".pub")
         })
         .filter(|e| {
             let name = e.file_name().to_string_lossy().to_string();
