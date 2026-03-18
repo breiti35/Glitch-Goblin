@@ -46,6 +46,11 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
   - Statischer Fallback-Key entfernt; fehlende Machine-ID erzeugt stattdessen eine zufällige UUID, die persistent in `~/.config/kanban-runner/machine-seed.txt` gespeichert wird
   - Token-Format von `v1` auf `v2` angehoben; bestehende `v1`-Tokens werden weiterhin entschlüsselt (vollständige Rückwärtskompatibilität)
   - Neue Abhängigkeit: `pbkdf2` crate
+- **[HOCH]** IPC-Angriffsfläche reduziert: `withGlobalTauri: false` in `tauri.conf.json` gesetzt — `window.__TAURI__` wird nicht mehr global exponiert (`tauri.conf.json`, KANBAN-012)
+  - `window.__TAURI__.core`/`window.__TAURI__.event`-Zugriffe in `frontend/app.js` durch explizite ES-Module-Imports aus `@tauri-apps/api` ersetzt
+  - Vite als Frontend-Build-System eingeführt (`frontend/package.json`, `frontend/vite.config.js`)
+  - `tauri.conf.json` Build-Sektion aktualisiert: `frontendDist` zeigt auf `./frontend/dist`; `devUrl`, `beforeDevCommand` und `beforeBuildCommand` hinzugefügt
+  - `.gitignore` angepasst: `package.json`-Ignore auf Root-Ebene beschränkt, um `frontend/package.json` nicht zu ignorieren
 
 
 
