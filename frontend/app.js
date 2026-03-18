@@ -1,6 +1,6 @@
 // ── Tauri IPC ──
-const { invoke, Channel } = window.__TAURI__.core;
-const { listen } = window.__TAURI__.event;
+import { invoke, Channel } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 // ── Sound Data URIs (Block C3) ──
 const SOUNDS = {

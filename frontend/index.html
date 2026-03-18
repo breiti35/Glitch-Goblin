@@ -807,8 +807,10 @@
     </div>
   </div>
 
+  <!-- These classic scripts run synchronously, setting window.Terminal and window.FitAddon
+       before the deferred module script (app.js) executes. Do not move them into <head>. -->
   <script src="vendor/xterm/xterm.js"></script>
   <script src="vendor/xterm/xterm-addon-fit.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
