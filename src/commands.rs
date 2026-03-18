@@ -600,8 +600,8 @@ pub async fn restore_backup(
     }
 
     let board = kanban::load_board(&backup_path)?;
-    kanban::save_board(&s.kanban_path, &board)?;
     s.board = board.clone();
+    s.save_and_backup()?;
     s.log(format!("Restored backup: {}", filename));
     s.log_activity("backup_restored", None, None, Some(&filename));
 
