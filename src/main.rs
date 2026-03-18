@@ -248,6 +248,8 @@ fn main() {
             // Bug-Sync (Portal Bug-Tracker)
             commands::sync_portal_bugs,
             commands::get_bug_sync_settings,
+            // Version
+            commands::get_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

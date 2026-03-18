@@ -1764,3 +1764,8 @@ pub async fn get_bug_sync_settings(
         interval_secs: bs.interval_secs,
     })
 }
+
+#[tauri::command]
+pub fn get_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}

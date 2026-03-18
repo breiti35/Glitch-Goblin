@@ -88,6 +88,15 @@ async function loadInitialState() {
     if (usernameEl) usernameEl.textContent = displayName;
     if (avatarEl)   avatarEl.textContent = initial;
 
+    // App version
+    try {
+      const version = await invoke("get_version");
+      const vEl = document.getElementById("app-version");
+      if (vEl) vEl.textContent = "v" + version;
+      const svEl = document.getElementById("settings-version");
+      if (svEl) svEl.textContent = "Version " + version;
+    } catch (_) { /* non-critical */ }
+
     // Request notification permission
     if (state.settings.notifications_enabled !== false) {
       if ("Notification" in window && Notification.permission === "default") {
