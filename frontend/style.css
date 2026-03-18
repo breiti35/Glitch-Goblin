@@ -24,8 +24,6 @@ input, select, textarea { font: inherit; }
   --info:          #3B82F6;
   --log-bg:        #0a0a0a;
   --terminal-bg:   #000000;
-  --terminal-fg:   #E2E8F0;
-  --terminal-cursor: #F97316;
   --health-teal:   #38b5a0;
   --health-yellow: #f4a460;
   --prio-high-bg:  #e04f5e;
@@ -54,8 +52,6 @@ input, select, textarea { font: inherit; }
   --info:          #268bd2;
   --log-bg:        #e0dac8;
   --terminal-bg:   #e8e2d0;
-  --terminal-fg:   #3a3228;
-  --terminal-cursor: #2aa198;
   --health-teal:   #2aa198;
   --health-yellow: #b58900;
   --prio-high-bg:  #dc322f;
