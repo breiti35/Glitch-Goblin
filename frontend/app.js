@@ -63,6 +63,11 @@ async function loadInitialState() {
     state.project = await invoke("get_current_project");
     state.projects = await invoke("get_projects");
     state.settings = await invoke("get_settings");
+    // api_token_set: derive from returned token, then clear token from frontend state
+    if (state.settings.bug_sync) {
+      state.settings.bug_sync.api_token_set = !!state.settings.bug_sync.api_token;
+      state.settings.bug_sync.api_token = "";
+    }
     state.runningTicket = await invoke("get_running_ticket");
 
     // Apply theme from settings
@@ -1242,11 +1247,11 @@ async function deleteDetailTicket() {
 // ── Settings ──
 function loadSettingsForm() {
   const s = state.settings;
-  document.getElementById("set-claude-path").value = s.claude_cli_path || s.claudeCliPath || "claude";
-  document.getElementById("set-commit-prefix").value = s.commit_prefix || s.commitPrefix || "kanban:";
-  document.getElementById("set-auto-execute").value = (s.auto_execute_types || s.autoExecuteTypes || []).join(", ");
-  document.getElementById("set-accent-color").value = s.accent_color || s.accentColor || "#F97316";
-  document.getElementById("accent-color-label").textContent = s.accent_color || s.accentColor || "#F97316";
+  document.getElementById("set-claude-path").value = s.claude_cli_path ?? s.claudeCliPath ?? "claude";
+  document.getElementById("set-commit-prefix").value = s.commit_prefix ?? s.commitPrefix ?? "kanban:";
+  document.getElementById("set-auto-execute").value = (s.auto_execute_types ?? s.autoExecuteTypes ?? []).join(", ");
+  document.getElementById("set-accent-color").value = s.accent_color ?? s.accentColor ?? "#F97316";
+  document.getElementById("accent-color-label").textContent = s.accent_color ?? s.accentColor ?? "#F97316";
   document.getElementById("set-theme").value = s.theme || "dark";
   // New settings
   document.getElementById("set-notifications").checked = s.notifications_enabled !== false;
@@ -1300,7 +1305,11 @@ async function saveSettingsForm() {
 
   try {
     await invoke("save_settings", { settings });
+    const prevTokenSet = state.settings.bug_sync?.api_token_set ?? false;
     state.settings = settings;
+    // Restore api_token_set: true if new token provided, else keep previous state
+    state.settings.bug_sync.api_token_set = settings.bug_sync.api_token ? true : prevTokenSet;
+    state.settings.bug_sync.api_token = "";
     document.body.dataset.theme = settings.theme;
     updateThemeUI();
     applyAccentColor(settings.accent_color);
