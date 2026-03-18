@@ -5,7 +5,6 @@ mod config;
 mod deploy;
 mod git;
 mod kanban;
-mod runner;
 mod state;
 mod terminal;
 
@@ -86,17 +85,14 @@ fn main() {
                     loop {
                         tick.tick().await;
                         let state_ref = app_handle.state::<Mutex<AppState>>();
-                        let (api_url, api_token, enabled, interval) = {
+
+                        // Read only what is needed before the optional extra sleep.
+                        let (enabled, interval) = {
                             let s = state_ref.lock().await;
                             let bs = &s.settings.bug_sync;
-                            (
-                                bs.api_url.clone(),
-                                bs.api_token.clone(),
-                                bs.enabled,
-                                bs.interval_secs.max(60),
-                            )
+                            (bs.enabled, bs.interval_secs.max(60))
                         };
-                        if !enabled || api_url.is_empty() {
+                        if !enabled {
                             continue;
                         }
                         if interval > 60 {
@@ -105,6 +101,18 @@ fn main() {
                             ))
                             .await;
                         }
+
+                        // Re-read credentials *after* the sleep so we always use
+                        // the most current settings (avoids stale-token race).
+                        let (api_url, api_token, enabled) = {
+                            let s = state_ref.lock().await;
+                            let bs = &s.settings.bug_sync;
+                            (bs.api_url.clone(), bs.api_token.clone(), bs.enabled)
+                        };
+                        if !enabled || api_url.is_empty() {
+                            continue;
+                        }
+
                         match bugsync::fetch_unsynced_bugs(&api_url, &api_token).await {
                             Ok(bugs) if !bugs.is_empty() => {
                                 let _ = app_handle.emit("bug-sync-available", bugs.len());

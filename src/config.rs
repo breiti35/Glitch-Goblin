@@ -28,17 +28,32 @@ pub fn project_data_dir(project_name: &str) -> Result<PathBuf, String> {
         .chars()
         .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
         .collect();
-    if safe_name.is_empty() {
-        return Err("Project name is empty".to_string());
+    // Reject names that are empty or consist entirely of replacement dashes
+    // (e.g. an input of "..." would become "---", which is not a useful name).
+    if safe_name.is_empty() || safe_name.chars().all(|c| c == '-') {
+        return Err(format!(
+            "Project name '{}' contains no usable characters",
+            project_name
+        ));
     }
     let config_dir =
         dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())?;
-    let dir = config_dir
-        .join("kanban-runner")
-        .join("projects")
-        .join(&safe_name);
+    let base = config_dir.join("kanban-runner").join("projects");
+    let dir = base.join(&safe_name);
     std::fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create project data dir: {e}"))?;
+    // Canonicalize both paths after creation so symlinks and relative components
+    // are fully resolved, then verify the result stays inside the expected base.
+    let canonical_dir = std::fs::canonicalize(&dir)
+        .map_err(|e| format!("Failed to resolve project data dir: {e}"))?;
+    let canonical_base = std::fs::canonicalize(&base)
+        .map_err(|e| format!("Failed to resolve base dir: {e}"))?;
+    if !canonical_dir.starts_with(&canonical_base) {
+        return Err(format!(
+            "Project name '{}' resolves outside the data directory",
+            project_name
+        ));
+    }
     Ok(dir)
 }
 

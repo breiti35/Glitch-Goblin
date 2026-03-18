@@ -171,7 +171,14 @@ pub fn load_board(path: &Path) -> Result<KanbanBoard, String> {
 pub fn save_board(path: &Path, board: &KanbanBoard) -> Result<(), String> {
     let json = serde_json::to_string_pretty(board)
         .map_err(|e| format!("Failed to serialize board: {e}"))?;
-    std::fs::write(path, json).map_err(|e| format!("Failed to write kanban.json: {e}"))
+    // Write to a temp file first, then rename for a near-atomic replacement.
+    // This prevents a partial write from corrupting kanban.json if the app
+    // is killed mid-write.
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, &json)
+        .map_err(|e| format!("Failed to write kanban.json.tmp: {e}"))?;
+    std::fs::rename(&tmp, path)
+        .map_err(|e| format!("Failed to replace kanban.json: {e}"))
 }
 
 pub fn backup_board(kanban_path: &Path, max_backups: u32) -> Result<(), String> {
@@ -204,10 +211,9 @@ pub fn backup_board(kanban_path: &Path, max_backups: u32) -> Result<(), String> 
     backups.sort_by_key(|e| e.file_name());
 
     while backups.len() > max_backups as usize {
-        if let Some(oldest) = backups.first() {
-            let _ = std::fs::remove_file(oldest.path());
-        }
-        backups.remove(0);
+        let oldest_path = backups.remove(0).path();
+        std::fs::remove_file(&oldest_path)
+            .map_err(|e| format!("Failed to prune old backup {oldest_path:?}: {e}"))?;
     }
 
     Ok(())

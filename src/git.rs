@@ -15,7 +15,7 @@ fn validate_git_ref(name: &str) -> Result<(), String> {
     if name.contains("..") || name.contains('\0') {
         return Err(format!("Invalid branch name '{}'", name));
     }
-    if !name.chars().all(|c| c.is_alphanumeric() || "-/_. ".contains(c)) {
+    if !name.chars().all(|c| c.is_alphanumeric() || "-/_.".contains(c)) {
         return Err(format!("Branch name '{}' contains invalid characters", name));
     }
     Ok(())

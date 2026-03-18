@@ -42,8 +42,10 @@ pub fn log_activity(
     ticket_title: Option<&str>,
     details: Option<&str>,
 ) {
-    let mut entries = load_entries(data_dir);
-    entries.push(ActivityEntry {
+    // Use VecDeque so pop_front() is O(1) instead of Vec::remove(0) which is O(n).
+    let mut entries: std::collections::VecDeque<ActivityEntry> =
+        load_entries(data_dir).into_iter().collect();
+    entries.push_back(ActivityEntry {
         timestamp: chrono::Utc::now().to_rfc3339(),
         action: action.to_string(),
         ticket_id: ticket_id.map(|s| s.to_string()),
@@ -51,12 +53,13 @@ pub fn log_activity(
         details: details.map(|s| s.to_string()),
     });
 
-    // Prune to max
+    // Prune oldest entries to stay within the limit.
     while entries.len() > MAX_ENTRIES {
-        entries.remove(0);
+        entries.pop_front();
     }
 
-    let _ = save_entries(data_dir, &entries);
+    let entries_vec: Vec<ActivityEntry> = entries.into_iter().collect();
+    let _ = save_entries(data_dir, &entries_vec);
 }
 
 /// Get recent activity entries (newest first)

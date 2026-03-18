@@ -21,7 +21,7 @@ pub struct TerminalOutput {
 
 pub enum TerminalCmd {
     Write(String),
-    Resize(u32, u32),
+    Resize(u32, u32), // cols, rows — matches xterm.js { cols, rows } destructuring
     Close,
 }
 
@@ -169,7 +169,13 @@ pub async fn spawn_terminal(
                             },
                         );
                     }
-                    Err(_) => break,
+                    Err(e) => {
+                        // Log the error so unexpected failures are diagnosable.
+                        // EIO / EPIPE on process exit are normal on some platforms;
+                        // any other error indicates a real PTY problem.
+                        eprintln!("[terminal {id2}] PTY read error: {e}");
+                        break;
+                    }
                 }
             }
             closed2.store(true, Ordering::Relaxed);

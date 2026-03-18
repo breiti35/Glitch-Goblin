@@ -23,6 +23,21 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
   - Plattformuebergreifend (HTTP-basiert, funktioniert auf Windows + Linux)
   - Dependency hinzugefuegt: `reqwest 0.12` mit `json` und `rustls-tls` Features
 
+### Fixed
+- **[NIEDRIG]** Dead Code entfernt: `runner.rs` (`parse_token_usage`, `calculate_cost`, `TokenUsage`) war mit `#[allow(dead_code)]` gesilenced und nie exponiert — Modul gelöscht, `mod runner` aus `main.rs` entfernt
+- **[NIEDRIG]** `TerminalCmd::Resize(u32, u32)` Parameterreihenfolge (cols, rows) dokumentiert — Code war korrekt, aber unkommentiert und damit missverständlich
+- **[NIEDRIG]** Frontend/Backend Model-ID Mismatch: HTML-Selects verwenden jetzt Full-IDs (`claude-sonnet-4-6`, `claude-opus-4-6`, `claude-haiku-4-5-20251001`) statt Shorthands; `modelToFlag()` behandelt alte Shorthand-Werte rückwärtskompatibel; alle `|| "sonnet"`-Fallbacks auf `|| "claude-sonnet-4-6"` aktualisiert
+- **[MITTEL]** PTY Read-Fehler wurde komplett ignoriert (`Err(_) => break`): Fehlertyp wird jetzt via `eprintln!` geloggt, damit unerwartete PTY-Fehler von normalem Prozess-Exit unterscheidbar sind (`terminal.rs`)
+- **[MITTEL]** Path-Traversal-Härtung in `project_data_dir()`: zusätzlich zum Char-Sanitizing werden jetzt (1) All-Dash-Namen abgelehnt und (2) nach `create_dir_all` ein Canonicalize-Check durchgeführt, der Symlink-basierte Escapes erkennt (`config.rs`)
+- **[MITTEL]** Default-Modell von unspezifischem `"sonnet"` auf konkretes `"claude-sonnet-4-6"` aktualisiert; Cost-Defaults ($3/$15) mit Kommentar versehen, dass sie Sonnet 4.6-Preisen entsprechen (`state.rs`)
+- **[HOCH]** Nicht-atomarer Board-Save: `save_board()` schreibt jetzt zuerst in `kanban.json.tmp` und benennt dann atomar um — verhindert korrupte Datei bei Absturz mitten im Write (`kanban.rs`)
+- **[HOCH]** Backup-Deletion ignorierte Fehler (`let _ = remove_file()`): Fehler werden jetzt via `?` propagiert, damit Disk-Space-Lecks dem Aufrufer gemeldet werden (`kanban.rs`)
+- **[HOCH]** Log-Panel ohne Größenlimit: `appendLog()` entfernt jetzt älteste Zeilen sobald `LOG_MAX_LINES = 500` überschritten wird — verhindert DOM-Freeze (`app.js`)
+- **[HOCH]** `activity.rs` verwendete `Vec::remove(0)` (O(n)) für Front-Removal: umgestellt auf `VecDeque::pop_front()` (O(1)) (`activity.rs`)
+- **[KRITISCH]** `validate_git_ref()` erlaubte Leerzeichen in Branch-Namen → Leerzeichen aus der Allowlist entfernt, verhindert Argument-Splitting in Git-Aufrufen (`git.rs`)
+- **[KRITISCH]** Bug-Sync Timer las Credentials vor dem optionalen Extra-Sleep, verwendete dann möglicherweise veraltete API-URL/Token → Settings werden jetzt *nach* dem Sleep neu gelesen, direkt vor dem HTTP-Request (`main.rs`)
+- **[KRITISCH]** `shellEscape()` verwendete POSIX Single-Quote-Escaping für lokale Shell-Argumente, das in Windows CMD nicht funktioniert → neue Funktion `shellEscapeLocal()` mit Double-Quote-Escaping (bash/PowerShell/CMD-kompatibel) für SSH-Key und SSH-Host; `shellEscape()` bleibt für Remote-Bash-Argumente innerhalb des SSH-Command-Strings (`app.js`)
+
 ### Security
 - **[KRITISCH]** Path Traversal in Agent/Command Editor und Backup-Restore: Namen mit `../` konnten beliebige Dateien lesen/schreiben/löschen. Fix: `validate_safe_name()` und `validate_backup_filename()` prüfen alle Eingaben
 - **[KRITISCH]** Command Injection in SSH Deploy: User-Input wurde unescaped in Shell-Befehle interpoliert. Fix: `shell_escape()` und `validate_deploy_param()` in Backend und Frontend

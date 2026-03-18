@@ -664,7 +664,7 @@ function confirmExecute(ticket) {
   document.getElementById("confirm-message").textContent =
     `Execute ticket ${ticket.id} - "${ticket.title}"?${warning}`;
   const modelSelect = document.getElementById("confirm-model-select");
-  modelSelect.value = state.settings.claude_model || "sonnet";
+  modelSelect.value = modelToFlag(state.settings.claude_model || "claude-sonnet-4-6");
   document.getElementById("btn-confirm-yes").onclick = () => {
     const selectedModel = modelSelect.value;
     closeModal("modal-confirm");
@@ -678,14 +678,16 @@ function isAutoExecuteType(type) {
 }
 
 function modelToFlag(model) {
-  const map = { opus: "claude-opus-4-6", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5" };
-  return map[model] || "claude-sonnet-4-6";
+  // Backwards-compat map for old shorthand values stored in settings before full IDs were used.
+  const compat = { sonnet: "claude-sonnet-4-6", opus: "claude-opus-4-6", haiku: "claude-haiku-4-5-20251001" };
+  // If it's a known shorthand, expand it; otherwise pass through (already a full model ID).
+  return compat[model] || model || "claude-sonnet-4-6";
 }
 
 async function executeTicket(ticketId, model) {
   const ticket = (state.board.tickets || []).find(t => t.id === ticketId);
   const ticketTitle = ticket ? ticket.title : ticketId;
-  const selectedModel = model || state.settings.claude_model || "sonnet";
+  const selectedModel = model || state.settings.claude_model || "claude-sonnet-4-6";
 
   state.runningTicket = ticketId;
   renderBoard();
@@ -779,7 +781,7 @@ async function openTicketTerminal(startResult, model) {
 
   // Start Claude Code interactively after shell is ready
   setTimeout(() => {
-    const claudeCmd = (state.settings.claude_cli_path || "claude") + " --dangerously-skip-permissions --model " + modelToFlag(model || state.settings.claude_model || "sonnet") + "\r";
+    const claudeCmd = (state.settings.claude_cli_path || "claude") + " --dangerously-skip-permissions --model " + modelToFlag(model || state.settings.claude_model || "claude-sonnet-4-6") + "\r";
     invoke("write_terminal", { terminalId, data: claudeCmd }).catch(() => {});
 
     // Send the prompt after Claude has started
@@ -854,12 +856,18 @@ async function refreshBoard() {
 }
 
 // ── Log Panel ──
+const LOG_MAX_LINES = 500;
+
 function appendLog(text, isError = false) {
   const body = document.getElementById("log-body");
   const line = document.createElement("div");
   line.className = "log-line" + (isError ? " error" : "");
   line.textContent = text;
   body.appendChild(line);
+  // Prevent unbounded DOM growth that would cause a UI freeze.
+  while (body.childElementCount > LOG_MAX_LINES) {
+    body.removeChild(body.firstElementChild);
+  }
   body.scrollTop = body.scrollHeight;
 }
 
@@ -1174,7 +1182,7 @@ function loadSettingsForm() {
   document.getElementById("set-max-backups").value = s.max_backups || 10;
   document.getElementById("max-backups-label").textContent = s.max_backups || 10;
   // Model & cost settings
-  document.getElementById("set-claude-model").value = s.claude_model || "sonnet";
+  document.getElementById("set-claude-model").value = modelToFlag(s.claude_model || "claude-sonnet-4-6");
   document.getElementById("set-cost-input").value = s.cost_per_input_mtok ?? 3;
   document.getElementById("set-cost-output").value = s.cost_per_output_mtok ?? 15;
   // Terminal settings
@@ -2452,9 +2460,9 @@ async function executeLiveDeploy() {
     }
 
     let sshCmd = "ssh";
-    if (cfg.sshKey) sshCmd += ` -i ${shellEscape(cfg.sshKey)}`;
+    if (cfg.sshKey) sshCmd += ` -i ${shellEscapeLocal(cfg.sshKey)}`;
     if (cfg.sshPort && cfg.sshPort !== 22) sshCmd += ` -p ${cfg.sshPort}`;
-    sshCmd += ` ${shellEscape(cfg.sshHost)}`;
+    sshCmd += ` ${shellEscapeLocal(cfg.sshHost)}`;
     if (cfg.serverPath || allCmds.length > 0) {
       const remoteParts = [];
       if (cfg.serverPath) remoteParts.push(`cd ${shellEscape(cfg.serverPath)}`);
@@ -2697,6 +2705,17 @@ function esc(str) {
   return div.innerHTML;
 }
 
+// Escaping for arguments passed to the LOCAL shell (bash, PowerShell, CMD).
+// Double quotes work on all three; single quotes fail in CMD.
+function shellEscapeLocal(s) {
+  if (!s) return '""';
+  if (/^[a-zA-Z0-9._\-\/~@:+]+$/.test(s)) return s;
+  return '"' + s.replace(/"/g, '\\"') + '"';
+}
+
+// Escaping for arguments inside an SSH remote-command string.
+// The remote server always runs bash/sh, so POSIX single-quote rules apply.
+// Do NOT use this for local-shell arguments (single quotes fail in CMD).
 function shellEscape(s) {
   if (!s) return "''";
   if (/^[a-zA-Z0-9._\-\/~@:+]+$/.test(s)) return s;

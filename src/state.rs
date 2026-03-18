@@ -21,9 +21,11 @@ fn default_terminal_font_size() -> u32 {
 }
 
 fn default_model() -> String {
-    "sonnet".to_string()
+    "claude-sonnet-4-6".to_string()
 }
 
+// Sonnet 4.6 pricing: $3.00 / MTok input, $15.00 / MTok output.
+// Update these in Settings if Anthropic changes pricing or a different model is used.
 fn default_cost_input() -> f64 {
     3.0
 }
@@ -102,7 +104,7 @@ impl Default for Settings {
             max_backups: 10,
             default_shell: String::new(),
             terminal_font_size: 14,
-            claude_model: "sonnet".into(),
+            claude_model: "claude-sonnet-4-6".into(),
             cost_per_input_mtok: 3.0,
             cost_per_output_mtok: 15.0,
             bug_sync: BugSyncSettings::default(),
