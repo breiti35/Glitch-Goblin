@@ -5,40 +5,56 @@ input, select, textarea { font: inherit; }
 
 /* ── Dark Theme (Default) ── */
 [data-theme="dark"] {
-  --bg:            #0F172A;
-  --sidebar-bg:    #151D2E;
-  --surface:       #1E293B;
-  --surface-hover: #253349;
-  --border:        #2D3A4F;
-  --text:          #E2E8F0;
-  --text-muted:    #8892A4;
-  --accent:        var(--user-accent, #F97316);
-  --accent-hover:  var(--user-accent-hover, #FB923C);
-  --nav-active:    rgba(249, 115, 22, 0.15);
-  --danger:        #EF4444;
-  --warning:       #EAB308;
-  --success:       #22C55E;
+  --bg:            #111111;
+  --sidebar-bg:    #1a2029;
+  --surface:       #222222;
+  --card-bg:       #2c2c2c;
+  --surface-hover: #333333;
+  --border:        #383838;
+  --text:          #ffffff;
+  --text-muted:    #bfbfbf;
+  --text-inactive: #808080;
+  --accent:        var(--user-accent, #38b5a0);
+  --accent-hover:  var(--user-accent-hover, #2da090);
+  --nav-active:    rgba(56, 181, 160, 0.15);
+  --active-blue:   #66c2cd;
+  --danger:        #e04f5e;
+  --warning:       #f4a460;
+  --success:       #44a955;
   --info:          #3B82F6;
-  --log-bg:        #0B1120;
+  --log-bg:        #0a0a0a;
+  --health-teal:   #38b5a0;
+  --health-yellow: #f4a460;
+  --prio-high-bg:  #e04f5e;
+  --prio-med-bg:   #f4a460;
+  --prio-low-bg:   #44a955;
 }
 
-/* ── Cream Light Theme ── */
+/* ── Light Theme ── */
 [data-theme="light"] {
-  --bg:            #F5F0E8;
-  --sidebar-bg:    #EDE7DB;
-  --surface:       #FFFDF7;
-  --surface-hover: #F7F2EA;
-  --border:        #D4CAB8;
-  --text:          #2D2418;
-  --text-muted:    #7A6E5D;
-  --accent:        var(--user-accent, #E8690A);
-  --accent-hover:  var(--user-accent-hover, #D45A00);
-  --nav-active:    rgba(232, 105, 10, 0.12);
-  --danger:        #DC2626;
-  --warning:       #CA8A04;
-  --success:       #16A34A;
-  --info:          #2563EB;
-  --log-bg:        #E8E2D6;
+  --bg:            #fdf6e3;
+  --sidebar-bg:    #e8e2d0;
+  --surface:       #eee8d5;
+  --card-bg:       #f5f0e0;
+  --surface-hover: #e0dac8;
+  --border:        #cdc7b4;
+  --text:          #3a3228;
+  --text-muted:    #7a7060;
+  --text-inactive: #a09888;
+  --accent:        var(--user-accent, #2aa198);
+  --accent-hover:  var(--user-accent-hover, #238a82);
+  --nav-active:    rgba(42, 161, 152, 0.13);
+  --active-blue:   #268bd2;
+  --danger:        #dc322f;
+  --warning:       #b58900;
+  --success:       #859900;
+  --info:          #268bd2;
+  --log-bg:        #e0dac8;
+  --health-teal:   #2aa198;
+  --health-yellow: #b58900;
+  --prio-high-bg:  #dc322f;
+  --prio-med-bg:   #b58900;
+  --prio-low-bg:   #859900;
 }
 
 /* ── Smooth Transitions ── */
@@ -55,18 +71,22 @@ body {
   line-height: 1.5;
   overflow: hidden;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 #app {
   display: flex;
-  height: 100vh;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ── Sidebar ── */
 #sidebar {
   width: 220px;
   min-width: 220px;
-  height: 100vh;
+  height: 100%;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
   display: flex;
@@ -380,10 +400,11 @@ body {
 
 /* ── Ticket Cards ── */
 .ticket-card {
-  background: var(--bg);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
+  padding-bottom: 16px;
   margin-bottom: 8px;
   cursor: grab;
   transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, opacity 0.2s;
@@ -460,15 +481,15 @@ body {
 .badge-security { background: #EF4444; color: #FFF; }
 .badge-docs    { background: #EC4899; color: #FFF; }
 
-[data-theme="light"] .badge-feature { background: #2563EB; color: #FFF; }
-[data-theme="light"] .badge-bugfix  { background: #CA8A04; color: #FFF; }
-[data-theme="light"] .badge-security { background: #DC2626; color: #FFF; }
-[data-theme="light"] .badge-docs    { background: #DB2777; color: #FFF; }
+[data-theme="light"] .badge-feature  { background: #d4e8f5; color: #1a5282; }
+[data-theme="light"] .badge-bugfix   { background: #f0e0a8; color: #5a3800; }
+[data-theme="light"] .badge-security { background: #f5d0cc; color: #7a1a18; }
+[data-theme="light"] .badge-docs     { background: #eed0e8; color: #68184e; }
 
 /* Prio badges */
-.badge-high   { background: var(--danger); color: #FFF; }
-.badge-medium { background: transparent; color: var(--warning); border: 1px solid var(--warning); }
-.badge-low    { background: transparent; color: var(--success); border: 1px solid var(--success); opacity: 0.7; }
+.badge-high   { background: var(--prio-high-bg); color: #fff; }
+.badge-medium { background: var(--prio-med-bg);  color: #fff; }
+.badge-low    { background: var(--prio-low-bg);  color: #fff; }
 
 /* ── Progress Bar (Block B1) ── */
 .card-progress {
@@ -1655,6 +1676,16 @@ kbd {
   border-radius: 4px;
   font-size: 12px;
   background: var(--surface);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  border: 1px solid transparent;
+}
+.git-commit-item:hover {
+  background: var(--surface-hover);
+}
+.git-commit-item.active {
+  border-color: var(--accent);
+  background: var(--nav-active);
 }
 
 .git-commit-item .commit-hash {
@@ -1734,6 +1765,7 @@ kbd {
   padding-top: 12px;
   margin-top: 8px;
 }
+.git-diff-content.hidden { display: none; }
 
 .git-diff-content-header {
   display: flex;
@@ -2234,3 +2266,94 @@ kbd {
   text-decoration: underline;
 }
 .portal-link:hover { color: var(--accent-hover); }
+
+/* ── App Header ── */
+.app-header {
+  height: 60px;
+  min-height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  z-index: 50;
+}
+.app-header-left   { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.app-logo          { font-size: 22px; color: var(--accent); }
+.app-name          { font-weight: 700; font-size: 16px; white-space: nowrap; }
+.app-header-center { flex: 1; max-width: 480px; }
+.global-search     { display: flex; align-items: center; gap: 8px;
+                     background: var(--bg); border: 1px solid var(--border);
+                     border-radius: 8px; padding: 6px 12px; }
+.global-search input { border: none; background: none; color: var(--text);
+                        outline: none; width: 100%; font-size: 13px; }
+.search-icon       { color: var(--text-inactive); font-size: 14px; }
+.app-header-right  { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.header-user       { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.header-avatar     { width: 36px; height: 36px; border-radius: 50%;
+                     background: var(--accent); color: #fff;
+                     display: flex; align-items: center; justify-content: center;
+                     font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.header-username   { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.header-status     { font-size: 11px; color: var(--success); }
+.header-notif-btn  { position: relative; width: 36px; height: 36px;
+                     display: flex; align-items: center; justify-content: center;
+                     border-radius: 8px; font-size: 16px; color: var(--text-muted); }
+.header-notif-btn:hover { background: var(--surface-hover); }
+.header-notif-badge { position: absolute; top: 2px; right: 2px;
+                      background: var(--danger); color: #fff;
+                      border-radius: 10px; font-size: 9px; font-weight: 700;
+                      padding: 1px 5px; min-width: 16px; text-align: center; }
+.header-notif-badge.hidden { display: none; }
+.btn-create-project { background: var(--accent); color: #fff;
+                       padding: 8px 16px; border-radius: 8px;
+                       font-weight: 600; font-size: 13px; white-space: nowrap; }
+.btn-create-project:hover { background: var(--accent-hover); }
+
+/* ── Board Header Health Bar ── */
+.board-header-meta    { display: flex; align-items: center; gap: 16px; flex: 1;
+                         justify-content: flex-end; }
+.health-bar-wrap      { display: flex; align-items: center; gap: 8px; }
+.health-label         { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.health-bar-track     { width: 160px; height: 8px; border-radius: 4px;
+                         overflow: hidden; display: flex; background: var(--border); }
+.health-seg           { height: 100%; transition: width 0.4s; }
+.health-seg-teal      { background: var(--health-teal); }
+.health-seg-yellow    { background: var(--health-yellow); }
+.health-seg-empty     { background: var(--border); }
+
+/* ── Column Icons ── */
+.col-icon         { font-size: 14px; margin-right: 6px; }
+.col-icon-backlog { color: #e04f5e; }
+.col-icon-progress{ color: #44a955; }
+.col-icon-review  { color: #f4a460; }
+.col-icon-done    { color: #808080; }
+.column-title-row { display: flex; align-items: center; }
+
+/* ── System Status Bar ── */
+.system-status-bar { display: flex; align-items: center; justify-content: flex-end;
+                      gap: 6px; padding: 4px 12px;
+                      background: var(--surface); border-top: 1px solid var(--border);
+                      font-size: 11px; color: var(--text-muted); }
+.sys-dot           { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+
+/* ── New Card Layout ── */
+.card-header-row  { display: flex; justify-content: space-between; align-items: flex-start;
+                    margin-bottom: 6px; }
+.card-type-icon   { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 13px; }
+.card-info-row    { display: flex; align-items: center; justify-content: space-between;
+                    margin-top: 8px; }
+.card-date        { font-size: 11px; color: var(--text-muted); }
+.card-action-row  { margin-top: 6px; }
+.card-bottom-bar  { position: absolute; bottom: 0; left: 0; right: 0;
+                    height: 3px; background: var(--border); }
+.card-progress-fill { height: 100%; background: var(--accent);
+                      border-radius: 0 2px 2px 0; transition: width 0.4s; }
+[data-column="done"] .card-progress-fill { background: var(--success); }
+
+/* ── Hide old sidebar header elements ── */
+.sidebar-header .app-title,
+.sidebar-header #btn-app-settings { display: none; }

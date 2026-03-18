@@ -360,6 +360,81 @@ pub async fn get_file_diff(
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+pub async fn get_commit_diff(
+    project_path: &Path,
+    commit_hash: &str,
+) -> Result<DiffInfo, String> {
+    validate_git_ref(commit_hash)?;
+
+    let output = Command::new("git")
+        .args(["show", "--numstat", "--format=", commit_hash])
+        .current_dir(project_path)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("show: {e}")))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut files = Vec::new();
+    let mut total_add = 0u32;
+    let mut total_del = 0u32;
+
+    for line in stdout.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() < 3 {
+            continue;
+        }
+        let additions = parts[0].parse::<u32>().unwrap_or(0);
+        let deletions = parts[1].parse::<u32>().unwrap_or(0);
+        let file_path = parts[2].to_string();
+
+        let status = if additions > 0 && deletions > 0 {
+            "M"
+        } else if additions > 0 {
+            "A"
+        } else {
+            "D"
+        }
+        .to_string();
+
+        total_add += additions;
+        total_del += deletions;
+
+        files.push(DiffStat {
+            file_path,
+            additions,
+            deletions,
+            status,
+        });
+    }
+
+    Ok(DiffInfo {
+        files,
+        total_additions: total_add,
+        total_deletions: total_del,
+    })
+}
+
+pub async fn get_commit_file_diff(
+    project_path: &Path,
+    commit_hash: &str,
+    file: &str,
+) -> Result<String, String> {
+    validate_git_ref(commit_hash)?;
+
+    let output = Command::new("git")
+        .args(["show", commit_hash, "--", file])
+        .current_dir(project_path)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("show: {e}")))?;
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
 pub async fn delete_branch(
     project_path: &Path,
     branch: &str,

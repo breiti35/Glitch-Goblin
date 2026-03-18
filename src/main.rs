@@ -222,6 +222,8 @@ fn main() {
             commands::list_branches,
             commands::get_branch_diff,
             commands::get_file_diff,
+            commands::get_commit_diff,
+            commands::get_commit_file_diff,
             commands::delete_branch_cmd,
             commands::get_commit_log,
             // Activity & Comments (Block C - Phase 3)
