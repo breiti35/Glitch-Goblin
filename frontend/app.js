@@ -1680,12 +1680,16 @@ async function loadDashboard() {
     // Recent commits
     document.getElementById("dash-commits-body").innerHTML =
       info.recentCommits.length > 0
-        ? info.recentCommits.map(c => `
-            <div class="dash-commit-item">
+        ? info.recentCommits.map(c => {
+            const isMerge = c.message.startsWith("Merge ");
+            return `
+            <div class="dash-commit-item${isMerge ? " merge-commit" : ""}">
               <span class="hash">${esc(c.hash)}</span>
+              ${isMerge ? '<span class="commit-badge merge">M</span>' : ""}
               <span class="msg">${esc(c.message)}</span>
               <span class="date">${timeAgo(c.date)}</span>
-            </div>`).join("")
+            </div>`;
+          }).join("")
         : '<span style="color:var(--muted)">No commits</span>';
 
     // Recent activity
@@ -2000,13 +2004,17 @@ async function selectGitBranch(branch) {
   if (commits.length === 0) {
     commitsEl.innerHTML = '<p class="empty-state" style="font-size:12px">No commits</p>';
   } else {
-    commitsEl.innerHTML = commits.map(c => `
-      <div class="git-commit-item" data-commit="${esc(c.hash)}" style="cursor:pointer">
+    commitsEl.innerHTML = commits.map(c => {
+      const isMerge = c.message.startsWith("Merge ");
+      return `
+      <div class="git-commit-item${isMerge ? " merge-commit" : ""}" data-commit="${esc(c.hash)}" style="cursor:pointer">
         <span class="commit-hash">${esc(c.hash)}</span>
+        ${isMerge ? '<span class="commit-badge merge">M</span>' : ""}
         <span class="commit-msg">${esc(c.message)}</span>
+        <span class="commit-author">${esc(c.author)}</span>
         <span class="commit-date">${timeAgo(c.date)}</span>
-      </div>
-    `).join("");
+      </div>`;
+    }).join("");
 
     commitsEl.querySelectorAll(".git-commit-item").forEach(el => {
       el.addEventListener("click", () => showCommitDiff(el.dataset.commit));
@@ -2882,13 +2890,26 @@ function validateDeployParam(name, value) {
 function timeAgo(dateStr) {
   try {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "";
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
 
-    if (diff < 60) return "just now";
-    if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-    if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-    return Math.floor(diff / 86400) + "d ago";
+    if (diff < 0) return "gerade eben";
+    if (diff < 60) return "gerade eben";
+    if (diff < 3600) {
+      const m = Math.floor(diff / 60);
+      return `vor ${m} Min.`;
+    }
+    if (diff < 86400) {
+      const h = Math.floor(diff / 3600);
+      return `vor ${h} Std.`;
+    }
+    const d = Math.floor(diff / 86400);
+    if (d === 1) return "vor 1 Tag";
+    if (d < 30) return `vor ${d} Tagen`;
+    const months = Math.floor(d / 30);
+    if (months === 1) return "vor 1 Monat";
+    return `vor ${months} Monaten`;
   } catch {
     return "";
   }

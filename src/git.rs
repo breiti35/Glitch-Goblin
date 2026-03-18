@@ -367,7 +367,7 @@ pub async fn get_commit_diff(
     validate_git_ref(commit_hash)?;
 
     let output = Command::new("git")
-        .args(["show", "--numstat", "--format=", commit_hash])
+        .args(["show", "-m", "--first-parent", "--numstat", "--format=", commit_hash])
         .current_dir(project_path)
         .output()
         .await
@@ -467,7 +467,7 @@ pub async fn get_commit_log(
         .args([
             "log",
             branch,
-            "--format=%H|%s|%an|%ci",
+            "--format=%H|%s|%an|%cI",
             "-n",
             &limit.to_string(),
         ])

@@ -29,7 +29,12 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
   - `on_window_event(Destroyed)` am Hauptfenster als primärer Cleanup-Pfad
   - Verhindert Zombie-Shell-Prozesse nach App-Exit
 
+### Changed
+- **[MITTEL]** [UI] Git-Historie: Commit-Darstellung verbessert — Merge-Commits werden mit Badge gekennzeichnet, Author-Info wird angezeigt, deutsche relative Zeitangaben ("vor 2 Std.", "vor 3 Tagen") statt englischer Defaults (`app.js`, KANBAN-015)
+
 ### Fixed
+- **[MITTEL]** [UI] Git-Historie zeigte "NaNd ago" statt lesbarer Zeitangaben — Ursache: `git log --format=%ci` lieferte Datumsformat, das von JavaScript `new Date()` nicht zuverlässig geparst wurde. Fix: Umstellung auf ISO 8601 strict (`%cI`), das von allen JS-Engines korrekt geparst wird (`app.js`, KANBAN-015)
+- **[MITTEL]** [UI] Merge-Commits zeigten "No changes" in der Datei-Ansicht — `git show` ohne Merge-spezifische Flags liefert bei Merge-Commits keinen Diff. Fix: `-m --first-parent` Flags hinzugefügt, sodass der Diff gegen den ersten Parent angezeigt wird (`app.js`, KANBAN-015)
 - **[MITTEL]** [UI] Terminal startet korrekt, wechselt aber in Schwarz-Weiß: Hardcodierte xterm.js-Theme-Optionen (`background`, `foreground`, `cursor`) aus allen drei `new Terminal()`-Aufrufen in `openTicketTerminal()`, `openBoardTerminal()` und `openDeployTerminal()` entfernt. xterm.js nutzt jetzt seine eingebaute ANSI-Farbpalette, sodass Programmfarben (ANSI Escape Codes) nicht mehr überschrieben werden. Nicht mehr benötigte Funktionen `getTerminalTheme()` und `applyTerminalTheme()` sowie deren Aufrufstellen entfernt. Tote CSS-Variablen `--terminal-fg` und `--terminal-cursor` aus `style.css` entfernt (`app.js`, `style.css`, KANBAN-014)
 - **[MITTEL]** [UI] Terminal-Theme: xterm.js verwendete hardcodierte Dunkel-Farben und blieb im Light Mode schwarz. Terminal-Theme-Farben werden jetzt dynamisch aus CSS-Variablen (`--terminal-bg`, `--terminal-fg`, `--terminal-cursor`) gelesen; alle aktiven Terminal-Instanzen werden beim Theme-Wechsel live aktualisiert (`app.js`, KANBAN-013)
 - **[HOCH]** `restore_backup` schrieb das wiederhergestellte Board nur in JSON, nicht in SQLite — bei aktiver DB-Verbindung hatte die Wiederherstellung daher keinen Effekt. Fix: `kanban::save_board()` durch `s.save_and_backup()` ersetzt, das je nach Runtime-Kontext SQLite und/oder JSON beschreibt (`src/commands.rs`, KANBAN-010)
@@ -81,7 +86,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **[HOCH]** Nicht-atomarer Board-Save: `save_board()` schreibt jetzt zuerst in `kanban.json.tmp` und benennt dann atomar um — verhindert korrupte Datei bei Absturz mitten im Write (`kanban.rs`)
 - **[HOCH]** Backup-Deletion ignorierte Fehler (`let _ = remove_file()`): Fehler werden jetzt via `?` propagiert, damit Disk-Space-Lecks dem Aufrufer gemeldet werden (`kanban.rs`)
 - **[HOCH]** Log-Panel ohne Größenlimit: `appendLog()` entfernt jetzt älteste Zeilen sobald `LOG_MAX_LINES = 500` überschritten wird — verhindert DOM-Freeze (`app.js`)
-- **[HOCH]** `activity.rs` verwendete `Vec::remove(0)` (O(n)) für Front-Removal: umgestellt auf `VecDeque::pop_front()` (O(1)) (`activity.rs`)
+- **[HOCH]** `activity.rs` verwendete `Vec::Remove(0)` (O(n)) für Front-Removal: umgestellt auf `VecDeque::pop_front()` (O(1)) (`activity.rs`)
 - **[KRITISCH]** `validate_git_ref()` erlaubte Leerzeichen in Branch-Namen → Leerzeichen aus der Allowlist entfernt, verhindert Argument-Splitting in Git-Aufrufen (`git.rs`)
 - **[KRITISCH]** Bug-Sync Timer las Credentials vor dem optionalen Extra-Sleep, verwendete dann möglicherweise veraltete API-URL/Token → Settings werden jetzt *nach* dem Sleep neu gelesen, direkt vor dem HTTP-Request (`main.rs`)
 - **[KRITISCH]** `shellEscape()` verwendete POSIX Single-Quote-Escaping für lokale Shell-Argumente, das in Windows CMD nicht funktioniert → neue Funktion `shellEscapeLocal()` mit Double-Quote-Escaping (bash/PowerShell/CMD-kompatibel) für SSH-Key und SSH-Host; `shellEscape()` bleibt für Remote-Bash-Argumente innerhalb des SSH-Command-Strings (`app.js`)
