@@ -1219,7 +1219,8 @@ pub async fn create_ticket_from_template(
         .find(|t| t.name == template_name)
         .ok_or_else(|| format!("Template '{}' not found", template_name))?;
 
-    let next_num = s.board.tickets.len() + 1;
+    let next_num = s.board.next_ticket_id;
+    s.board.next_ticket_id += 1;
     let id = format!("KANBAN-{:03}", next_num);
     let full_title = format!("{}{}", tpl.title_prefix, title);
     let slug = kanban::slugify(&full_title);
@@ -1371,7 +1372,7 @@ pub async fn import_tickets(
             if record.len() < 3 {
                 continue;
             }
-            let next_num = s.board.tickets.len() + new_tickets.len() + 1;
+            let next_num = s.board.next_ticket_id.saturating_add(new_tickets.len() as u32);
             let id = format!("KANBAN-{:03}", next_num);
             let title = record.get(1).unwrap_or("").to_string();
             let ticket_type = match record.get(2).unwrap_or("feature") {
@@ -1402,6 +1403,7 @@ pub async fn import_tickets(
                 portal_bug_url: None,
             });
         }
+        s.board.next_ticket_id = s.board.next_ticket_id.saturating_add(new_tickets.len() as u32);
         s.board.tickets.extend(new_tickets);
     } else {
         // JSON import
@@ -1413,7 +1415,8 @@ pub async fn import_tickets(
         } else {
             // Append to backlog
             for mut t in imported.tickets {
-                let next_num = s.board.tickets.len() + 1;
+                let next_num = s.board.next_ticket_id;
+                s.board.next_ticket_id += 1;
                 t.id = format!("KANBAN-{:03}", next_num);
                 t.column = Column::Backlog;
                 t.branch = None;

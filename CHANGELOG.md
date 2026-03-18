@@ -35,6 +35,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **[MITTEL]** Frontend: `loadDeployConfig()` catch verwendete `console.error` statt `appendLog` (`app.js`)
 - **[MITTEL]** `activity::log_activity` Aufrufe zentralisiert in `AppState::log_activity()` — routet automatisch zu SQLite oder JSON-Fallback je nach verfügbarer DB-Verbindung
 - **[NIEDRIG]** `AppState::log_activity()` wird nicht mehr aufgerufen wenn kein Projekt aktiv ist (vorher: silent no-op)
+- **[HOCH]** Ticket-ID-Vergabe in `create_ticket_from_template` und `import_tickets` nutzt jetzt monoton steigenden `next_ticket_id`-Zähler statt `tickets.len() + 1`, um Duplikat-IDs nach Löschungen zu vermeiden
 
 ### Security
 - **[HOCH]** API-Token im Klartext in `settings.json`: Token wird jetzt mit ChaCha20-Poly1305 verschlüsselt gespeichert, maschinengebunden via `/etc/machine-id`
