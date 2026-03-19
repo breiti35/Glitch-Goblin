@@ -115,6 +115,8 @@ function createTerminalInstance(terminalId, name, containerId, tabsId) {
     cursorBlink: true,
     fontSize: state.settings.terminal_font_size || 14,
     fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
+    scrollback: 10000,
+    scrollOnOutput: true,
   });
   const fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);

@@ -1661,6 +1661,18 @@ kbd {
 .board-terminal-body .terminal-instance {
   flex: 1;
   padding: 4px;
+  min-height: 0;
+}
+
+/* Ensure xterm fills its container */
+.terminal-instance .xterm {
+  height: 100%;
+}
+.terminal-instance .xterm-viewport {
+  overflow-y: auto !important;
+}
+.terminal-instance .xterm-screen {
+  height: 100%;
 }
 
 .board-terminal-body .terminal-empty-state {
@@ -3219,6 +3231,7 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 .focus-terminal .terminal-instance {
   flex: 1;
   display: block !important;
+  min-height: 0;
 }
 
 /* ── Column Add Button ── */
