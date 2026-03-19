@@ -3,7 +3,7 @@ import { invoke, Channel } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 // ── Modules ──
-import { debounce, esc } from './utils.js';
+import { debounce, esc, withGuard } from './utils.js';
 import { installErrorHandler } from './error-handler.js';
 import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
@@ -411,7 +411,7 @@ export function modelToFlag(model) {
   return compat[model] || model || "claude-sonnet-4-6";
 }
 
-async function executeTicket(ticketId, model) {
+const executeTicket = withGuard(async function(ticketId, model) {
   const ticket = (state.board.tickets || []).find(t => t.id === ticketId);
   const ticketTitle = ticket ? ticket.title : ticketId;
   const selectedModel = model || state.settings.claude_model || "claude-sonnet-4-6";
@@ -423,15 +423,24 @@ async function executeTicket(ticketId, model) {
     appendLog(`Starting ${ticketId} - ${ticketTitle}...`);
     const result = await invoke("start_ticket", { ticketId, model: selectedModel });
     appendLog(`Branch: ${result.branch}`);
-    await openTicketTerminal(result, selectedModel);
+    try {
+      await openTicketTerminal(result, selectedModel);
+    } catch (termErr) {
+      // Terminal failed but ticket already started on branch — keep running state
+      // but warn user so they can recover
+      appendLog("Terminal error: " + termErr, true);
+      showToast("Terminal konnte nicht gestartet werden", "error");
+    }
   } catch (err) {
     state.runningTicket = null;
+    // Sync backend state — running_ticket may need clearing
+    invoke("get_running_ticket").then(rt => { state.runningTicket = rt; }).catch(() => {});
     appendLog("Start error: " + err, true);
     notifyDesktop("Fehler", `${ticketTitle} fehlgeschlagen`);
     playSound("error");
     refreshBoard();
   }
-}
+});
 
 export async function finishTicket(ticketId) {
   // Open review modal instead of immediately finishing
@@ -494,8 +503,11 @@ async function openReviewModal(ticketId) {
     fileList.innerHTML = `<p class="empty-state">Error: ${esc(String(e))}</p>`;
   }
 
-  // Confirm button
-  document.getElementById("btn-review-confirm").onclick = async () => {
+  // Confirm button (guarded against double-click)
+  const confirmBtn = document.getElementById("btn-review-confirm");
+  confirmBtn.onclick = async () => {
+    if (confirmBtn.disabled) return;
+    confirmBtn.disabled = true;
     closeModal("modal-review");
     try {
       appendLog(`Finishing ${ticketId}...`);
@@ -508,6 +520,8 @@ async function openReviewModal(ticketId) {
       refreshBoard();
     } catch (err) {
       appendLog("Finish error: " + err, true);
+    } finally {
+      confirmBtn.disabled = false;
     }
   };
 
@@ -530,7 +544,7 @@ function renderDiffLines(diff) {
   }).join("\n");
 }
 
-export async function mergeTicket(ticketId) {
+export const mergeTicket = withGuard(async function(ticketId) {
   if (!confirm(`Ticket ${ticketId} mergen?\nDer Branch wird in den Hauptbranch gemergt.`)) return;
   try {
     appendLog(`Merging ${ticketId}...`);
@@ -541,7 +555,7 @@ export async function mergeTicket(ticketId) {
   } catch (err) {
     appendLog("Merge error: " + err, true);
   }
-}
+});
 
 // ── Notifications ──
 function notifyDesktop(title, body) {

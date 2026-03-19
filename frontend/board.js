@@ -17,7 +17,19 @@ const EMPTY_STATES = {
   done: "Noch keine Aufgaben erledigt",
 };
 
+let renderBoardPending = false;
+
 export function renderBoard() {
+  // Coalesce rapid consecutive calls via requestAnimationFrame
+  if (renderBoardPending) return;
+  renderBoardPending = true;
+  requestAnimationFrame(() => {
+    renderBoardPending = false;
+    renderBoardImpl();
+  });
+}
+
+function renderBoardImpl() {
   const columns = ["backlog", "progress", "review", "done"];
   const tickets = state.board.tickets || [];
 
@@ -445,36 +457,46 @@ export function clearFilters() {
   applyFilters();
 }
 
-// ── Drag & Drop ──
+// ── Drag & Drop (Event Delegation — listeners registered once) ──
+
+let dragDropInitialized = false;
 
 export function setupDragDrop() {
-  document.querySelectorAll(".ticket-card").forEach(card => {
-    card.addEventListener("dragstart", (e) => {
-      e.dataTransfer.setData("text/plain", card.dataset.ticketId);
-      card.classList.add("dragging");
+  if (dragDropInitialized) return;
+  dragDropInitialized = true;
 
-      // Ghost preview: semi-transparent clone
-      const ghost = card.cloneNode(true);
-      ghost.classList.add("drag-ghost");
-      ghost.style.position = "absolute";
-      ghost.style.top = "-9999px";
-      document.body.appendChild(ghost);
-      e.dataTransfer.setDragImage(ghost, 20, 20);
-      requestAnimationFrame(() => ghost.remove());
-    });
-    card.addEventListener("dragend", () => {
-      card.classList.remove("dragging");
-      document.querySelectorAll(".column").forEach(c => c.classList.remove("drag-over"));
-      document.querySelectorAll(".drop-indicator").forEach(ind => ind.remove());
-    });
+  const board = document.getElementById("board");
+  if (!board) return;
+
+  // Delegated dragstart/dragend on board container
+  board.addEventListener("dragstart", (e) => {
+    const card = e.target.closest(".ticket-card");
+    if (!card) return;
+    e.dataTransfer.setData("text/plain", card.dataset.ticketId);
+    card.classList.add("dragging");
+
+    const ghost = card.cloneNode(true);
+    ghost.classList.add("drag-ghost");
+    ghost.style.position = "absolute";
+    ghost.style.top = "-9999px";
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 20, 20);
+    requestAnimationFrame(() => ghost.remove());
   });
 
+  board.addEventListener("dragend", (e) => {
+    const card = e.target.closest(".ticket-card");
+    if (card) card.classList.remove("dragging");
+    document.querySelectorAll(".column").forEach(c => c.classList.remove("drag-over"));
+    document.querySelectorAll(".drop-indicator").forEach(ind => ind.remove());
+  });
+
+  // Column-body listeners (registered once)
   document.querySelectorAll(".column-body").forEach(body => {
     body.addEventListener("dragover", (e) => {
       e.preventDefault();
       body.closest(".column").classList.add("drag-over");
 
-      // Drop position indicator
       const afterElement = getDragAfterElement(body, e.clientY);
       let indicator = body.querySelector(".drop-indicator");
       if (!indicator) {

@@ -24,6 +24,10 @@ export async function loadShellOptions(selectId, selectedValue) {
 export function cleanupTerminal(terminalId) {
   const inst = state.terminals[terminalId];
   if (inst) {
+    // Clear any pending intervals/timeouts from ticket terminal
+    if (inst._checkInterval) clearInterval(inst._checkInterval);
+    if (inst._fallbackTimeout) clearTimeout(inst._fallbackTimeout);
+    inst.onOutput = null;
     inst.term.dispose();
     if (inst.tabEl) inst.tabEl.remove();
     inst.containerEl.remove();
@@ -227,6 +231,8 @@ export async function openTicketTerminal(startResult, model) {
 
     // Poll: once output settles (2s silence after first output), send prompt
     const checkInterval = setInterval(() => {
+      // Stop if terminal was cleaned up
+      if (!state.terminals[terminalId]) { clearInterval(checkInterval); return; }
       if (promptSent) { clearInterval(checkInterval); return; }
       if (outputReceived && Date.now() - lastOutputTime > 2000) {
         promptSent = true;
@@ -237,8 +243,11 @@ export async function openTicketTerminal(startResult, model) {
       }
     }, 500);
 
+    // Store interval handle for cleanup
+    inst._checkInterval = checkInterval;
+
     // Fallback: send after 20s regardless
-    setTimeout(() => {
+    const fallbackTimeout = setTimeout(() => {
       if (!promptSent) {
         promptSent = true;
         inst.onOutput = null;
@@ -247,6 +256,9 @@ export async function openTicketTerminal(startResult, model) {
         invoke("write_terminal", { terminalId, data: prompt }).catch(e => console.warn("terminal: write", e));
       }
     }, 20000);
+
+    // Store timeout handle for cleanup
+    inst._fallbackTimeout = fallbackTimeout;
   }, 1500);
 }
 

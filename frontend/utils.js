@@ -92,6 +92,20 @@ export function debounce(fn, ms) {
   };
 }
 
+// Wraps an async function to prevent concurrent execution (double-click guard).
+export function withGuard(fn) {
+  let running = false;
+  return async (...args) => {
+    if (running) return;
+    running = true;
+    try {
+      await fn(...args);
+    } finally {
+      running = false;
+    }
+  };
+}
+
 export function logError(context, error) {
   const msg = `[${context}] ${error?.message || error}`;
   console.error(msg, error);

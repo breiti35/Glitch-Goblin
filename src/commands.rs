@@ -91,12 +91,20 @@ pub async fn switch_project(
         .cloned()
         .ok_or_else(|| AppError::ProjectNotFound(name.clone()))?;
 
+    // Validate project path still exists
+    if !project.path.exists() {
+        return Err(format!(
+            "Projekt-Pfad existiert nicht mehr: {}",
+            project.path.display()
+        ));
+    }
+
     let data_dir = config::project_data_dir(&project.name)?;
     // Migrate old runtime data from .claude/ if needed
     let _ = config::migrate_project_data(&project.path, &data_dir);
 
     // Open SQLite DB + run JSON migration if needed
-    let new_conn = crate::db::open(&data_dir).ok();
+    let new_conn = crate::db::open(&data_dir).map_err(|e| eprintln!("[db] open error: {e}")).ok();
     if let Some(ref conn) = new_conn {
         let _ = crate::db::migrate_from_json(conn, &data_dir);
     }
@@ -105,7 +113,7 @@ pub async fn switch_project(
     let kanban_path = data_dir.join("kanban.json");
     let board = new_conn
         .as_ref()
-        .and_then(|c| crate::db::load_board(c).ok())
+        .and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
         .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(kanban::KanbanBoard {
             project_name: String::new(),
             tickets: Vec::new(),
@@ -303,6 +311,16 @@ pub async fn start_ticket(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<StartTicketResult, String> {
+    // Check git is available
+    if tokio::process::Command::new("git")
+        .arg("--version")
+        .output()
+        .await
+        .is_err()
+    {
+        return Err("Git ist nicht installiert oder nicht im PATH".to_string());
+    }
+
     // Phase 1: Lock briefly to update state
     let (ticket, project_path, kanban_path) = {
         let mut s = state.lock().await;
@@ -345,7 +363,7 @@ pub async fn start_ticket(
     // Notify frontend of board change (re-read current state from DB or file)
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).ok())
+        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
             .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
                 project_name: String::new(),
                 tickets: Vec::new(),
@@ -387,7 +405,21 @@ pub async fn finish_ticket(
 
     // Auto-commit changes on the ticket branch
     let commit_msg = format!("{} {} - {}", commit_prefix, ticket.id, ticket.title);
-    let _ = git::auto_commit(&project_path, &commit_msg).await;
+    match git::auto_commit(&project_path, &commit_msg).await {
+        Ok(committed) => {
+            if !committed {
+                // No changes to commit — still proceed (user may have committed manually)
+                eprintln!("[finish_ticket] No changes to commit for {}", ticket_id);
+            }
+        }
+        Err(e) => {
+            // Commit failed — abort finish so user can fix the issue
+            return Err(format!(
+                "Auto-Commit fehlgeschlagen: {}. Ticket bleibt in Progress.",
+                e
+            ));
+        }
+    }
 
     // Return to main branch
     git::checkout_main(&project_path).await?;
@@ -409,7 +441,7 @@ pub async fn finish_ticket(
     // Notify frontend
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).ok())
+        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
             .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
                 project_name: String::new(),
                 tickets: Vec::new(),
@@ -462,7 +494,7 @@ pub async fn merge_ticket(
 
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).ok())
+        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
             .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
                 project_name: String::new(),
                 tickets: Vec::new(),
