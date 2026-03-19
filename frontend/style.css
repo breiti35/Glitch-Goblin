@@ -3026,6 +3026,30 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 .model-hint-sonnet { color: var(--success); }
 .model-hint-default { color: var(--muted); }
 
+/* ── Recovery Dialog ── */
+.recovery-status {
+  font-size: 13px;
+}
+.recovery-info {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.recovery-info.recovery-warn {
+  border-color: var(--warning);
+  background: rgba(234, 179, 8, 0.08);
+}
+.recovery-info.recovery-ok {
+  border-color: var(--success);
+  background: rgba(68, 169, 85, 0.08);
+}
+.recovery-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* ── Notification Center ── */
 .notif-wrapper { position: relative; }
 

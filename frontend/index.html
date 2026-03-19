@@ -784,6 +784,23 @@
       </div>
     </div>
 
+    <!-- Modal: Recovery after crash -->
+    <div id="modal-recovery" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>&#9888; Unterbrochenes Ticket</h2>
+        </div>
+        <p id="recovery-message" style="margin-bottom:12px"></p>
+        <div id="recovery-status" class="recovery-status" style="margin-bottom:16px"></div>
+        <div class="recovery-actions">
+          <button id="btn-recovery-continue" class="btn-primary">&#9654; Weiterarbeiten</button>
+          <button id="btn-recovery-finish" class="btn-secondary">&#10004; Abschlie&szlig;en</button>
+          <button id="btn-recovery-reset" class="btn-secondary">&#8634; Zur&uuml;ck ins Backlog</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Review before commit -->
     <div id="modal-review" class="modal hidden">
       <div class="modal-backdrop"></div>
