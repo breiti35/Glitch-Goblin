@@ -128,32 +128,39 @@
     <main id="main-content">
       <!-- View: Dashboard (Phase 3 - Block D) -->
       <section id="view-dashboard" class="view">
-        <div class="view-header"><h1 id="dashboard-project-name">Dashboard</h1></div>
+        <div class="view-header">
+          <h1 id="dashboard-project-name">Dashboard</h1>
+          <button id="dash-goto-board" class="btn-secondary" style="font-size:12px">Zum Board &rarr;</button>
+        </div>
         <!-- Action Cards -->
         <div class="dash-actions" id="dash-actions"></div>
 
-        <div class="dashboard-grid">
-          <div class="dash-card" id="dash-tech-stack">
-            <div class="dash-card-title">Tech Stack</div>
-            <div class="dash-card-body" id="dash-tech-badges"></div>
+        <div class="dash-layout">
+          <!-- Left: Stats + Tech -->
+          <div class="dash-col-left">
+            <div class="dash-card dash-card-compact">
+              <div class="dash-card-title">Projekt</div>
+              <div class="dash-card-body">
+                <div id="dash-tech-badges" style="margin-bottom:8px"></div>
+                <div id="dash-stats-body"></div>
+              </div>
+            </div>
+            <div class="dash-card dash-card-compact">
+              <div class="dash-card-title">README</div>
+              <div class="dash-card-body dash-readme-content" id="dash-readme-body"></div>
+            </div>
           </div>
-          <div class="dash-card" id="dash-quick-stats">
-            <div class="dash-card-title">Quick Stats</div>
-            <div class="dash-card-body" id="dash-stats-body"></div>
+          <!-- Right: Commits + Activity -->
+          <div class="dash-col-right">
+            <div class="dash-card dash-card-compact">
+              <div class="dash-card-title">Recent Commits</div>
+              <div class="dash-card-body" id="dash-commits-body"></div>
+            </div>
+            <div class="dash-card dash-card-compact">
+              <div class="dash-card-title">Recent Activity</div>
+              <div class="dash-card-body" id="dash-activity-body"></div>
+            </div>
           </div>
-          <div class="dash-card dash-wide" id="dash-readme">
-            <div class="dash-card-title">README</div>
-            <div class="dash-card-body dash-readme-content" id="dash-readme-body"></div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-card-title">Recent Commits</div>
-            <div class="dash-card-body" id="dash-commits-body"></div>
-          </div>
-          <div class="dash-card">
-            <div class="dash-card-title">Recent Activity</div>
-            <div class="dash-card-body" id="dash-activity-body"></div>
-          </div>
-          <button id="dash-goto-board" class="btn-primary" style="margin-top:12px">Zum Board &rarr;</button>
         </div>
       </section>
 
