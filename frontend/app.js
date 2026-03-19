@@ -3,7 +3,7 @@ import { invoke, Channel } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 // ── Modules ──
-import { debounce, esc, withGuard } from './utils.js';
+import { debounce, esc, withGuard, timeAgo } from './utils.js';
 import { installErrorHandler } from './error-handler.js';
 import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
@@ -63,6 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupCommentListeners();
   setupModelPresetListener();
   setupSettingsTabs();
+  setupNotifCenter();
   setupTemplateListener();
   setupImportExportListeners();
   setupDeployListeners();
@@ -425,9 +426,9 @@ const executeTicket = withGuard(async function(ticketId, model) {
     appendLog(`Branch: ${result.branch}`);
     try {
       await openTicketTerminal(result, selectedModel);
+      // Activate focus mode
+      enterFocusMode(ticket, result.branch, selectedModel);
     } catch (termErr) {
-      // Terminal failed but ticket already started on branch — keep running state
-      // but warn user so they can recover
       appendLog("Terminal error: " + termErr, true);
       showToast("Terminal konnte nicht gestartet werden", "error");
     }
@@ -589,6 +590,8 @@ export async function refreshBoard() {
     state.board = await invoke("get_board");
     state.runningTicket = await invoke("get_running_ticket");
     renderBoard();
+    // Exit focus mode if ticket no longer running
+    if (!state.runningTicket) exitFocusMode();
   } catch (e) {
     console.error("Failed to refresh board:", e);
   }
@@ -616,6 +619,9 @@ export function appendLog(text, isError = false) {
 
 // ── Toast System ──
 export function showToast(message, type = "info", duration = 3000) {
+  // Also add to notification center
+  addNotification(message, type);
+
   const container = document.getElementById("toast-container");
   if (!container) return;
 
@@ -827,6 +833,161 @@ function usageColor(pct) {
   if (pct >= 90) return "usage-red";
   if (pct >= 70) return "usage-yellow";
   return "usage-green";
+}
+
+// ── Notification Center ──
+const notifications = [];
+const NOTIF_MAX = 50;
+
+export function addNotification(message, type = "info") {
+  notifications.unshift({ message, type, time: new Date() });
+  if (notifications.length > NOTIF_MAX) notifications.pop();
+  updateNotifBadge();
+  renderNotifList();
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById("header-notif-badge");
+  if (badge) {
+    const count = notifications.length;
+    badge.textContent = count;
+    badge.classList.toggle("hidden", count === 0);
+  }
+}
+
+function renderNotifList() {
+  const list = document.getElementById("notif-list");
+  if (!list) return;
+  if (notifications.length === 0) {
+    list.innerHTML = '<p class="empty-state">Keine Benachrichtigungen</p>';
+    return;
+  }
+  list.innerHTML = notifications.map(n => {
+    const icons = { success: "\u2713", error: "\u2717", info: "\u24D8", warning: "\u26A0" };
+    const ago = timeAgo(n.time.toISOString());
+    return `<div class="notif-item notif-${n.type}">
+      <span class="notif-icon">${icons[n.type] || icons.info}</span>
+      <span class="notif-text">${esc(n.message)}</span>
+      <span class="notif-time">${ago}</span>
+    </div>`;
+  }).join("");
+}
+
+function setupNotifCenter() {
+  document.getElementById("header-notif-btn")?.addEventListener("click", () => {
+    const panel = document.getElementById("notif-panel");
+    if (panel) {
+      panel.classList.toggle("hidden");
+      renderNotifList();
+    }
+  });
+  document.getElementById("btn-notif-clear")?.addEventListener("click", () => {
+    notifications.length = 0;
+    updateNotifBadge();
+    renderNotifList();
+  });
+  // Close on outside click
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".notif-wrapper")) {
+      document.getElementById("notif-panel")?.classList.add("hidden");
+    }
+  });
+}
+
+// ── Focus Mode ──
+let focusElapsedInterval = null;
+
+function enterFocusMode(ticket, branch, model) {
+  const focus = document.getElementById("focus-mode");
+  if (!focus) return;
+
+  document.getElementById("focus-ticket-id").textContent = ticket.id;
+  document.getElementById("focus-ticket-title").textContent = ticket.title;
+  document.getElementById("focus-ticket-desc").textContent = ticket.description || "";
+  document.getElementById("focus-branch").textContent = branch || "—";
+  document.getElementById("focus-model").textContent = model || "—";
+
+  // Elapsed timer (shared between focus mode and terminal status bar)
+  const startTime = Date.now();
+  document.getElementById("focus-elapsed").textContent = "0:00";
+  if (focusElapsedInterval) clearInterval(focusElapsedInterval);
+
+  // Show terminal status bar
+  const statusBar = document.getElementById("terminal-running-status");
+  if (statusBar) {
+    statusBar.classList.remove("hidden");
+    document.getElementById("terminal-running-label").textContent = `${ticket.id} arbeitet...`;
+  }
+
+  focusElapsedInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const min = Math.floor(elapsed / 60);
+    const sec = elapsed % 60;
+    const timeStr = `${min}:${sec.toString().padStart(2, "0")}`;
+    document.getElementById("focus-elapsed").textContent = timeStr;
+    const elapsedEl = document.getElementById("terminal-running-elapsed");
+    if (elapsedEl) elapsedEl.textContent = timeStr;
+  }, 1000);
+
+  // Move active terminal into focus area
+  const focusArea = document.getElementById("focus-terminal-area");
+  if (state.activeTerminal && state.terminals[state.activeTerminal]) {
+    const inst = state.terminals[state.activeTerminal];
+    focusArea.innerHTML = "";
+    focusArea.appendChild(inst.containerEl);
+    inst.containerEl.style.display = "block";
+    requestAnimationFrame(() => inst.fitAddon.fit());
+  }
+
+  // Quick note save
+  document.getElementById("focus-notes-input").value = "";
+  document.getElementById("btn-focus-note-save").onclick = async () => {
+    const input = document.getElementById("focus-notes-input");
+    const text = input.value.trim();
+    if (!text || !state.runningTicket) return;
+    try {
+      await invoke("add_comment", { ticketId: state.runningTicket, text: "\u{1F4DD} " + text });
+      input.value = "";
+      showToast("Notiz gespeichert", "success");
+    } catch (e) {
+      appendLog("Note error: " + e, true);
+    }
+  };
+
+  // Finish button
+  document.getElementById("btn-focus-finish").onclick = () => {
+    if (state.runningTicket) finishTicket(state.runningTicket);
+  };
+
+  // Exit button
+  document.getElementById("btn-focus-exit").onclick = () => exitFocusMode();
+
+  focus.classList.remove("hidden");
+}
+
+function exitFocusMode() {
+  const focus = document.getElementById("focus-mode");
+  if (!focus) return;
+  focus.classList.add("hidden");
+
+  if (focusElapsedInterval) {
+    clearInterval(focusElapsedInterval);
+    focusElapsedInterval = null;
+  }
+
+  // Hide terminal status bar
+  const statusBar = document.getElementById("terminal-running-status");
+  if (statusBar) statusBar.classList.add("hidden");
+
+  // Move terminal back to board panel
+  if (state.activeTerminal && state.terminals[state.activeTerminal]) {
+    const inst = state.terminals[state.activeTerminal];
+    const boardInstances = document.getElementById("board-terminal-instances");
+    if (boardInstances && !boardInstances.contains(inst.containerEl)) {
+      boardInstances.appendChild(inst.containerEl);
+      requestAnimationFrame(() => inst.fitAddon.fit());
+    }
+  }
 }
 
 // ── Board Keyboard Navigation ──

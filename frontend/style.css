@@ -2311,6 +2311,55 @@ kbd {
 }
 
 /* ── Dashboard (Phase 3 - Block D) ── */
+/* ── Dashboard Action Cards ── */
+.dash-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.dash-actions:empty { display: none; }
+
+.dash-action-card {
+  flex: 1;
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.15s;
+}
+.dash-action-card:hover { border-color: var(--accent); }
+.dash-action-card.accent { border-color: var(--accent); background: rgba(56, 181, 160, 0.06); }
+.dash-action-card.warn { border-color: var(--warning); }
+
+.dash-action-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.dash-action-body { flex: 1; min-width: 0; }
+.dash-action-title { font-weight: 600; font-size: 13px; }
+.dash-action-desc {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.dash-action-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2814,6 +2863,213 @@ kbd {
 .model-hint-opus   { color: var(--accent); }
 .model-hint-sonnet { color: var(--success); }
 .model-hint-default { color: var(--muted); }
+
+/* ── Notification Center ── */
+.notif-wrapper { position: relative; }
+
+.notif-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 340px;
+  max-height: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  animation: modal-scale-in 0.15s ease;
+}
+.notif-panel.hidden { display: none; }
+
+.notif-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.notif-list {
+  overflow-y: auto;
+  flex: 1;
+  max-height: 340px;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: var(--surface-hover); }
+
+.notif-icon { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+.notif-success .notif-icon { color: var(--success); }
+.notif-error .notif-icon { color: var(--danger); }
+.notif-info .notif-icon { color: var(--accent); }
+.notif-warning .notif-icon { color: var(--warning); }
+
+.notif-text { flex: 1; line-height: 1.4; }
+.notif-time { flex-shrink: 0; font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+/* ── Terminal Running Status ── */
+.terminal-running-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 11px;
+  color: var(--accent);
+}
+.terminal-running-status.hidden { display: none; }
+
+.terminal-running-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 1.5s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.terminal-elapsed {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+}
+
+/* ── Focus Mode ── */
+.focus-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  background: var(--bg);
+  animation: view-fade-in 0.3s ease;
+}
+.focus-mode.hidden { display: none; }
+
+.focus-sidebar {
+  width: 280px;
+  min-width: 240px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.focus-ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.focus-ticket-id {
+  font-size: 12px;
+  color: var(--accent);
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.focus-ticket-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.focus-ticket-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.focus-ticket-desc:empty { display: none; }
+
+.focus-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: 8px;
+}
+
+.focus-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.focus-meta-label { color: var(--muted); }
+.focus-meta-value {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  color: var(--text);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-notes {
+  padding: 10px;
+  background: var(--surface);
+  border-radius: 8px;
+}
+
+.focus-notes-title {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.focus-notes-input {
+  width: 100%;
+  min-height: 60px;
+  max-height: 120px;
+  resize: vertical;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.focus-actions {
+  margin-top: auto;
+}
+
+.focus-finish-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.focus-terminal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.focus-terminal .terminal-instance {
+  flex: 1;
+  display: block !important;
+}
 
 /* ── Column Add Button ── */
 .column-add-btn {

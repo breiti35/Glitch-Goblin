@@ -2,8 +2,8 @@
 // Dashboard view, templates, import/export.
 
 import { invoke } from '@tauri-apps/api/core';
-import { esc, timeAgo } from './utils.js';
-import { state, appendLog, switchView } from './app.js';
+import { esc, timeAgo, formatDuration } from './utils.js';
+import { state, appendLog, switchView, confirmExecute } from './app.js';
 import { renderBoard } from './board.js';
 
 // ── Dashboard ──
@@ -14,6 +14,9 @@ export async function loadDashboard() {
     return;
   }
   document.getElementById("dashboard-project-name").textContent = state.project.name;
+
+  // Render action cards
+  renderDashActions();
 
   try {
     const info = await invoke("get_project_info");
@@ -139,5 +142,101 @@ function pickExportFormat() {
   return new Promise(resolve => {
     const choice = confirm("Export as JSON? OK = JSON, Cancel = CSV");
     resolve(choice ? "json" : "csv");
+  });
+}
+
+// ── Dashboard Action Cards ──
+
+function renderDashActions() {
+  const container = document.getElementById("dash-actions");
+  if (!container) return;
+
+  const tickets = state.board.tickets || [];
+  const now = new Date();
+  const cards = [];
+
+  // 1. "Weitermachen" — running ticket or last started
+  if (state.runningTicket) {
+    const t = tickets.find(t => t.id === state.runningTicket);
+    if (t) {
+      cards.push(`
+        <div class="dash-action-card accent">
+          <div class="dash-action-icon">\u25B6</div>
+          <div class="dash-action-body">
+            <div class="dash-action-title">Weitermachen</div>
+            <div class="dash-action-desc">${esc(t.id)} \u2014 ${esc(t.title)}</div>
+          </div>
+          <button class="btn-primary dash-action-btn" data-dash-action="resume">Zum Terminal</button>
+        </div>
+      `);
+    }
+  } else {
+    // Last worked on: most recently started ticket in progress
+    const inProgress = tickets.filter(t => t.column === "progress" && t.started_at)
+      .sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+    if (inProgress.length > 0) {
+      const t = inProgress[0];
+      cards.push(`
+        <div class="dash-action-card">
+          <div class="dash-action-icon">\u25B6</div>
+          <div class="dash-action-body">
+            <div class="dash-action-title">Zuletzt bearbeitet</div>
+            <div class="dash-action-desc">${esc(t.id)} \u2014 ${esc(t.title)}</div>
+          </div>
+          <button class="btn-secondary dash-action-btn" data-dash-action="start" data-ticket-id="${t.id}">Starten</button>
+        </div>
+      `);
+    }
+  }
+
+  // 2. "Nächste Aufgabe" — oldest high-prio backlog ticket
+  const backlog = tickets.filter(t => t.column === "backlog");
+  const highPrio = backlog.filter(t => t.prio === "high");
+  const nextTicket = highPrio.length > 0 ? highPrio[0] : (backlog.length > 0 ? backlog[0] : null);
+  if (nextTicket && !state.runningTicket) {
+    cards.push(`
+      <div class="dash-action-card">
+        <div class="dash-action-icon">\u{1F4CB}</div>
+        <div class="dash-action-body">
+          <div class="dash-action-title">N\u00E4chste Aufgabe${nextTicket.prio === "high" ? " (High Prio)" : ""}</div>
+          <div class="dash-action-desc">${esc(nextTicket.id)} \u2014 ${esc(nextTicket.title)}</div>
+        </div>
+        <button class="btn-secondary dash-action-btn" data-dash-action="start" data-ticket-id="${nextTicket.id}">Starten</button>
+      </div>
+    `);
+  }
+
+  // 3. Review-Erinnerung
+  const inReview = tickets.filter(t => t.column === "review");
+  if (inReview.length > 0) {
+    const oldest = inReview
+      .filter(t => t.review_at)
+      .sort((a, b) => new Date(a.review_at) - new Date(b.review_at))[0];
+    const age = oldest ? formatDuration(now - new Date(oldest.review_at)) : "";
+    cards.push(`
+      <div class="dash-action-card ${inReview.length >= 3 ? 'warn' : ''}">
+        <div class="dash-action-icon">\u{1F50D}</div>
+        <div class="dash-action-body">
+          <div class="dash-action-title">${inReview.length} Ticket${inReview.length > 1 ? "s" : ""} warten auf Review</div>
+          <div class="dash-action-desc">${age ? "\u00C4ltestes seit " + age : "Zum Board wechseln"}</div>
+        </div>
+        <button class="btn-secondary dash-action-btn" data-dash-action="board">Zum Board</button>
+      </div>
+    `);
+  }
+
+  container.innerHTML = cards.join("");
+
+  // Event handlers
+  container.querySelectorAll("[data-dash-action]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.dashAction;
+      if (action === "resume" || action === "board") {
+        switchView("board");
+      } else if (action === "start") {
+        const ticket = tickets.find(t => t.id === btn.dataset.ticketId);
+        if (ticket) confirmExecute(ticket);
+      }
+    });
   });
 }

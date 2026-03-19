@@ -30,10 +30,21 @@
           <div class="header-status">● online</div>
         </div>
       </div>
-      <button class="header-notif-btn" id="header-notif-btn" title="Notifications">
-        🔔
-        <span class="header-notif-badge hidden" id="header-notif-badge">0</span>
-      </button>
+      <div class="notif-wrapper">
+        <button class="header-notif-btn" id="header-notif-btn" title="Notifications">
+          &#128276;
+          <span class="header-notif-badge hidden" id="header-notif-badge">0</span>
+        </button>
+        <div class="notif-panel hidden" id="notif-panel">
+          <div class="notif-panel-header">
+            <span>Benachrichtigungen</span>
+            <button id="btn-notif-clear" class="icon-btn" title="Alle l&ouml;schen">&#10005;</button>
+          </div>
+          <div class="notif-list" id="notif-list">
+            <p class="empty-state">Keine Benachrichtigungen</p>
+          </div>
+        </div>
+      </div>
       <button class="btn-create-project" id="btn-header-add-project">+ Create Project</button>
     </div>
   </header>
@@ -118,6 +129,9 @@
       <!-- View: Dashboard (Phase 3 - Block D) -->
       <section id="view-dashboard" class="view">
         <div class="view-header"><h1 id="dashboard-project-name">Dashboard</h1></div>
+        <!-- Action Cards -->
+        <div class="dash-actions" id="dash-actions"></div>
+
         <div class="dashboard-grid">
           <div class="dash-card" id="dash-tech-stack">
             <div class="dash-card-title">Tech Stack</div>
@@ -588,12 +602,52 @@
           </div>
         </div>
       </section>
+      <!-- Focus Mode (visible when ticket is running) -->
+      <div id="focus-mode" class="focus-mode hidden">
+        <div class="focus-sidebar">
+          <div class="focus-ticket-header">
+            <span class="focus-ticket-id" id="focus-ticket-id"></span>
+            <button id="btn-focus-exit" class="icon-btn" title="Fokus-Modus verlassen">&#10005;</button>
+          </div>
+          <h3 class="focus-ticket-title" id="focus-ticket-title"></h3>
+          <div class="focus-ticket-desc" id="focus-ticket-desc"></div>
+          <div class="focus-meta">
+            <div class="focus-meta-row">
+              <span class="focus-meta-label">Branch</span>
+              <span class="focus-meta-value" id="focus-branch">—</span>
+            </div>
+            <div class="focus-meta-row">
+              <span class="focus-meta-label">Modell</span>
+              <span class="focus-meta-value" id="focus-model">—</span>
+            </div>
+            <div class="focus-meta-row">
+              <span class="focus-meta-label">Laufzeit</span>
+              <span class="focus-meta-value" id="focus-elapsed">0:00</span>
+            </div>
+          </div>
+          <div class="focus-notes">
+            <div class="focus-notes-title">Notizen</div>
+            <textarea id="focus-notes-input" class="focus-notes-input" placeholder="Schnelle Notiz..."></textarea>
+            <button id="btn-focus-note-save" class="btn-secondary" style="width:100%;padding:4px;font-size:11px;margin-top:4px">Speichern</button>
+          </div>
+          <div class="focus-actions">
+            <button id="btn-focus-finish" class="btn-primary focus-finish-btn">&#10004; Ticket abschlie&szlig;en</button>
+          </div>
+        </div>
+        <div class="focus-terminal" id="focus-terminal-area"></div>
+      </div>
+
       <!-- Global Terminal Panel (collapsible, visible in all views) -->
       <div id="board-terminal-panel" class="board-terminal-panel collapsed">
         <div class="board-terminal-drag" id="board-terminal-drag"></div>
         <div class="board-terminal-bar">
           <button id="board-terminal-toggle" class="board-terminal-toggle-btn" title="Toggle Terminal (Ctrl+`)">&#9654; Terminal</button>
           <div class="board-terminal-tabs" id="board-terminal-tabs"></div>
+          <div class="terminal-running-status hidden" id="terminal-running-status">
+            <span class="terminal-running-dot"></span>
+            <span id="terminal-running-label">Claude arbeitet...</span>
+            <span id="terminal-running-elapsed" class="terminal-elapsed">0:00</span>
+          </div>
           <div class="board-terminal-actions">
             <select id="board-terminal-shell-select" class="settings-input terminal-shell-select"></select>
             <button id="board-terminal-new" class="btn-primary" style="padding:3px 10px;font-size:12px">+ New</button>
