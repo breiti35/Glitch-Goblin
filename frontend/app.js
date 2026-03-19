@@ -9,7 +9,7 @@ import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextM
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
 import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
 import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
-import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener } from './settings.js';
+import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener, setupSettingsTabs } from './settings.js';
 import { loadStatistics } from './statistics.js';
 import { loadDashboard, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
 import { loadActivityView, setupActivityListeners } from './activity.js';
@@ -62,6 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupActivityListeners();
   setupCommentListeners();
   setupModelPresetListener();
+  setupSettingsTabs();
   setupTemplateListener();
   setupImportExportListeners();
   setupDeployListeners();
@@ -136,13 +137,14 @@ function bindEvents() {
   document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
   document.getElementById("btn-app-settings").addEventListener("click", () => switchView("settings"));
 
-  // Global search → filter (debounced)
-  const debouncedApplyFilters = debounce(applyFilters, 150);
-  document.getElementById("global-search-input")?.addEventListener("input", (e) => {
-    const filterInput = document.getElementById("filter-input");
-    if (filterInput) {
-      filterInput.value = e.target.value;
-      debouncedApplyFilters();
+  // Global search with dropdown results
+  const debouncedGlobalSearch = debounce(globalSearch, 200);
+  const searchInput = document.getElementById("global-search-input");
+  searchInput?.addEventListener("input", debouncedGlobalSearch);
+  searchInput?.addEventListener("focus", globalSearch);
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".global-search")) {
+      document.getElementById("global-search-results")?.classList.add("hidden");
     }
   });
 
@@ -285,6 +287,8 @@ function bindKeyboardShortcuts() {
       closeAllModals();
     } else if (e.key === "?") {
       toggleModal("shortcut-help");
+    } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key)) {
+      handleBoardKeyNav(e);
     }
   });
 }
@@ -497,6 +501,7 @@ async function openReviewModal(ticketId) {
       await invoke("finish_ticket", { ticketId });
       state.runningTicket = null;
       appendLog(`\u2713 ${ticketId} -> Review`);
+      showToast(`${ticketId} \u2192 Review`, "success");
       notifyDesktop("Ticket fertig", `${ticketId} ist in Review`);
       playSound("success");
       refreshBoard();
@@ -530,6 +535,7 @@ export async function mergeTicket(ticketId) {
     appendLog(`Merging ${ticketId}...`);
     await invoke("merge_ticket", { ticketId });
     appendLog(`\u2713 ${ticketId} merged successfully`);
+    showToast(`${ticketId} erfolgreich gemergt`, "success");
     refreshBoard();
   } catch (err) {
     appendLog("Merge error: " + err, true);
@@ -586,6 +592,36 @@ export function appendLog(text, isError = false) {
     body.removeChild(body.firstElementChild);
   }
   body.scrollTop = body.scrollHeight;
+
+  // Also show toast for important messages
+  if (isError) {
+    showToast(text, "error");
+  }
+}
+
+// ── Toast System ──
+export function showToast(message, type = "info", duration = 3000) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+
+  const icons = { success: "\u2713", error: "\u2717", info: "\u24D8" };
+  toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-text">${esc(message)}</span>`;
+
+  container.appendChild(toast);
+
+  // Trigger enter animation
+  requestAnimationFrame(() => toast.classList.add("toast-visible"));
+
+  // Auto-dismiss
+  setTimeout(() => {
+    toast.classList.remove("toast-visible");
+    toast.addEventListener("transitionend", () => toast.remove(), { once: true });
+    // Fallback removal if transition doesn't fire
+    setTimeout(() => toast.remove(), 400);
+  }, duration);
 }
 
 // ── Sidebar ──
@@ -776,4 +812,131 @@ function usageColor(pct) {
   if (pct >= 90) return "usage-red";
   if (pct >= 70) return "usage-yellow";
   return "usage-green";
+}
+
+// ── Board Keyboard Navigation ──
+function handleBoardKeyNav(e) {
+  // Only active when board view is visible
+  const boardView = document.getElementById("view-board");
+  if (!boardView || !boardView.classList.contains("active")) return;
+
+  const focused = document.querySelector(".ticket-card.kb-focus");
+  const columns = ["backlog", "progress", "review", "done"];
+
+  if (!focused) {
+    // No card focused — focus first card
+    if (e.key === "ArrowDown" || e.key === "Enter") {
+      const first = document.querySelector(".ticket-card");
+      if (first) {
+        e.preventDefault();
+        first.classList.add("kb-focus");
+        first.scrollIntoView({ block: "nearest" });
+      }
+    }
+    return;
+  }
+
+  e.preventDefault();
+  const col = focused.closest(".column-body")?.dataset.drop;
+  const colIdx = columns.indexOf(col);
+  const cards = [...(document.querySelector(`[data-drop="${col}"]`)?.querySelectorAll(".ticket-card") || [])];
+  const cardIdx = cards.indexOf(focused);
+
+  if (e.key === "ArrowDown") {
+    if (cardIdx < cards.length - 1) {
+      focused.classList.remove("kb-focus");
+      cards[cardIdx + 1].classList.add("kb-focus");
+      cards[cardIdx + 1].scrollIntoView({ block: "nearest" });
+    }
+  } else if (e.key === "ArrowUp") {
+    if (cardIdx > 0) {
+      focused.classList.remove("kb-focus");
+      cards[cardIdx - 1].classList.add("kb-focus");
+      cards[cardIdx - 1].scrollIntoView({ block: "nearest" });
+    }
+  } else if (e.key === "ArrowRight") {
+    if (colIdx < columns.length - 1) {
+      const nextCol = columns[colIdx + 1];
+      const nextCards = document.querySelector(`[data-drop="${nextCol}"]`)?.querySelectorAll(".ticket-card");
+      if (nextCards && nextCards.length > 0) {
+        focused.classList.remove("kb-focus");
+        const target = nextCards[Math.min(cardIdx, nextCards.length - 1)];
+        target.classList.add("kb-focus");
+        target.scrollIntoView({ block: "nearest" });
+      }
+    }
+  } else if (e.key === "ArrowLeft") {
+    if (colIdx > 0) {
+      const prevCol = columns[colIdx - 1];
+      const prevCards = document.querySelector(`[data-drop="${prevCol}"]`)?.querySelectorAll(".ticket-card");
+      if (prevCards && prevCards.length > 0) {
+        focused.classList.remove("kb-focus");
+        const target = prevCards[Math.min(cardIdx, prevCards.length - 1)];
+        target.classList.add("kb-focus");
+        target.scrollIntoView({ block: "nearest" });
+      }
+    }
+  } else if (e.key === "Enter") {
+    const ticketId = focused.dataset.ticketId;
+    const ticket = (state.board.tickets || []).find(t => t.id === ticketId);
+    if (ticket) openDetailPanel(ticket);
+  }
+}
+
+// ── Global Search ──
+function globalSearch() {
+  const input = document.getElementById("global-search-input");
+  const query = (input?.value || "").toLowerCase().trim();
+
+  let dropdown = document.getElementById("global-search-results");
+  if (!dropdown) {
+    dropdown = document.createElement("div");
+    dropdown.id = "global-search-results";
+    dropdown.className = "global-search-results hidden";
+    input.parentElement.appendChild(dropdown);
+  }
+
+  if (!query || query.length < 2) {
+    dropdown.classList.add("hidden");
+    return;
+  }
+
+  const results = [];
+
+  // Search tickets
+  (state.board.tickets || []).forEach(t => {
+    if (t.title.toLowerCase().includes(query) || (t.description || "").toLowerCase().includes(query) || t.id.toLowerCase().includes(query)) {
+      results.push({ type: "ticket", icon: "\u{1F4CB}", label: `${t.id} — ${t.title}`, sub: t.column, action: () => { switchView("board"); openDetailPanel(t); } });
+    }
+  });
+
+  // Search settings keywords
+  const settingsKeywords = ["claude", "terminal", "deploy", "docker", "ssh", "backup", "theme", "accent", "bug-sync", "model", "shell"];
+  settingsKeywords.forEach(kw => {
+    if (kw.includes(query)) {
+      results.push({ type: "settings", icon: "\u2699", label: `Settings: ${kw}`, sub: "", action: () => switchView("settings") });
+    }
+  });
+
+  if (results.length === 0) {
+    dropdown.innerHTML = '<div class="search-empty">Keine Ergebnisse</div>';
+  } else {
+    dropdown.innerHTML = results.slice(0, 10).map((r, i) => `
+      <div class="search-result-item" data-search-idx="${i}">
+        <span class="search-icon">${r.icon}</span>
+        <span class="search-label">${esc(r.label)}</span>
+        <span class="search-sub">${esc(r.sub)}</span>
+      </div>
+    `).join("");
+
+    dropdown.querySelectorAll(".search-result-item").forEach((el, i) => {
+      el.addEventListener("click", () => {
+        results[i].action();
+        dropdown.classList.add("hidden");
+        input.value = "";
+      });
+    });
+  }
+
+  dropdown.classList.remove("hidden");
 }

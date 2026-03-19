@@ -42,6 +42,7 @@ export function loadStatistics() {
 
   renderTypePieChart(tickets);
   renderColumnBarChart(tickets);
+  renderWeeklyVelocity(done);
   renderRecentCompleted(done);
 }
 
@@ -114,4 +115,40 @@ function renderRecentCompleted(doneTickets) {
       <span class="recent-dur">${dur}</span>
     </div>`;
   }).join("");
+}
+
+function renderWeeklyVelocity(doneTickets) {
+  const container = document.getElementById("velocity-chart");
+  if (!container) return;
+
+  // Group done tickets by week (last 8 weeks)
+  const now = new Date();
+  const weeks = [];
+  for (let i = 7; i >= 0; i--) {
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - (i * 7));
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    const count = doneTickets.filter(t => {
+      if (!t.done_at) return false;
+      const d = new Date(t.done_at);
+      return d >= weekStart && d < weekEnd;
+    }).length;
+
+    const label = weekStart.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+    weeks.push({ label, count });
+  }
+
+  const max = Math.max(...weeks.map(w => w.count), 1);
+
+  container.innerHTML = weeks.map(w => `
+    <div class="velocity-bar-group">
+      <div class="velocity-bar" style="height: ${(w.count / max) * 100}%">
+        ${w.count > 0 ? `<span class="velocity-val">${w.count}</span>` : ""}
+      </div>
+      <span class="velocity-label">${w.label}</span>
+    </div>
+  `).join("");
 }

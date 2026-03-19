@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="vendor/xterm/xterm.css">
 </head>
 <body data-theme="dark">
+  <div id="toast-container" class="toast-container"></div>
   <header class="app-header">
     <div class="app-header-left">
       <span class="app-logo">✦</span>
@@ -257,7 +258,14 @@
       <!-- View: Settings -->
       <section id="view-settings" class="view">
         <div class="view-header"><h1>Settings</h1></div>
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-settings-tab="general">Allgemein</button>
+          <button class="settings-tab" data-settings-tab="terminal">Terminal</button>
+          <button class="settings-tab" data-settings-tab="deploy">Deploy</button>
+          <button class="settings-tab" data-settings-tab="bugsync">Bug-Sync</button>
+        </div>
         <div class="settings-form">
+          <div class="settings-tab-content active" data-tab-content="general">
           <label class="settings-label">
             Claude CLI Path
             <input type="text" id="set-claude-path" class="settings-input" placeholder="claude">
@@ -337,7 +345,8 @@
             Output Cost ($/MTok)
             <input type="number" id="set-cost-output" class="settings-input" step="0.1" min="0" value="15">
           </label>
-          <hr class="settings-divider">
+          </div><!-- /general -->
+          <div class="settings-tab-content" data-tab-content="terminal">
           <div class="settings-section-title">Terminal</div>
           <label class="settings-label">
             Default Shell
@@ -350,7 +359,8 @@
               <span id="terminal-fontsize-label">14px</span>
             </div>
           </label>
-          <hr class="settings-divider">
+          </div><!-- /terminal -->
+          <div class="settings-tab-content" data-tab-content="bugsync">
           <div class="settings-section-title">Bug-Sync (Portal)</div>
           <label class="settings-label">
             <span class="toggle-row">
@@ -378,7 +388,8 @@
           </label>
           <button id="btn-bugsync-test" class="btn-secondary" style="margin-bottom:8px">Jetzt synchronisieren</button>
           <div id="bugsync-status" class="deploy-detection-info hidden"></div>
-          <hr class="settings-divider">
+          </div><!-- /bugsync -->
+          <div class="settings-tab-content" data-tab-content="deploy">
           <div class="settings-section-title">Docker Deploy</div>
           <label class="settings-label">
             Deploy-Typ
@@ -450,7 +461,7 @@
               <input type="text" id="set-live-url" class="settings-input" placeholder="https://example.com">
             </label>
           </div>
-          <hr class="settings-divider">
+          </div><!-- /deploy -->
           <button id="btn-open-backups" class="btn-secondary" style="margin-bottom:16px">Backup wiederherstellen...</button>
           <button id="btn-save-settings" class="btn-primary">Save Settings</button>
           <div class="settings-version" id="settings-version"></div>
@@ -481,6 +492,10 @@
             </div>
           </div>
           <div class="stats-row">
+            <div class="stat-card chart-card">
+              <div class="stat-label">Velocity (Tickets/Woche)</div>
+              <div id="velocity-chart" class="velocity-chart"></div>
+            </div>
             <div class="stat-card" style="flex:1">
               <div class="stat-label">Recent Completed</div>
               <div id="recent-completed" class="recent-list"></div>

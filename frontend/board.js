@@ -3,7 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, formatDuration } from './utils.js';
-import { state, appendLog, openModal, closeModal, confirmExecute, finishTicket, mergeTicket, refreshBoard } from './app.js';
+import { state, appendLog, showToast, openModal, closeModal, confirmExecute, finishTicket, mergeTicket, refreshBoard } from './app.js';
 import { openDetailPanel } from './detail.js';
 
 let contextTicket = null;
@@ -200,15 +200,49 @@ function createCard(ticket, col) {
       <div class="card-info-row">
         <span class="card-date">\u23F0 ${dateStr}</span>
       </div>
+      <div class="card-quick-actions">
+        <select class="quick-select quick-prio" data-quick="prio" data-ticket-id="${ticket.id}" title="Priorit\u00E4t">
+          <option value=""${!ticket.prio ? " selected" : ""}>—</option>
+          <option value="high"${ticket.prio === "high" ? " selected" : ""}>high</option>
+          <option value="medium"${ticket.prio === "medium" ? " selected" : ""}>med</option>
+          <option value="low"${ticket.prio === "low" ? " selected" : ""}>low</option>
+        </select>
+        <select class="quick-select quick-type" data-quick="type" data-ticket-id="${ticket.id}" title="Typ">
+          <option value="feature"${ticket.ticket_type === "feature" ? " selected" : ""}>feature</option>
+          <option value="bugfix"${ticket.ticket_type === "bugfix" ? " selected" : ""}>bugfix</option>
+          <option value="security"${ticket.ticket_type === "security" ? " selected" : ""}>security</option>
+          <option value="docs"${ticket.ticket_type === "docs" ? " selected" : ""}>docs</option>
+        </select>
+      </div>
       ${extraBadgesHTML}
       ${actionHTML ? `<div class="card-action-row">${actionHTML}</div>` : ""}
     </div>
   `;
 
-  // Click to open detail (not on buttons)
+  // Click to open detail (not on buttons or selects)
   card.addEventListener("click", (e) => {
-    if (e.target.closest("button")) return;
+    if (e.target.closest("button") || e.target.closest("select")) return;
     openDetailPanel(ticket);
+  });
+
+  // Quick-action selects
+  card.querySelectorAll(".quick-select").forEach(sel => {
+    sel.addEventListener("click", (e) => e.stopPropagation());
+    sel.addEventListener("change", async (e) => {
+      e.stopPropagation();
+      const field = sel.dataset.quick;
+      const updated = { ...ticket };
+      if (field === "prio") updated.prio = sel.value || null;
+      if (field === "type") updated.ticket_type = sel.value;
+      try {
+        await invoke("update_ticket", { ticket: updated });
+        state.board = await invoke("get_board");
+        renderBoard();
+        showToast("Ticket aktualisiert", "success");
+      } catch (err) {
+        appendLog("Quick-update error: " + err, true);
+      }
+    });
   });
 
   // Right-click context menu
@@ -340,6 +374,7 @@ function copyTicketToClipboard(ticket) {
   const text = `[${ticket.id}] ${ticket.title}\nType: ${ticket.ticket_type}\nPrio: ${ticket.prio || "none"}\nColumn: ${ticket.column}\n${ticket.description || ""}`;
   navigator.clipboard.writeText(text).then(() => {
     appendLog("Ticket copied to clipboard");
+    showToast("In Zwischenablage kopiert", "success");
   });
 }
 

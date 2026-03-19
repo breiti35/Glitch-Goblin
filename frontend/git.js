@@ -30,7 +30,7 @@ export async function checkGitStatus() {
 
 export async function loadGitView() {
   const container = document.getElementById("git-branch-cards");
-  container.innerHTML = '<p class="empty-state">Loading branches...</p>';
+  container.innerHTML = `<div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div>`;
   document.getElementById("git-current-branch").innerHTML = "";
 
   try {

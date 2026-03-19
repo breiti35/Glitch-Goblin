@@ -8,7 +8,7 @@ let activityFilter = "all";
 
 export async function loadActivityView() {
   const list = document.getElementById("activity-list");
-  list.innerHTML = '<p class="empty-state">Loading...</p>';
+  list.innerHTML = `<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div>`;
 
   try {
     const entries = await invoke("get_activity", { limit: 200 });

@@ -3,7 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc } from './utils.js';
-import { state, appendLog, openModal, closeModal, applyAccentColor, updateThemeUI, modelToFlag } from './app.js';
+import { state, appendLog, showToast, openModal, closeModal, applyAccentColor, updateThemeUI, modelToFlag } from './app.js';
 import { renderBoard } from './board.js';
 import { loadShellOptions } from './terminal.js';
 import { saveDeploySettingsForm } from './deploy.js';
@@ -77,6 +77,7 @@ export async function saveSettingsForm() {
     updateBugSyncVisibility();
     await saveDeploySettingsForm();
     appendLog("Settings saved");
+    showToast("Settings gespeichert", "success");
   } catch (err) {
     appendLog("Save settings error: " + err, true);
   }
@@ -110,6 +111,7 @@ export async function openBackupModal() {
           closeModal("modal-backup");
           renderBoard();
           appendLog("Backup restored: " + btn.dataset.backup);
+          showToast("Backup wiederhergestellt", "success");
         } catch (err) {
           appendLog("Restore error: " + err, true);
         }
@@ -118,6 +120,20 @@ export async function openBackupModal() {
   } catch (err) {
     list.innerHTML = `<p class="empty-state">${esc(String(err))}</p>`;
   }
+}
+
+// ── Settings Tab Navigation ──
+
+export function setupSettingsTabs() {
+  document.querySelectorAll(".settings-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".settings-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".settings-tab-content").forEach(c => c.classList.remove("active"));
+      tab.classList.add("active");
+      const target = document.querySelector(`[data-tab-content="${tab.dataset.settingsTab}"]`);
+      if (target) target.classList.add("active");
+    });
+  });
 }
 
 // ── Model Preset ──
