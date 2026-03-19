@@ -8,7 +8,7 @@ import { installErrorHandler } from './error-handler.js';
 import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
 import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
-import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
+import { setupTerminalListeners, openTicketTerminal, openBoardTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
 import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener, setupSettingsTabs } from './settings.js';
 import { loadStatistics } from './statistics.js';
 import { loadDashboard, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
@@ -949,7 +949,6 @@ async function checkTicketRecovery() {
   // "Weiterarbeiten" — open terminal on branch
   document.getElementById("btn-recovery-continue").onclick = async () => {
     closeModal("modal-recovery");
-    const { openBoardTerminal } = await import('./terminal.js');
     openBoardTerminal();
     showToast("Terminal ge\u00F6ffnet \u2014 weiterarbeiten", "info");
   };
