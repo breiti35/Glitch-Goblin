@@ -52,17 +52,38 @@ export async function loadGitView() {
     const activeBranches = branches.filter(b => !b.isCurrent && !b.isMerged);
     const mergedBranches = branches.filter(b => !b.isCurrent && b.isMerged);
 
-    // Current branch info (enhanced)
+    // Current branch info with recent commits
     if (current) {
       const dirty = await invoke("check_uncommitted").catch(() => false);
+      const recentCommits = await invoke("get_commit_log", { branch: current.name, limit: 5 }).catch(() => []);
+
+      let commitsHtml = "";
+      if (recentCommits.length > 0) {
+        commitsHtml = `
+          <div class="git-current-commits">
+            <div class="git-current-commits-title">Letzte Commits</div>
+            ${recentCommits.map(c => `
+              <div class="git-current-commit-row">
+                <span class="commit-hash">${esc(c.hash)}</span>
+                <span class="commit-msg">${esc(c.message)}</span>
+                <span class="commit-date">${timeAgo(c.date)}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
       document.getElementById("git-current-branch").innerHTML = `
         <div class="git-current-card">
-          <span class="git-current-dot ${dirty ? 'dirty' : 'clean'}"></span>
-          <div class="git-current-info">
-            <span class="git-current-name">${esc(current.name)}</span>
-            <span class="git-current-label">(aktuell)</span>
+          <div class="git-current-header">
+            <span class="git-current-dot ${dirty ? 'dirty' : 'clean'}"></span>
+            <div class="git-current-info">
+              <span class="git-current-name">${esc(current.name)}</span>
+              <span class="git-current-label">(aktueller Branch)</span>
+            </div>
+            <span class="git-current-status">${dirty ? '\u26A0 \u00C4nderungen nicht committed' : '\u2713 alles committed'}</span>
           </div>
-          <span class="git-current-status">${dirty ? 'uncommitted changes' : '\u2713 clean'}</span>
+          ${commitsHtml}
         </div>
       `;
     }
@@ -75,11 +96,11 @@ export async function loadGitView() {
       const otherActive = activeBranches.filter(b => !b.isKanban);
 
       if (kanbanActive.length > 0) {
-        html += `<div class="git-group-title">Aktive Kanban-Branches <span class="git-group-count">${kanbanActive.length}</span></div>`;
+        html += `<div class="git-group-title">In Arbeit (Ticket-Branches) <span class="git-group-count">${kanbanActive.length}</span></div>`;
         html += kanbanActive.map(b => renderBranchCard(b, false)).join("");
       }
       if (otherActive.length > 0) {
-        html += `<div class="git-group-title">Andere aktive Branches <span class="git-group-count">${otherActive.length}</span></div>`;
+        html += `<div class="git-group-title">Weitere Branches <span class="git-group-count">${otherActive.length}</span></div>`;
         html += otherActive.map(b => renderBranchCard(b, false)).join("");
       }
     }
@@ -90,7 +111,7 @@ export async function loadGitView() {
       html += `
         <details class="git-merged-group"${autoOpen}>
           <summary class="git-group-title git-group-collapsible">
-            Merged Branches <span class="git-group-count">${mergedBranches.length}</span>
+            Erledigte Branches (bereits in ${esc(current?.name || 'main')} eingebaut) <span class="git-group-count">${mergedBranches.length}</span>
           </summary>
           <div class="git-merged-list">
             ${mergedBranches.map(b => renderMergedBranchRow(b)).join("")}

@@ -1710,6 +1710,12 @@ kbd {
 .git-current-dot.clean { background: var(--success); }
 .git-current-dot.dirty { background: var(--warning); }
 
+.git-current-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .git-current-name {
   font-weight: 600;
   font-family: 'Cascadia Code', 'Fira Code', monospace;
@@ -1725,6 +1731,48 @@ kbd {
   margin-left: auto;
   font-size: 12px;
   color: var(--muted);
+}
+
+.git-current-commits {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.git-current-commits-title {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.git-current-commit-row {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+  align-items: baseline;
+}
+
+.git-current-commit-row .commit-hash {
+  color: var(--accent);
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.git-current-commit-row .commit-msg {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.git-current-commit-row .commit-date {
+  color: var(--muted);
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 .git-group-title {
