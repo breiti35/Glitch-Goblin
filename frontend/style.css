@@ -2797,6 +2797,28 @@ kbd {
 .model-hint-sonnet { color: var(--success); }
 .model-hint-default { color: var(--muted); }
 
+/* ── Column Add Button ── */
+.column-add-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  margin-left: 4px;
+}
+.column-add-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 /* ── Keyboard Navigation Focus ── */
 .ticket-card.kb-focus {
   outline: 2px solid var(--accent);

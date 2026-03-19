@@ -156,6 +156,7 @@ function bindEvents() {
 
   // New task
   document.getElementById("btn-new-task").addEventListener("click", openNewTaskModal);
+  document.getElementById("btn-backlog-add")?.addEventListener("click", openNewTaskModal);
   document.getElementById("btn-create-task").addEventListener("click", createTask);
   document.getElementById("btn-cancel-task").addEventListener("click", () => closeModal("modal-new-task"));
 
