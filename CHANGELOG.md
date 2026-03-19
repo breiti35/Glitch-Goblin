@@ -5,6 +5,58 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.0.2] - 2026-03-19
+
+### Added
+- **Code-Modularisierung:** `app.js` (3021 Zeilen) in 13 ES-Module aufgeteilt (board, detail, git, terminal, settings, statistics, dashboard, activity, editors, deploy, bugsync, utils, error-handler)
+- **Git-View Redesign:** Card-basierte Branch-Ansicht mit Gruppierung (In Arbeit / Weitere / Erledigte), Lazy-Loading Details, letzte Commits direkt auf der master-Card sichtbar
+- **BranchInfo erweitert:** `is_merged`, `files_changed`, `ahead_count`, `ticket_id` Felder im Backend
+- **Review-Modal:** "Abschließen" zeigt Diff aller Änderungen vor dem Commit. "Änderungen anzeigen" Button in der Review-Spalte zeigt Branch-Diff
+- **Fokus-Modus:** Vollbild-Arbeitsplatz bei laufendem Ticket — großer Terminal + Ticket-Sidebar (Titel, Branch, Modell, Timer, Schnell-Notizen). Automatisches Exit wenn Ticket fertig
+- **Dashboard-Actions:** "Weitermachen" (Running/letztes Ticket), "Nächste Aufgabe" (High-Prio), "Review-Erinnerung" als Action-Cards
+- **Dashboard-Redesign:** Kompaktes 2-Spalten-Layout, Tech Stack + Stats kombiniert, README begrenzt
+- **Usage-Anzeige:** Claude 5h/7d-Kontingent als farbcodierte Balken im Sidebar (Anthropic OAuth API, 60s Cache, Auto-Refresh)
+- **Modell-Empfehlung:** Automatische Vorauswahl im Execute-Dialog (Opus für Security/Feature, Sonnet für Bugfix/Docs)
+- **Toast-System:** Slide-in-Benachrichtigungen (success/error/info) mit Auto-Dismiss
+- **Notification-Center:** Glocken-Dropdown sammelt alle Benachrichtigungen mit Zeitstempel
+- **Loading-Skeletons:** Animierte Platzhalter für Git-View und Activity statt "Loading..." Text
+- **Modal-Animationen:** Fade-in + Scale-in für Modals, View-Fade bei Navigation, smootheres Slide-Panel
+- **Kompakte Karten:** Titel + Prio immer sichtbar, Details (Beschreibung, Datum, Aktionen) gleiten bei Hover ein
+- **WIP-Limits:** Progress (max 3), Review (max 5) mit visueller Warnung und Fortschrittsbalken
+- **Empty States:** Spalten-spezifische Hinweistexte wenn keine Tickets vorhanden
+- **Spalten-Statistiken:** Durchschnittliches Alter (Progress), ältestes Ticket (Review), Abschlussrate (Done)
+- **Verbessertes Drag & Drop:** Ghost-Preview, Drop-Indikator-Linie
+- **Ticket-Schnellaktionen:** Priorität und Typ direkt auf der Karte per Dropdown ändern
+- **Globale Suche:** Header-Suche durchsucht Tickets (ID, Titel, Beschreibung) und Settings-Keywords
+- **Velocity-Chart:** Wöchentliche Ticket-Abschlussrate als Balkendiagramm (letzte 8 Wochen)
+- **Tastatur-Navigation:** Pfeiltasten für Board-Navigation, Enter öffnet Detail-Panel
+- **Responsive Board:** 2 Spalten unter 1024px, 1 Spalte unter 600px
+- **Settings-Tabs:** Allgemein | Terminal | Deploy | Bug-Sync statt endlosem Scroll
+- **Plus-Button:** [+] im Backlog-Header zum schnellen Erstellen neuer Tickets
+- **Terminal-Fortschritt:** Pulsierende Status-Bar mit Ticket-ID und Elapsed-Timer
+- **Schnell-Notizen:** Textfeld im Fokus-Modus, speichert als Kommentar am Ticket
+- **`withGuard` Utility:** Verhindert Doppelklick bei async Aktionen (executeTicket, mergeTicket)
+- **`get_working_diff` / `get_working_file_diff` Commands:** Working-Tree Diffs für Review-Modal
+- **`get_claude_usage` Command:** OAuth API Abfrage mit 60s Caching
+
+### Changed
+- **Farbsystem:** Hartkodierte Badge- und Diff-Farben in CSS-Variablen umgewandelt (vollständige Dark/Light-Theme-Konsistenz)
+- **Deutsche Bezeichnungen:** "Merge" → "Übernehmen", "Merged Branches" → "Erledigte Branches (bereits in master eingebaut)", "clean" → "alles committed"
+- **Projektwechsel:** Aktualisiert jetzt automatisch die aktive View (Dashboard, Git, Activity, etc.)
+- **Drag & Drop:** Auf Event-Delegation umgestellt (Listener einmal registriert statt pro renderBoard)
+- **renderBoard():** Debounced via requestAnimationFrame gegen DOM-Thrashing
+- **Formularelemente:** Globaler CSS-Reset für input/select/textarea mit Theme-Variablen (Fix für weiße Dropdowns im Dark Mode)
+
+### Fixed
+- **Running-Ticket hängt:** Backend-State wird bei Fehler synchronisiert, Terminal-Fehler fängt ab ohne Lock-State zu verlieren
+- **Finish ignoriert Commit-Fehler:** `auto_commit()` Fehlschlag wird jetzt propagiert — Ticket bleibt in Progress
+- **Event-Listener Leak:** setupDragDrop() registrierte bei jedem renderBoard() neue Listener
+- **Terminal-Interval:** checkInterval und fallbackTimeout werden bei cleanupTerminal() gestoppt
+- **Projekt-Pfad:** switch_project() prüft ob Pfad noch existiert
+- **Git-Verfügbarkeit:** start_ticket() prüft ob git installiert ist
+- **DB-Fehler:** `.ok()` auf DB-Queries ersetzt durch Error-Logging
+- **Duplicate ID:** `branch-count` existierte zweimal (Sidebar + View-Header)
+
 ## [Unreleased]
 
 ### Added

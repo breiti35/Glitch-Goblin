@@ -5,29 +5,57 @@ Verwaltet Tickets, Git-Branches, Deployments und synchronisiert Bugs aus einem P
 
 ## Features
 
+### Board & Workflow
 - **Kanban Board** — Tickets mit Drag-and-Drop durch Spalten (Backlog, Progress, Review, Done)
-- **Globaler Header** — App-weite Suche, Projekt-Avatar, Benachrichtigungs-Bell und "+ Create Project" Button
-- **Project Health Bar** — Visualisiert den Fortschritt (Done / Review / Offen) direkt im Board-Header
-- **Multi-Projekt** — Mehrere Projekte verwalten und zwischen ihnen wechseln
-- **Git-Integration** — Branch-Erstellung pro Ticket, Diff-Ansicht, Branch-Management, Commit-Log
-- **Terminal** — Integriertes PTY-Terminal mit konfigurierbarer Shell und Schriftgröße
-- **Bug-Sync (Portal)** — Bugs aus einem Portal Bug-Tracker automatisch als Bugfix-Tickets ins Backlog importieren
-- **Deploy** — Local Deploy (Docker) und Live Deploy (SSH) direkt aus der App
+- **Kompakte Karten** — Titel + Prio immer sichtbar, Details bei Hover (Beschreibung, Datum, Aktionen)
+- **WIP-Limits** — Progress (max 3) und Review (max 5) mit visueller Warnung bei Überschreitung
+- **Schnellaktionen** — Priorität und Typ direkt auf der Karte ändern per Dropdown
+- **Review-Ansicht** — Vor dem Commit: Diff aller Änderungen prüfen. In der Review-Spalte: "Änderungen anzeigen" zeigt Branch-Diff
+- **Fokus-Modus** — Vollbild-Arbeitsplatz bei laufendem Ticket: großer Terminal + Ticket-Sidebar mit Timer und Schnell-Notizen
+- **Tastatur-Navigation** — Pfeiltasten zum Navigieren zwischen Karten und Spalten, Enter öffnet Detail
+
+### Dashboard
+- **Action-Cards** — "Weitermachen" (letztes Ticket), "Nächste Aufgabe" (High-Prio), "Review-Erinnerung"
+- **Projektinfo** — Tech Stack, Quick Stats, README-Vorschau
+- **Recent Commits & Activity** — Letzte Commits und Aktivitäten auf einen Blick
+
+### Git-Integration
+- **Card-basierte Branch-Ansicht** — Branches gruppiert nach "In Arbeit", "Weitere", "Erledigte"
+- **Letzte Commits** direkt auf der aktuellen Branch-Card sichtbar
+- **Lazy-Loading Details** — Commits und Diffs erst beim Aufklappen laden
+- **Branch-Management** — Übernehmen (Merge), Löschen, Diff-Vorschau
+
+### Terminal
+- **Integriertes PTY-Terminal** mit konfigurierbarer Shell und Schriftgröße
+- **Ticket-Terminal** — Claude Code wird automatisch mit Ticket-Prompt gestartet
+- **Fortschritts-Anzeige** — Pulsierende Status-Bar mit Ticket-ID und Elapsed-Timer
+- **Multi-Tab** — Mehrere Terminal-Sessions parallel
+
+### Claude-Integration
+- **Usage-Anzeige** — 5h- und 7d-Kontingent als farbcodierte Balken im Sidebar (via Anthropic OAuth API)
+- **Modell-Empfehlung** — Opus für Security/Feature, Sonnet für Bugfix/Docs (automatische Vorauswahl)
+- **Kostentracking** — Token-Verbrauch und Kosten pro Ticket
+
+### Weitere Features
+- **Multi-Projekt** — Mehrere Projekte verwalten, automatischer View-Refresh beim Wechsel
+- **Globale Suche** — Tickets und Settings durchsuchen mit Dropdown-Ergebnissen
+- **Toast-Benachrichtigungen** — Slide-in-Meldungen bei Aktionen (Erfolg/Fehler/Info)
+- **Notification-Center** — Glocken-Button sammelt alle Benachrichtigungen mit Zeitstempel
+- **Bug-Sync (Portal)** — Bugs aus Portal Bug-Tracker automatisch als Tickets importieren
+- **Deploy** — Local Deploy (Docker Compose) und Live Deploy (SSH) aus der App
+- **Statistiken** — Pie/Bar-Charts, Velocity-Chart (Tickets/Woche), Cycle-Time, Kosten
+- **Agent & Command Editor** — Claude-Agenten und Custom Commands bearbeiten
 - **Templates** — Ticket-Vorlagen erstellen und wiederverwenden
-- **Import/Export** — Tickets als JSON oder CSV exportieren und importieren
-- **Agent & Command Editor** — Claude-Agenten und Custom Commands direkt in der App bearbeiten
-- **Activity Log & Kommentare** — Aktivitätsverlauf pro Ticket, Kommentare mit Zeitstempel
-- **Dashboard** — Projektinfo mit Ticket-Statistiken, Tech-Stack, README-Vorschau, Recent Commits
-- **Backups** — Automatische Backups des Boards mit Restore-Funktion
-- **Dark / Light Theme** — Teal-Akzent mit konfigurierbarer Akzentfarbe
-- **Kostentracking** — Token-Verbrauch und Kosten pro Ticket (Claude-Modelle)
+- **Import/Export** — Tickets als JSON oder CSV
+- **Backups** — Automatische Board-Backups mit Restore-Funktion
+- **Dark / Light Theme** — Solarized Light + Teal-Akzent, konfigurierbare Akzentfarbe
 
 ## Installation
 
 ### Voraussetzungen
 
 - [Rust](https://rustup.rs/) (stable)
-- [Node.js](https://nodejs.org/) (für Tauri CLI)
+- [Node.js](https://nodejs.org/) (für Tauri CLI und Frontend-Build)
 - Tauri CLI: `cargo install tauri-cli`
 
 ### Development Build
@@ -55,50 +83,17 @@ Das fertige Binary liegt unter `target/release/kanban-runner` (Linux) bzw. `targ
 
 ### Ticket erstellen
 
-1. **"+ New Task"** Button in der Sidebar oder `Ctrl+N`
+1. **"+ New Task"** Button in der Sidebar, **[+]** im Backlog-Header oder `Ctrl+N`
 2. Titel, Beschreibung, Typ (Feature, Bugfix, Security, Docs) und Priorität wählen
 3. Ticket landet im **Backlog**
 
 ### Workflow
 
 1. **Backlog** — Ticket erstellen
-2. **▷ Start** — Ticket starten (erstellt Git-Branch, setzt Status auf Progress)
-3. **✔ Ticket abschließen** — Ticket fertigstellen (wechselt zu Review)
-4. **Merge** — Branch mergen (wechselt zu Done)
-
-### Suche & Filter
-
-- **Globale Suche** im Header filtert das Board in Echtzeit
-- **Filter-Bar** (`Ctrl+F`) ermöglicht zusätzlich Filterung nach Typ und Priorität
-
-### Bug-Sync (Portal Bug-Tracker)
-
-Bugs aus einem Portal Bug-Tracker können automatisch ins Kanban Board importiert werden.
-
-**Einrichtung:**
-
-1. **Settings** öffnen (Sidebar → Settings)
-2. Abschnitt **Bug-Sync (Portal)** konfigurieren:
-   - **API URL** — Basis-URL des Portal Bug-Tracker API-Endpunkts
-   - **API Token** — Bearer-Token für die Authentifizierung
-   - **Sync-Intervall** — Automatisches Polling (Standard: 5 Minuten, Minimum: 60 Sekunden)
-   - **Aktiviert** — Toggle zum Ein-/Ausschalten
-3. Speichern
-
-**Verwendung:**
-
-- **Manueller Sync** — Button "Bugs synchen" im Board-Header
-- **Automatischer Sync** — Timer pollt das Portal im konfigurierten Intervall
-- **Bell-Badge** — Zeigt Anzahl neuer Bugs im globalen Header
-- Synchronisierte Bugs erscheinen als **Bugfix-Tickets** im Backlog mit "Portal-Bug" Badge
-- Im Ticket-Detail werden **Portal Bug ID** und **URL** angezeigt
-
-**Portal API Endpunkte:**
-
-| Endpunkt | Methode | Beschreibung |
-|---|---|---|
-| `/unsynced` | GET | Liefert ungesyncte Bugs |
-| `/mark-synced` | POST | Markiert Bugs als gesynct (mit `kanban_ticket_id`) |
+2. **Start** — Ticket starten (erstellt Git-Branch, öffnet Fokus-Modus mit Terminal)
+3. **Ticket abschließen** — Review-Modal zeigt Diff, nach Bestätigung wird committed
+4. **Änderungen anzeigen** — In Review-Spalte: Diff aller Änderungen prüfen
+5. **Übernehmen** — Branch in Hauptbranch übernehmen (Ticket → Done)
 
 ### Keyboard Shortcuts
 
@@ -106,42 +101,59 @@ Bugs aus einem Portal Bug-Tracker können automatisch ins Kanban Board importier
 |---|---|
 | `Ctrl+N` | Neues Ticket |
 | `Ctrl+F` | Filter-Bar togglen |
-| `Ctrl+P` | Project Picker öffnen |
-| `Ctrl+,` | Settings öffnen |
+| `Ctrl+P` | Project Picker |
+| `Ctrl+,` | Settings |
 | `Ctrl+L` | Log-Panel togglen |
-| `Ctrl+\`` | Terminal togglen |
+| `` Ctrl+` `` | Terminal togglen |
+| `Pfeiltasten` | Board-Navigation |
+| `Enter` | Ticket-Detail öffnen |
 | `Escape` | Dialog / Panel schließen |
-| `?` | Keyboard Shortcuts anzeigen |
+| `?` | Keyboard Shortcuts |
 
 ## Architektur
 
 ```
 kanban-runner/
-  Cargo.toml           # Rust-Dependencies (tauri, reqwest, tokio, serde, ...)
-  tauri.conf.json       # Tauri-Konfiguration
+  Cargo.toml              # Rust-Dependencies
+  tauri.conf.json          # Tauri-Konfiguration
   src/
-    main.rs             # Tauri-Setup, State-Init, Bug-Sync Auto-Timer
-    commands.rs         # Alle Tauri-Commands (invoke handler)
-    kanban.rs           # Board, Ticket, File-Watcher
-    state.rs            # AppState, Settings, BugSyncSettings
-    bugsync.rs          # Portal Bug-Tracker HTTP Client (reqwest)
-    git.rs              # Git-Operationen
-    terminal.rs         # PTY Terminal
-    deploy.rs           # Local/Live Deploy
-    config.rs           # Projekt-/Settings-Persistenz
-    activity.rs         # Activity Log
-    runner.rs           # Claude Runner Integration
+    main.rs                # Tauri-Setup, State-Init, Bug-Sync Timer
+    commands.rs            # Alle Tauri-Commands (~50 IPC Handler)
+    kanban.rs              # Board, Ticket, File-Watcher
+    state.rs               # AppState, Settings
+    git.rs                 # Git-Operationen (Branch, Diff, Commit)
+    terminal.rs            # PTY Terminal Sessions
+    db.rs                  # SQLite-Persistenz
+    config.rs              # Projekt-/Settings-Persistenz
+    deploy.rs              # Docker/SSH Deploy
+    bugsync.rs             # Portal Bug-Tracker Sync
+    activity.rs            # Activity Log
+    crypto.rs              # Token-Verschlüsselung (ChaCha20)
+    error.rs               # Strukturierte Error-Typen
   frontend/
-    index.html          # Single-Page App
-    app.js              # Frontend-Logik (Vanilla JS)
-    style.css           # Styling (Dark/Light Theme, CSS Custom Properties)
-    vendor/
-      xterm/            # xterm.js für Terminal-Rendering
+    index.html             # Single-Page App (HTML)
+    app.js                 # Orchestrator (State, Init, Routing)
+    board.js               # Board-Rendering, Drag & Drop, Filter
+    detail.js              # Ticket-Detail, Timeline, Kommentare
+    git.js                 # Git-View (Branch-Cards, Diffs)
+    terminal.js            # Terminal-Sessions, Tabs
+    settings.js            # Settings-Form, Tabs, Backups
+    statistics.js          # Charts, Metriken
+    dashboard.js           # Dashboard, Templates, Import/Export
+    activity.js            # Activity-Timeline
+    editors.js             # Agent/Command-Editoren
+    deploy.js              # Deploy-Operationen
+    bugsync.js             # Bug-Sync UI
+    utils.js               # Utilities (esc, timeAgo, debounce, ...)
+    error-handler.js       # Globaler Error-Handler
+    style.css              # Styling (Dark/Light Theme, CSS Variables)
+    vite.config.js         # Vite Build-Konfiguration
+    vendor/xterm/          # xterm.js für Terminal-Rendering
 ```
 
 ## Version
 
-Aktuelle Version: **0.3.0**
+Aktuelle Version: **0.0.2**
 
 Siehe [CHANGELOG.md](CHANGELOG.md) für die vollständige Versionshistorie.
 
