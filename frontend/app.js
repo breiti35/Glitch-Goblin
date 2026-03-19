@@ -70,6 +70,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderBoard();
   updateSidebar();
   checkGitStatus();
+  loadClaudeUsage();
+  // Refresh usage every 2 minutes
+  setInterval(loadClaudeUsage, 120000);
 });
 
 async function loadInitialState() {
@@ -365,13 +368,37 @@ export function confirmExecute(ticket) {
   document.getElementById("confirm-message").textContent =
     `Execute ticket ${ticket.id} - "${ticket.title}"?${warning}`;
   const modelSelect = document.getElementById("confirm-model-select");
-  modelSelect.value = modelToFlag(state.settings.claude_model || "claude-sonnet-4-6");
+
+  // Model recommendation based on ticket type
+  const rec = getModelRecommendation(ticket.ticket_type);
+  modelSelect.value = modelToFlag(rec.model);
+  const hintEl = document.getElementById("model-recommendation-hint");
+  if (hintEl) {
+    hintEl.textContent = rec.hint;
+    hintEl.className = "model-hint model-hint-" + rec.level;
+  }
+
   document.getElementById("btn-confirm-yes").onclick = () => {
     const selectedModel = modelSelect.value;
     closeModal("modal-confirm");
     executeTicket(ticket.id, selectedModel);
   };
   openModal("modal-confirm");
+}
+
+function getModelRecommendation(ticketType) {
+  switch (ticketType) {
+    case "security":
+      return { model: "claude-opus-4-6", hint: "Opus empfohlen \u2014 tiefe Analyse, Edge Cases", level: "opus" };
+    case "feature":
+      return { model: "claude-opus-4-6", hint: "Opus empfohlen \u2014 komplexe Architektur", level: "opus" };
+    case "bugfix":
+      return { model: "claude-sonnet-4-6", hint: "Sonnet empfohlen \u2014 schnell, klar definiert", level: "sonnet" };
+    case "docs":
+      return { model: "claude-sonnet-4-6", hint: "Sonnet empfohlen \u2014 Textarbeit", level: "sonnet" };
+    default:
+      return { model: state.settings.claude_model || "claude-sonnet-4-6", hint: "", level: "default" };
+  }
 }
 
 export function modelToFlag(model) {
@@ -705,4 +732,48 @@ export function openModal(id) {
 
 export function closeModal(id) {
   document.getElementById(id).classList.add("hidden");
+}
+
+// ── Claude Usage ──
+async function loadClaudeUsage() {
+  try {
+    const usage = await invoke("get_claude_usage");
+    updateUsageDisplay(usage);
+  } catch (e) {
+    // Usage unavailable (no credentials, offline, etc.)
+    const container = document.getElementById("sidebar-usage");
+    if (container) container.classList.add("hidden");
+  }
+}
+
+function updateUsageDisplay(usage) {
+  const container = document.getElementById("sidebar-usage");
+  if (!container) return;
+  container.classList.remove("hidden");
+
+  // 5h bar
+  const fill5h = document.getElementById("usage-5h-fill");
+  const pct5h = document.getElementById("usage-5h-pct");
+  if (fill5h && pct5h) {
+    const val = Math.round(usage.fiveHour);
+    fill5h.style.width = Math.min(val, 100) + "%";
+    fill5h.className = "usage-bar-fill " + usageColor(val);
+    pct5h.textContent = val + "%";
+  }
+
+  // 7d bar
+  const fill7d = document.getElementById("usage-7d-fill");
+  const pct7d = document.getElementById("usage-7d-pct");
+  if (fill7d && pct7d) {
+    const val = Math.round(usage.sevenDay);
+    fill7d.style.width = Math.min(val, 100) + "%";
+    fill7d.className = "usage-bar-fill " + usageColor(val);
+    pct7d.textContent = val + "%";
+  }
+}
+
+function usageColor(pct) {
+  if (pct >= 90) return "usage-red";
+  if (pct >= 70) return "usage-yellow";
+  return "usage-green";
 }

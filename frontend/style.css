@@ -2638,6 +2638,72 @@ kbd {
   max-width: 250px;
 }
 
+/* ── Claude Usage (Sidebar) ── */
+.sidebar-usage {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-usage.hidden { display: none; }
+
+.usage-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.usage-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.usage-label {
+  font-size: 10px;
+  color: var(--muted);
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.usage-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.usage-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s, background 0.3s;
+}
+.usage-bar-fill.usage-green  { background: var(--success); }
+.usage-bar-fill.usage-yellow { background: var(--warning); }
+.usage-bar-fill.usage-red    { background: var(--danger); }
+
+.usage-pct {
+  font-size: 10px;
+  color: var(--muted);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Model Recommendation Hint ── */
+.model-hint {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  font-weight: 400;
+}
+.model-hint:empty { display: none; }
+.model-hint-opus   { color: var(--accent); }
+.model-hint-sonnet { color: var(--success); }
+.model-hint-default { color: var(--muted); }
+
 /* ── Hide old sidebar header elements ── */
 .sidebar-header .app-title,
 .sidebar-header #btn-app-settings { display: none; }

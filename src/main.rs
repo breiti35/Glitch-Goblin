@@ -253,6 +253,8 @@ fn main() {
             commands::get_bug_sync_settings,
             // Version
             commands::get_version,
+            // Claude Usage
+            commands::get_claude_usage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

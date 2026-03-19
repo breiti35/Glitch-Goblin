@@ -1790,3 +1790,97 @@ pub async fn get_bug_sync_settings(
 pub fn get_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
+
+// ── Claude Usage (OAuth API) ──
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeUsage {
+    pub five_hour: f64,
+    pub seven_day: f64,
+    pub five_hour_resets_at: String,
+    pub seven_day_resets_at: String,
+    pub available: bool,
+}
+
+/// Cached usage result to avoid hammering the API.
+static USAGE_CACHE: std::sync::LazyLock<tokio::sync::Mutex<Option<(std::time::Instant, ClaudeUsage)>>> =
+    std::sync::LazyLock::new(|| tokio::sync::Mutex::new(None));
+
+#[tauri::command]
+pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
+    // Check cache (60 seconds)
+    {
+        let cache = USAGE_CACHE.lock().await;
+        if let Some((ts, ref usage)) = *cache {
+            if ts.elapsed().as_secs() < 60 {
+                return Ok(usage.clone());
+            }
+        }
+    }
+
+    // Read OAuth token from ~/.claude/.credentials.json
+    let home = dirs::home_dir().ok_or("Home directory not found")?;
+    let creds_path = home.join(".claude").join(".credentials.json");
+    let creds_content = tokio::fs::read_to_string(&creds_path)
+        .await
+        .map_err(|e| format!("Credentials not found: {e}"))?;
+    let creds: serde_json::Value = serde_json::from_str(&creds_content)
+        .map_err(|e| format!("Invalid credentials JSON: {e}"))?;
+    let token = creds
+        .pointer("/claudeAiOauth/accessToken")
+        .and_then(|v| v.as_str())
+        .ok_or("OAuth access token not found in credentials")?;
+
+    // Call Anthropic OAuth usage API
+    let client = reqwest::Client::new();
+    let resp = client
+        .get("https://api.anthropic.com/api/oauth/usage")
+        .header("Authorization", format!("Bearer {token}"))
+        .header("Accept", "application/json")
+        .header("anthropic-beta", "oauth-2025-04-20")
+        .send()
+        .await
+        .map_err(|e| format!("Usage API request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Usage API returned {status}: {body}"));
+    }
+
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse usage response: {e}"))?;
+
+    let usage = ClaudeUsage {
+        five_hour: body
+            .pointer("/five_hour/utilization")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
+        seven_day: body
+            .pointer("/seven_day/utilization")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
+        five_hour_resets_at: body
+            .pointer("/five_hour/resets_at")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        seven_day_resets_at: body
+            .pointer("/seven_day/resets_at")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        available: true,
+    };
+
+    // Update cache
+    {
+        let mut cache = USAGE_CACHE.lock().await;
+        *cache = Some((std::time::Instant::now(), usage.clone()));
+    }
+
+    Ok(usage)
+}
