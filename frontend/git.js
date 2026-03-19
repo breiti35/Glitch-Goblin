@@ -159,7 +159,7 @@ function renderBranchCard(branch, compact) {
       </div>
       <div class="git-card-actions">
         <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}">\u25BC Details</button>
-        ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u{1F500} Merge</button>` : ""}
+        ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u2714 \u00DCbernehmen</button>` : ""}
         <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}">\u{1F5D1} L\u00F6schen</button>
       </div>
       <div class="git-card-details hidden" data-details-for="${esc(branch.name)}"></div>
@@ -357,7 +357,7 @@ async function showCommitDiff(commitHash) {
 // ── Branch Actions ──
 
 async function mergeBranch(branch) {
-  if (!confirm(`Merge "${branch}" nach main?`)) return;
+  if (!confirm(`"${branch}" \u00FCbernehmen?\nDie \u00C4nderungen werden in den Hauptbranch \u00FCbernommen.`)) return;
   try {
     const ticket = state.board.tickets.find(t => t.branch === branch);
     if (ticket) {

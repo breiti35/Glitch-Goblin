@@ -546,7 +546,7 @@ function renderDiffLines(diff) {
 }
 
 export const mergeTicket = withGuard(async function(ticketId) {
-  if (!confirm(`Ticket ${ticketId} mergen?\nDer Branch wird in den Hauptbranch gemergt.`)) return;
+  if (!confirm(`Ticket ${ticketId} \u00FCbernehmen?\nDie \u00C4nderungen werden in den Hauptbranch \u00FCbernommen.`)) return;
   try {
     appendLog(`Merging ${ticketId}...`);
     await invoke("merge_ticket", { ticketId });

@@ -183,7 +183,7 @@ function createCard(ticket, col) {
     actionHTML = `<button class="card-action finish" data-finish="${ticket.id}">\u2714 Ticket abschlie\u00DFen</button>`;
   } else if (col === "review") {
     actionHTML = `<button class="card-action review-diff" data-review-diff="${ticket.id}">\u{1F50D} \u00C4nderungen anzeigen</button>
-      <button class="card-action merge" data-merge="${ticket.id}">Merge</button>`;
+      <button class="card-action merge" data-merge="${ticket.id}">\u2714 \u00DCbernehmen</button>`;
   }
 
   // Extra badges (cost, comments, portal-bug)
@@ -562,7 +562,7 @@ async function openReviewDiffModal(ticket) {
   // Hide confirm button, show only close
   const confirmBtn = document.getElementById("btn-review-confirm");
   const cancelBtn = document.getElementById("btn-review-cancel");
-  confirmBtn.textContent = "\u2714 Merge";
+  confirmBtn.textContent = "\u2714 \u00DCbernehmen";
   confirmBtn.onclick = () => {
     closeModal("modal-review");
     mergeTicket(ticket.id);
