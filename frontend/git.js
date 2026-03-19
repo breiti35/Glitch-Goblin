@@ -35,7 +35,12 @@ export async function loadGitView() {
 
   try {
     const branches = await invoke("list_branches");
-    document.getElementById("branch-count").textContent = branches.length;
+    // Update branch count in both sidebar badge and git-view header
+    const countStr = String(branches.length);
+    const sidebarBadge = document.getElementById("branch-count");
+    const viewBadge = document.getElementById("git-branch-count");
+    if (sidebarBadge) sidebarBadge.textContent = countStr;
+    if (viewBadge) viewBadge.textContent = countStr;
 
     if (branches.length === 0) {
       container.innerHTML = '<p class="empty-state">No branches found</p>';
@@ -79,10 +84,11 @@ export async function loadGitView() {
       }
     }
 
-    // Merged branches (compact, collapsible)
+    // Merged branches (compact, collapsible — open by default if no active branches)
     if (mergedBranches.length > 0) {
+      const autoOpen = activeBranches.length === 0 ? " open" : "";
       html += `
-        <details class="git-merged-group">
+        <details class="git-merged-group"${autoOpen}>
           <summary class="git-group-title git-group-collapsible">
             Merged Branches <span class="git-group-count">${mergedBranches.length}</span>
           </summary>
@@ -147,14 +153,16 @@ function renderMergedBranchRow(branch) {
     const ticket = (state.board.tickets || []).find(t => t.id === branch.ticketId);
     if (ticket) ticketTitle = ticket.title;
   }
+  // Fallback: use last commit message if no ticket title
+  const description = ticketTitle || branch.lastCommitMsg || "";
 
   return `
     <div class="git-merged-row" data-branch="${esc(branch.name)}">
       <span class="status-dot merged"></span>
       <span class="git-merged-name">${esc(branch.name)}</span>
-      ${ticketTitle ? `<span class="git-merged-ticket">${esc(ticketTitle)}</span>` : ""}
+      ${description ? `<span class="git-merged-ticket">${esc(description)}</span>` : ""}
       <span class="git-card-merged">\u2713</span>
-      <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}" title="Branch l\u00F6schen">\u{1F5D1}</button>
+      <button class="git-card-btn delete git-merged-delete" data-action="delete" data-branch="${esc(branch.name)}" title="Branch l\u00F6schen">\u{1F5D1}</button>
     </div>
   `;
 }

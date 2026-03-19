@@ -1815,11 +1815,13 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   flex-shrink: 0;
 }
 
-.git-merged-row .git-card-btn {
-  opacity: 0;
+.git-merged-delete {
+  opacity: 0.4;
   transition: opacity 0.15s;
+  font-size: 12px;
+  padding: 2px 6px;
 }
-.git-merged-row:hover .git-card-btn {
+.git-merged-row:hover .git-merged-delete {
   opacity: 1;
 }
 
