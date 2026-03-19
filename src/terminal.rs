@@ -122,6 +122,12 @@ pub async fn spawn_terminal(
 
         let mut cmd_builder = CommandBuilder::new(&shell);
         cmd_builder.cwd(&cwd);
+        // Ensure the PTY child advertises full color support.
+        // GUI-launched Tauri apps often lack TERM in their environment.
+        cmd_builder.env("TERM", "xterm-256color");
+        cmd_builder.env("COLORTERM", "truecolor");
+        // Remove NO_COLOR if inherited from desktop environment
+        cmd_builder.env_remove("NO_COLOR");
 
         let mut child = match pair.slave.spawn_command(cmd_builder) {
             Ok(c) => c,

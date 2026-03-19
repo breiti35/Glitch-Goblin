@@ -796,8 +796,7 @@ async function openTicketTerminal(startResult, model) {
   const term = new Terminal({
     cursorBlink: true,
     fontSize: state.settings.terminal_font_size || 14,
-    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-    theme: getTerminalTheme(),
+    fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
   });
   const fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);
@@ -974,28 +973,11 @@ function updateSidebar() {
 }
 
 // ── Theme ──
-function getTerminalTheme() {
-  const style = getComputedStyle(document.body);
-  return {
-    background: style.getPropertyValue("--terminal-bg").trim() || "#000000",
-    foreground: style.getPropertyValue("--text").trim() || "#ffffff",
-    cursor: style.getPropertyValue("--text").trim() || "#ffffff",
-  };
-}
-
-function applyTerminalThemes() {
-  const theme = getTerminalTheme();
-  for (const inst of Object.values(state.terminals)) {
-    if (inst.term) inst.term.options.theme = theme;
-  }
-}
-
 function toggleTheme() {
   const current = document.body.dataset.theme;
   const next = current === "dark" ? "light" : "dark";
   document.body.dataset.theme = next;
   updateThemeUI();
-  applyTerminalThemes();
   state.settings.theme = next;
   invoke("save_settings", { settings: state.settings }).catch(console.error);
 }
@@ -2335,8 +2317,7 @@ async function openBoardTerminal(shell) {
     const term = new Terminal({
       cursorBlink: true,
       fontSize: state.settings.terminal_font_size || 14,
-      fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-      theme: getTerminalTheme(),
+      fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
       });
     const fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
@@ -2724,8 +2705,7 @@ async function openDeployTerminal(terminalId, name) {
   const term = new Terminal({
     cursorBlink: true,
     fontSize: state.settings.terminal_font_size || 14,
-    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-    theme: getTerminalTheme(),
+    fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
   });
   const fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);
