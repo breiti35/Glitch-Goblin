@@ -985,6 +985,27 @@ pub async fn get_commit_log(
     git::get_commit_log(&project_path, &branch, limit).await
 }
 
+// ── Working Tree Diff (Review) ──
+
+#[tauri::command]
+pub async fn get_working_diff(state: State<'_>) -> Result<git::DiffInfo, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    git::get_working_diff(&project_path).await
+}
+
+#[tauri::command]
+pub async fn get_working_file_diff(
+    file_path: String,
+    state: State<'_>,
+) -> Result<String, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    git::get_working_file_diff(&project_path, &file_path).await
+}
+
 // ── Activity & Comments (Phase 3 - Block C) ──
 
 #[tauri::command]

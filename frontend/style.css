@@ -405,12 +405,12 @@ body {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px;
-  padding-bottom: 16px;
-  margin-bottom: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
   cursor: grab;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, opacity 0.2s;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, opacity 0.2s, padding 0.2s;
   user-select: none;
+  position: relative;
 }
 .ticket-card:hover {
   border-color: var(--accent);
@@ -1571,64 +1571,113 @@ kbd {
   margin-bottom: 8px;
 }
 
-/* ── Git View (Phase 3 - Block B) ── */
-.git-layout {
+/* ── Git View (Card-based) ── */
+.git-card-view {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
   flex: 1;
-  overflow: hidden;
-}
-
-.git-branches {
-  width: 260px;
-  min-width: 200px;
   overflow-y: auto;
-  border-right: 1px solid var(--border);
-  padding-right: 12px;
 }
 
-.git-branch-item {
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
+.git-current-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.git-current-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.git-current-dot.clean { background: var(--success); }
+.git-current-dot.dirty { background: var(--warning); }
+
+.git-current-name {
+  font-weight: 600;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 14px;
+}
+
+.git-current-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.git-current-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.git-group-title {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.git-branch-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.git-branch-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: border-color 0.15s;
+}
+
+.git-branch-card:hover {
+  border-color: var(--accent);
+}
+
+.git-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.kanban { background: var(--accent); }
+.status-dot.merged { background: var(--muted); }
+.status-dot.other  { background: var(--text-muted); }
+
+.git-card-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border: 1px solid transparent;
-  transition: background 0.15s;
+  min-width: 0;
 }
 
-.git-branch-item:hover {
-  background: var(--surface-hover);
-}
-
-.git-branch-item.active {
-  background: var(--surface);
-  border-color: var(--border);
-}
-
-.git-branch-item .branch-name {
+.git-card-name {
   font-weight: 500;
   font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.git-branch-item .branch-name .current-badge {
-  font-size: 10px;
-  color: var(--success);
-}
-
-.git-branch-item .branch-name .kanban-badge {
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--accent);
-  color: #fff;
-}
-
-.git-branch-item .branch-meta {
+.git-card-ticket {
   font-size: 11px;
   color: var(--muted);
   white-space: nowrap;
@@ -1636,45 +1685,62 @@ kbd {
   text-overflow: ellipsis;
 }
 
-.git-detail {
-  flex: 1;
-  overflow-y: auto;
+.git-card-merged {
+  font-size: 11px;
+  color: var(--success);
+}
+
+.git-card-meta {
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.git-card-actions {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
-.git-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+.git-card-btn {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.15s;
 }
+.git-card-btn:hover { background: var(--surface-hover); }
+.git-card-btn.merge { color: var(--success); }
+.git-card-btn.delete { color: var(--danger); }
 
-.git-detail-header h2 {
-  font-size: 16px;
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
-  word-break: break-all;
+.git-card-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }
+.git-card-details.hidden { display: none; }
 
-.git-detail-actions {
-  display: flex;
-  gap: 8px;
+.git-detail-stats {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
 }
+.git-detail-stats .stat-add { color: var(--success); }
+.git-detail-stats .stat-del { color: var(--danger); }
 
-.git-section h3 {
-  font-size: 13px;
+.git-detail-section {
+  margin-bottom: 10px;
+}
+.git-detail-section h4 {
+  font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: 8px;
-}
-
-.git-commits {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .git-commit-item {
@@ -1842,6 +1908,110 @@ kbd {
 .diff-line-hdr {
   color: #60a5fa;
   font-weight: 600;
+}
+
+/* ── Review Modal ── */
+.modal-review-content {
+  max-width: 800px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-body {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.review-file-list {
+  width: 280px;
+  min-width: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--border);
+  padding-right: 12px;
+}
+
+.review-stats {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 0 8px;
+}
+
+.review-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.review-file-item:hover { background: var(--surface-hover); }
+.review-file-item.active {
+  background: var(--nav-active);
+  border-left: 2px solid var(--accent);
+}
+
+.review-file-item .file-path {
+  flex: 1;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-file-item .file-status {
+  font-weight: 600;
+  width: 16px;
+  text-align: center;
+  font-size: 11px;
+}
+.review-file-item .file-status.M { color: var(--warning); }
+.review-file-item .file-status.A { color: var(--success); }
+.review-file-item .file-status.D { color: var(--danger); }
+.review-file-item .file-status.\? { color: var(--info); }
+
+.review-file-item .file-changes {
+  flex-shrink: 0;
+  font-size: 10px;
+  display: flex;
+  gap: 4px;
+}
+
+.review-diff-preview {
+  flex: 1;
+  overflow: auto;
+  min-width: 0;
+}
+
+.review-diff-body {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  overflow-x: auto;
+  line-height: 1.5;
+  white-space: pre;
+  margin: 0;
+}
+
+.review-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
 }
 
 /* ── Activity (Phase 3 - Block C) ── */
@@ -2378,21 +2548,95 @@ kbd {
                       font-size: 11px; color: var(--text-muted); }
 .sys-dot           { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
 
-/* ── New Card Layout ── */
+/* ── Card Layout (Compact + Hover-Expand) ── */
 .card-header-row  { display: flex; justify-content: space-between; align-items: flex-start;
-                    margin-bottom: 6px; }
-.card-type-icon   { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+                    margin-bottom: 4px; }
+.card-type-icon   { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
                     display: flex; align-items: center; justify-content: center;
-                    font-size: 13px; }
-.card-info-row    { display: flex; align-items: center; justify-content: space-between;
-                    margin-top: 8px; }
-.card-date        { font-size: 11px; color: var(--text-muted); }
-.card-action-row  { margin-top: 6px; }
-.card-bottom-bar  { position: absolute; bottom: 0; left: 0; right: 0;
-                    height: 3px; background: var(--border); }
+                    font-size: 12px; }
+
+/* Compact row: always visible */
+.card-compact-row { display: flex; align-items: center; gap: 8px; }
+.card-progress-mini { flex: 1; height: 3px; background: var(--border); border-radius: 2px;
+                      overflow: hidden; }
 .card-progress-fill { height: 100%; background: var(--accent);
                       border-radius: 0 2px 2px 0; transition: width 0.4s; }
 [data-column="done"] .card-progress-fill { background: var(--success); }
+
+/* Hover-expand section: hidden by default, slides in on hover */
+.card-expand { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; }
+.ticket-card:hover .card-expand { max-height: 200px; }
+.ticket-card.dragging .card-expand { max-height: 0 !important; }
+
+.card-info-row    { display: flex; align-items: center; justify-content: space-between;
+                    margin-top: 6px; }
+.card-date        { font-size: 11px; color: var(--text-muted); }
+.card-action-row  { margin-top: 6px; }
+
+/* ── WIP Limits ── */
+.wip-limit-label {
+  font-size: 9px;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+.column.wip-exceeded {
+  border-color: var(--warning) !important;
+  box-shadow: inset 0 0 0 1px var(--warning);
+}
+.column.wip-exceeded .column-header {
+  background: rgba(234, 179, 8, 0.08);
+}
+
+/* WIP progress bar */
+.column-wip-bar {
+  height: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.column-wip-bar.hidden { display: none; }
+.wip-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+.column.wip-exceeded .wip-fill { background: var(--warning); }
+
+/* Column stats */
+.column-stat {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  padding: 2px 0;
+  min-height: 16px;
+}
+
+/* Empty states in columns */
+.column-empty-state {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Drop indicator line */
+.drop-indicator {
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin: 4px 0;
+  transition: opacity 0.15s;
+}
+
+/* Drag ghost */
+.drag-ghost {
+  opacity: 0.7;
+  transform: rotate(2deg);
+  max-width: 250px;
+}
 
 /* ── Hide old sidebar header elements ── */
 .sidebar-header .app-title,

@@ -175,41 +175,51 @@
           <div class="column" data-column="backlog">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-backlog">☰</span>
+                <span class="col-icon col-icon-backlog">&#9776;</span>
                 <span class="column-title">Backlog</span>
               </div>
               <span class="column-count" data-count="backlog">0</span>
             </div>
+            <div class="column-wip-bar" data-wip="backlog"></div>
+            <div class="column-stat" data-stat="backlog"></div>
             <div class="column-body" data-drop="backlog"></div>
           </div>
-          <div class="column" data-column="progress">
+          <div class="column" data-column="progress" data-wip-limit="3">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-progress">▶</span>
+                <span class="col-icon col-icon-progress">&#9654;</span>
                 <span class="column-title">Progress</span>
               </div>
               <span class="column-count" data-count="progress">0</span>
+              <span class="wip-limit-label">max 3</span>
             </div>
+            <div class="column-wip-bar" data-wip="progress"></div>
+            <div class="column-stat" data-stat="progress"></div>
             <div class="column-body" data-drop="progress"></div>
           </div>
-          <div class="column" data-column="review">
+          <div class="column" data-column="review" data-wip-limit="5">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-review">◎</span>
+                <span class="col-icon col-icon-review">&#9678;</span>
                 <span class="column-title">Review</span>
               </div>
               <span class="column-count" data-count="review">0</span>
+              <span class="wip-limit-label">max 5</span>
             </div>
+            <div class="column-wip-bar" data-wip="review"></div>
+            <div class="column-stat" data-stat="review"></div>
             <div class="column-body" data-drop="review"></div>
           </div>
           <div class="column" data-column="done">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-done">✓</span>
+                <span class="col-icon col-icon-done">&#10003;</span>
                 <span class="column-title">Done</span>
               </div>
               <span class="column-count" data-count="done">0</span>
             </div>
+            <div class="column-wip-bar" data-wip="done"></div>
+            <div class="column-stat" data-stat="done"></div>
             <div class="column-body" data-drop="done"></div>
           </div>
         </div>
@@ -468,38 +478,22 @@
       <section id="view-git" class="view">
         <div class="view-header">
           <h1>Git</h1>
+          <span id="branch-count" class="badge-count">0</span>
           <button id="btn-refresh-branches" class="icon-btn" title="Refresh">&#8635;</button>
         </div>
-        <div class="git-layout">
-          <div id="git-branch-list" class="git-branches">
+        <div class="git-card-view">
+          <div id="git-current-branch" class="git-current-info"></div>
+          <div id="git-branch-cards" class="git-branch-cards">
             <p class="empty-state">Loading branches...</p>
           </div>
-          <div id="git-detail" class="git-detail hidden">
-            <div class="git-detail-header">
-              <h2 id="git-branch-name"></h2>
-              <div class="git-detail-actions">
-                <button id="btn-git-merge" class="btn-primary">Merge nach main</button>
-                <button id="btn-git-terminal" class="btn-secondary">Im Terminal</button>
-                <button id="btn-git-delete" class="btn-danger">Branch l&ouml;schen</button>
-              </div>
-            </div>
-            <div class="git-section">
-              <h3>Commits</h3>
-              <div id="git-commits" class="git-commits"></div>
-            </div>
-            <div class="git-section">
-              <h3>Changed Files</h3>
-              <div id="git-diff-stats" class="git-diff-stats"></div>
-              <div id="git-diff-files" class="git-diff-files"></div>
-            </div>
-            <div id="git-diff-content" class="git-diff-content hidden">
-              <div class="git-diff-content-header">
-                <span id="git-diff-filename"></span>
-                <button id="btn-close-diff" class="icon-btn">&#10005;</button>
-              </div>
-              <pre id="git-diff-body" class="git-diff-body"></pre>
-            </div>
+        </div>
+        <!-- Diff overlay (shared) -->
+        <div id="git-diff-content" class="git-diff-content hidden">
+          <div class="git-diff-content-header">
+            <span id="git-diff-filename"></span>
+            <button id="btn-close-diff" class="icon-btn">&#10005;</button>
           </div>
+          <pre id="git-diff-body" class="git-diff-body"></pre>
         </div>
       </section>
 
@@ -693,6 +687,27 @@
         </div>
         <div id="backup-list" class="backup-list">
           <p class="empty-state">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Review before commit -->
+    <div id="modal-review" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-review-content">
+        <div class="modal-header">
+          <h2 id="review-title">Review</h2>
+          <button class="modal-close icon-btn">&#10005;</button>
+        </div>
+        <div class="review-body">
+          <div id="review-file-list" class="review-file-list"></div>
+          <div id="review-diff-preview" class="review-diff-preview">
+            <p class="empty-state">Datei anklicken f&uuml;r Diff-Vorschau</p>
+          </div>
+        </div>
+        <div class="review-actions">
+          <button id="btn-review-confirm" class="btn-primary">&check; Sieht gut aus</button>
+          <button id="btn-review-cancel" class="btn-secondary">&cross; Zur&uuml;ck zum Terminal</button>
         </div>
       </div>
     </div>

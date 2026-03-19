@@ -45,6 +45,10 @@ pub struct BranchInfo {
     pub is_kanban: bool,
     pub last_commit_msg: String,
     pub last_commit_date: String,
+    pub is_merged: bool,
+    pub files_changed: u32,
+    pub ahead_count: u32,
+    pub ticket_id: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -243,12 +247,16 @@ async fn default_branch(project_path: &Path) -> String {
 }
 
 pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, String> {
+    let clean_project = strip_unc_prefix(project_path);
+    let default = default_branch(project_path).await;
+
+    // Get branch list
     let output = Command::new("git")
         .args([
             "branch",
             "--format=%(refname:short)|%(HEAD)|%(subject)|%(creatordate:iso8601)",
         ])
-        .current_dir(project_path)
+        .current_dir(&clean_project)
         .output()
         .await
         .map_err(|e| AppError::GitCommand(format!("branch: {e}")))?;
@@ -258,6 +266,22 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
         return Err(AppError::GitCommand(format!("branch: {}", stderr.trim())).into());
     }
 
+    // Get merged branches (once for all)
+    let merged_output = Command::new("git")
+        .args(["branch", "--merged", &default])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .ok();
+    let merged_set: std::collections::HashSet<String> = merged_output
+        .map(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .map(|l| l.trim().trim_start_matches("* ").to_string())
+                .collect()
+        })
+        .unwrap_or_default();
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut branches = Vec::new();
 
@@ -266,12 +290,45 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
         if parts.len() < 4 {
             continue;
         }
+        let name = parts[0].trim().to_string();
+        let is_kanban = name.starts_with("kanban/");
+
+        // Extract ticket ID from kanban branch name: kanban/KANBAN-018-slug → KANBAN-018
+        let ticket_id = if is_kanban {
+            name.strip_prefix("kanban/").and_then(|rest| {
+                // Match KANBAN-NNN pattern at start
+                let dash_parts: Vec<&str> = rest.splitn(3, '-').collect();
+                if dash_parts.len() >= 2 {
+                    if let Ok(_) = dash_parts[1].parse::<u32>() {
+                        Some(format!("{}-{}", dash_parts[0], dash_parts[1]))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        };
+
+        // Get ahead count and files changed (lightweight: rev-list count + diffstat)
+        let (ahead_count, files_changed) = if name != default {
+            get_branch_counts(&clean_project, &default, &name).await
+        } else {
+            (0, 0)
+        };
+
         branches.push(BranchInfo {
-            name: parts[0].trim().to_string(),
             is_current: parts[1].trim() == "*",
-            is_kanban: parts[0].trim().starts_with("kanban/"),
+            is_kanban,
             last_commit_msg: parts[2].trim().to_string(),
             last_commit_date: parts[3].trim().to_string(),
+            is_merged: merged_set.contains(&name),
+            files_changed,
+            ahead_count,
+            ticket_id,
+            name,
         });
     }
 
@@ -284,6 +341,41 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
     });
 
     Ok(branches)
+}
+
+/// Get ahead count and files changed for a branch relative to base.
+async fn get_branch_counts(project_path: &Path, base: &str, branch: &str) -> (u32, u32) {
+    // Ahead count: commits on branch not in base
+    let ahead = Command::new("git")
+        .args(["rev-list", "--count", &format!("{base}..{branch}")])
+        .current_dir(project_path)
+        .output()
+        .await
+        .ok()
+        .and_then(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .trim()
+                .parse::<u32>()
+                .ok()
+        })
+        .unwrap_or(0);
+
+    // Files changed: numstat between base and branch
+    let files = Command::new("git")
+        .args(["diff", "--numstat", &format!("{base}...{branch}")])
+        .current_dir(project_path)
+        .output()
+        .await
+        .ok()
+        .map(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .count() as u32
+        })
+        .unwrap_or(0);
+
+    (ahead, files)
 }
 
 pub async fn get_branch_diff(
@@ -498,4 +590,92 @@ pub async fn get_commit_log(
     }
 
     Ok(commits)
+}
+
+/// Get uncommitted changes (both staged and unstaged) in the working tree.
+pub async fn get_working_diff(project_path: &Path) -> Result<DiffInfo, String> {
+    let clean_project = strip_unc_prefix(project_path);
+
+    // Combine staged + unstaged: diff HEAD shows all uncommitted changes
+    let output = Command::new("git")
+        .args(["diff", "HEAD", "--numstat"])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("diff HEAD: {e}")))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut files = Vec::new();
+    let mut total_add = 0u32;
+    let mut total_del = 0u32;
+
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() < 3 {
+            continue;
+        }
+        let additions = parts[0].parse::<u32>().unwrap_or(0);
+        let deletions = parts[1].parse::<u32>().unwrap_or(0);
+        let file_path = parts[2].to_string();
+
+        let status = if additions > 0 && deletions > 0 {
+            "M"
+        } else if additions > 0 {
+            "A"
+        } else {
+            "D"
+        }
+        .to_string();
+
+        total_add += additions;
+        total_del += deletions;
+
+        files.push(DiffStat {
+            file_path,
+            additions,
+            deletions,
+            status,
+        });
+    }
+
+    // Also check for untracked files
+    let untracked = Command::new("git")
+        .args(["ls-files", "--others", "--exclude-standard"])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .ok();
+    if let Some(u) = untracked {
+        for line in String::from_utf8_lossy(&u.stdout).lines() {
+            let line = line.trim();
+            if !line.is_empty() && !files.iter().any(|f| f.file_path == line) {
+                files.push(DiffStat {
+                    file_path: line.to_string(),
+                    additions: 0,
+                    deletions: 0,
+                    status: "?".to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(DiffInfo {
+        files,
+        total_additions: total_add,
+        total_deletions: total_del,
+    })
+}
+
+/// Get the unified diff for a single file in the working tree.
+pub async fn get_working_file_diff(project_path: &Path, file: &str) -> Result<String, String> {
+    let clean_project = strip_unc_prefix(project_path);
+
+    let output = Command::new("git")
+        .args(["diff", "HEAD", "--", file])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("diff file: {e}")))?;
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }

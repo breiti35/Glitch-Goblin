@@ -226,6 +226,9 @@ fn main() {
             commands::get_commit_file_diff,
             commands::delete_branch_cmd,
             commands::get_commit_log,
+            // Working Tree Diff (Review)
+            commands::get_working_diff,
+            commands::get_working_file_diff,
             // Activity & Comments (Block C - Phase 3)
             commands::get_activity,
             commands::add_comment,

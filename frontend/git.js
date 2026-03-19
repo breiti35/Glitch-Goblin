@@ -1,0 +1,328 @@
+// ── Git View Module ──
+// Card-based branch listing with grouped branches, lazy-loading details.
+
+import { invoke } from '@tauri-apps/api/core';
+import { esc, timeAgo } from './utils.js';
+import { state, appendLog } from './app.js';
+import { openBoardTerminal } from './terminal.js';
+
+// ── Git Status ──
+
+export async function checkGitStatus() {
+  try {
+    const dirty = await invoke("check_uncommitted");
+    const badge = document.getElementById("git-status");
+    if (dirty) {
+      badge.textContent = "\u25CF uncommitted changes";
+      badge.classList.add("dirty");
+      badge.classList.remove("clean");
+    } else {
+      badge.textContent = "\u25CF clean";
+      badge.classList.add("clean");
+      badge.classList.remove("dirty");
+    }
+  } catch {
+    // No project selected
+  }
+}
+
+// ── Git View (Card-based) ──
+
+export async function loadGitView() {
+  const container = document.getElementById("git-branch-cards");
+  container.innerHTML = '<p class="empty-state">Loading branches...</p>';
+  document.getElementById("git-current-branch").innerHTML = "";
+
+  try {
+    const branches = await invoke("list_branches");
+    document.getElementById("branch-count").textContent = branches.length;
+
+    if (branches.length === 0) {
+      container.innerHTML = '<p class="empty-state">No branches found</p>';
+      return;
+    }
+
+    // Find current branch
+    const current = branches.find(b => b.isCurrent);
+    const kanbanBranches = branches.filter(b => b.isKanban && !b.isCurrent);
+    const otherBranches = branches.filter(b => !b.isKanban && !b.isCurrent);
+
+    // Current branch info
+    if (current) {
+      const dirty = await invoke("check_uncommitted").catch(() => false);
+      document.getElementById("git-current-branch").innerHTML = `
+        <div class="git-current-card">
+          <span class="git-current-dot ${dirty ? 'dirty' : 'clean'}"></span>
+          <span class="git-current-name">${esc(current.name)}</span>
+          <span class="git-current-label">(aktuell)</span>
+          <span class="git-current-status">${dirty ? 'uncommitted changes' : '\u2713 clean'}</span>
+        </div>
+      `;
+    }
+
+    let html = "";
+
+    // Kanban branches
+    if (kanbanBranches.length > 0) {
+      html += `<div class="git-group-title">Kanban Branches</div>`;
+      html += kanbanBranches.map(b => renderBranchCard(b)).join("");
+    }
+
+    // Other branches
+    if (otherBranches.length > 0) {
+      html += `<div class="git-group-title">Andere Branches</div>`;
+      html += otherBranches.map(b => renderBranchCard(b)).join("");
+    }
+
+    container.innerHTML = html;
+
+    // Event delegation on container
+    container.addEventListener("click", handleCardClick);
+  } catch (e) {
+    container.innerHTML = `<p class="empty-state">Error: ${esc(String(e))}</p>`;
+  }
+}
+
+function renderBranchCard(branch) {
+  // Match ticket title from board
+  let ticketTitle = "";
+  if (branch.ticketId) {
+    const ticket = (state.board.tickets || []).find(t => t.id === branch.ticketId);
+    if (ticket) ticketTitle = ticket.title;
+  }
+
+  // Status dot color
+  let statusClass = "other";
+  if (branch.isMerged) statusClass = "merged";
+  else if (branch.isKanban) statusClass = "kanban";
+
+  const aheadLabel = branch.aheadCount > 0 ? `${branch.aheadCount} \u2191` : "";
+  const filesLabel = branch.filesChanged > 0 ? `${branch.filesChanged} Dateien` : "";
+  const metaParts = [filesLabel, aheadLabel].filter(Boolean).join(" | ");
+
+  return `
+    <div class="git-branch-card" data-branch="${esc(branch.name)}">
+      <div class="git-card-header">
+        <span class="status-dot ${statusClass}"></span>
+        <div class="git-card-info">
+          <span class="git-card-name">${esc(branch.name)}</span>
+          ${ticketTitle ? `<span class="git-card-ticket">"${esc(ticketTitle)}"</span>` : ""}
+          ${branch.isMerged ? '<span class="git-card-merged">\u2713 merged</span>' : ""}
+        </div>
+        ${metaParts ? `<span class="git-card-meta">${metaParts}</span>` : ""}
+      </div>
+      <div class="git-card-actions">
+        <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}">\u25BC Details</button>
+        ${!branch.isMerged && branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u{1F500} Merge</button>` : ""}
+        <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}">\u{1F5D1} L\u00F6schen</button>
+      </div>
+      <div class="git-card-details hidden" data-details-for="${esc(branch.name)}"></div>
+    </div>
+  `;
+}
+
+async function handleCardClick(e) {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+
+  const action = btn.dataset.action;
+  const branch = btn.dataset.branch;
+
+  if (action === "details") {
+    await toggleDetails(branch, btn);
+  } else if (action === "merge") {
+    await mergeBranch(branch);
+  } else if (action === "delete") {
+    await deleteBranch(branch);
+  }
+}
+
+async function toggleDetails(branch, btn) {
+  const panel = document.querySelector(`[data-details-for="${CSS.escape(branch)}"]`);
+  if (!panel) return;
+
+  if (!panel.classList.contains("hidden")) {
+    panel.classList.add("hidden");
+    btn.textContent = "\u25BC Details";
+    return;
+  }
+
+  // Lazy load on first open
+  if (!panel.dataset.loaded) {
+    panel.innerHTML = '<p class="empty-state" style="font-size:12px">Loading...</p>';
+    panel.classList.remove("hidden");
+    btn.textContent = "\u25B2 Details";
+
+    try {
+      const [commits, diff] = await Promise.all([
+        invoke("get_commit_log", { branch, limit: 10 }).catch(() => []),
+        invoke("get_branch_diff", { branch }).catch(() => ({ files: [], totalAdditions: 0, totalDeletions: 0 })),
+      ]);
+
+      let html = "";
+
+      // Diff stats
+      html += `<div class="git-detail-stats">
+        <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span> in ${diff.files.length} files
+      </div>`;
+
+      // Commits
+      if (commits.length > 0) {
+        html += `<div class="git-detail-section"><h4>Commits</h4>`;
+        html += commits.map(c => {
+          const isMerge = c.message.startsWith("Merge ");
+          return `<div class="git-commit-item${isMerge ? " merge-commit" : ""}" data-commit="${esc(c.hash)}" style="cursor:pointer">
+            <span class="commit-hash">${esc(c.hash)}</span>
+            ${isMerge ? '<span class="commit-badge merge">M</span>' : ""}
+            <span class="commit-msg">${esc(c.message)}</span>
+            <span class="commit-date">${timeAgo(c.date)}</span>
+          </div>`;
+        }).join("");
+        html += `</div>`;
+      }
+
+      // Files
+      if (diff.files.length > 0) {
+        html += `<div class="git-detail-section"><h4>Ge\u00E4nderte Dateien</h4>`;
+        html += diff.files.map(f => `
+          <div class="git-file-item" data-file="${esc(f.filePath)}" data-branch="${esc(branch)}">
+            <span class="file-status ${esc(f.status)}">${esc(f.status)}</span>
+            <span class="file-path">${esc(f.filePath)}</span>
+            <span class="file-changes">+${f.additions} -${f.deletions}</span>
+          </div>
+        `).join("");
+        html += `</div>`;
+      }
+
+      panel.innerHTML = html;
+      panel.dataset.loaded = "true";
+
+      // Attach click handlers for files and commits
+      panel.querySelectorAll(".git-file-item").forEach(el => {
+        el.addEventListener("click", () => showFileDiff(el.dataset.branch, el.dataset.file));
+      });
+      panel.querySelectorAll(".git-commit-item").forEach(el => {
+        el.addEventListener("click", () => showCommitDiff(el.dataset.commit));
+      });
+    } catch (e) {
+      panel.innerHTML = `<p class="empty-state" style="font-size:12px">Error: ${esc(String(e))}</p>`;
+    }
+  } else {
+    panel.classList.remove("hidden");
+    btn.textContent = "\u25B2 Details";
+  }
+}
+
+// ── Diff Display ──
+
+function renderDiffLines(diff) {
+  return diff.split("\n").map(line => {
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      return `<span class="diff-line-add">${esc(line)}</span>`;
+    } else if (line.startsWith("-") && !line.startsWith("---")) {
+      return `<span class="diff-line-del">${esc(line)}</span>`;
+    } else if (line.startsWith("@@")) {
+      return `<span class="diff-line-hdr">${esc(line)}</span>`;
+    }
+    return esc(line);
+  }).join("\n");
+}
+
+async function showFileDiff(branch, filePath) {
+  const container = document.getElementById("git-diff-content");
+  container.classList.remove("hidden");
+  document.getElementById("git-diff-filename").textContent = filePath;
+  document.getElementById("git-diff-body").innerHTML = "Loading...";
+
+  try {
+    const diff = await invoke("get_file_diff", { branch, filePath });
+    const body = document.getElementById("git-diff-body");
+    if (!diff.trim()) {
+      body.textContent = "(no diff available)";
+      return;
+    }
+    body.innerHTML = renderDiffLines(diff);
+  } catch (e) {
+    document.getElementById("git-diff-body").textContent = "Error: " + e;
+  }
+}
+
+async function showCommitDiff(commitHash) {
+  const container = document.getElementById("git-diff-content");
+  container.classList.remove("hidden");
+  document.getElementById("git-diff-filename").textContent = "Commit: " + commitHash;
+  document.getElementById("git-diff-body").innerHTML = "Loading...";
+
+  try {
+    const diff = await invoke("get_commit_diff", { commitHash });
+    let html = `<div class="git-detail-stats" style="margin-bottom:8px">
+      <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span> in ${diff.files.length} files
+    </div>`;
+
+    html += diff.files.map(f => `
+      <div class="git-file-item" data-commit="${esc(commitHash)}" data-file="${esc(f.filePath)}" style="cursor:pointer">
+        <span class="file-status ${esc(f.status)}">${esc(f.status)}</span>
+        <span class="file-path">${esc(f.filePath)}</span>
+        <span class="file-changes">+${f.additions} -${f.deletions}</span>
+      </div>
+    `).join("");
+
+    document.getElementById("git-diff-body").innerHTML = html;
+
+    // Click file to show its diff
+    document.getElementById("git-diff-body").querySelectorAll(".git-file-item").forEach(el => {
+      el.addEventListener("click", async () => {
+        try {
+          const fileDiff = await invoke("get_commit_file_diff", { commitHash: el.dataset.commit, filePath: el.dataset.file });
+          document.getElementById("git-diff-filename").textContent = el.dataset.file;
+          document.getElementById("git-diff-body").innerHTML = fileDiff.trim()
+            ? renderDiffLines(fileDiff)
+            : "(no diff available)";
+        } catch (e2) {
+          document.getElementById("git-diff-body").textContent = "Error: " + e2;
+        }
+      });
+    });
+  } catch (e) {
+    document.getElementById("git-diff-body").textContent = "Error: " + e;
+  }
+}
+
+// ── Branch Actions ──
+
+async function mergeBranch(branch) {
+  if (!confirm(`Merge "${branch}" nach main?`)) return;
+  try {
+    const ticket = state.board.tickets.find(t => t.branch === branch);
+    if (ticket) {
+      await invoke("merge_ticket", { ticketId: ticket.id });
+      appendLog(`Merged ${branch}`);
+    } else {
+      appendLog("No ticket found for this branch", true);
+    }
+    loadGitView();
+  } catch (e) {
+    appendLog("Merge failed: " + e, true);
+  }
+}
+
+async function deleteBranch(branch) {
+  if (!confirm(`Branch "${branch}" l\u00F6schen?`)) return;
+  try {
+    await invoke("delete_branch_cmd", { branch, force: true });
+    appendLog(`Deleted branch: ${branch}`);
+    loadGitView();
+  } catch (e) {
+    appendLog("Delete failed: " + e, true);
+  }
+}
+
+// ── Git Event Listeners ──
+
+export function setupGitListeners() {
+  document.getElementById("btn-refresh-branches")?.addEventListener("click", loadGitView);
+
+  document.getElementById("btn-close-diff")?.addEventListener("click", () => {
+    document.getElementById("git-diff-content").classList.add("hidden");
+  });
+}
