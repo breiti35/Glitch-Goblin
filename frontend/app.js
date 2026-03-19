@@ -715,11 +715,28 @@ async function switchProject(name) {
     state.board = await invoke("switch_project", { name });
     state.project = await invoke("get_current_project");
     state.projects = await invoke("get_projects");
+    state.runningTicket = await invoke("get_running_ticket");
     closeModal("modal-picker");
     renderBoard();
     updateSidebar();
     checkGitStatus();
     loadDeployConfig();
+    loadClaudeUsage();
+
+    // Reload the currently active view
+    const activeView = document.querySelector(".view.active");
+    if (activeView) {
+      const viewName = activeView.id.replace("view-", "");
+      if (viewName === "dashboard") loadDashboard();
+      else if (viewName === "git") loadGitView();
+      else if (viewName === "activity") loadActivityView();
+      else if (viewName === "statistics") loadStatistics();
+      else if (viewName === "settings") loadSettingsForm();
+      else if (viewName === "agents") loadAgents();
+      else if (viewName === "commands") loadCommands();
+    }
+
+    showToast(`Projekt "${name}" geladen`, "success");
   } catch (err) {
     appendLog("Switch project error: " + err, true);
   }
