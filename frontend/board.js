@@ -182,7 +182,8 @@ function createCard(ticket, col) {
   } else if (col === "progress") {
     actionHTML = `<button class="card-action finish" data-finish="${ticket.id}">\u2714 Ticket abschlie\u00DFen</button>`;
   } else if (col === "review") {
-    actionHTML = `<button class="card-action merge" data-merge="${ticket.id}">Merge</button>`;
+    actionHTML = `<button class="card-action review-diff" data-review-diff="${ticket.id}">\u{1F50D} \u00C4nderungen anzeigen</button>
+      <button class="card-action merge" data-merge="${ticket.id}">Merge</button>`;
   }
 
   // Extra badges (cost, comments, portal-bug)
@@ -278,6 +279,15 @@ function createCard(ticket, col) {
     finishBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       finishTicket(ticket.id);
+    });
+  }
+
+  // Review diff button
+  const reviewDiffBtn = card.querySelector("[data-review-diff]");
+  if (reviewDiffBtn) {
+    reviewDiffBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openReviewDiffModal(ticket);
     });
   }
 
@@ -531,6 +541,93 @@ export function setupDragDrop() {
       }
     });
   });
+}
+
+// ── Review Diff Modal (for Review column tickets) ──
+
+async function openReviewDiffModal(ticket) {
+  if (!ticket.branch) {
+    showToast("Kein Branch f\u00FCr dieses Ticket gefunden", "error");
+    return;
+  }
+
+  const title = `Review: ${ticket.id} \u2014 ${ticket.title}`;
+  document.getElementById("review-title").textContent = title;
+
+  const fileList = document.getElementById("review-file-list");
+  const diffPreview = document.getElementById("review-diff-preview");
+  fileList.innerHTML = '<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short"></div>';
+  diffPreview.innerHTML = '<p class="empty-state">Datei anklicken f\u00FCr Diff-Vorschau</p>';
+
+  // Hide confirm button, show only close
+  const confirmBtn = document.getElementById("btn-review-confirm");
+  const cancelBtn = document.getElementById("btn-review-cancel");
+  confirmBtn.textContent = "\u2714 Merge";
+  confirmBtn.onclick = () => {
+    closeModal("modal-review");
+    mergeTicket(ticket.id);
+  };
+  cancelBtn.textContent = "Schlie\u00DFen";
+  cancelBtn.onclick = () => closeModal("modal-review");
+
+  openModal("modal-review");
+
+  try {
+    const diff = await invoke("get_branch_diff", { branch: ticket.branch });
+
+    if (diff.files.length === 0) {
+      fileList.innerHTML = '<p class="empty-state">Keine \u00C4nderungen gefunden</p>';
+    } else {
+      fileList.innerHTML = `
+        <div class="review-stats">
+          <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span>
+          \u2014 ${diff.files.length} Dateien ge\u00E4ndert
+        </div>
+      ` + diff.files.map(f => `
+        <div class="review-file-item" data-file="${esc(f.filePath)}" data-branch="${esc(ticket.branch)}">
+          <span class="file-status ${esc(f.status)}">${esc(f.status)}</span>
+          <span class="file-path">${esc(f.filePath)}</span>
+          <span class="file-changes">
+            <span class="stat-add">+${f.additions}</span>
+            <span class="stat-del">-${f.deletions}</span>
+          </span>
+        </div>
+      `).join("");
+
+      fileList.querySelectorAll(".review-file-item").forEach(el => {
+        el.addEventListener("click", async () => {
+          fileList.querySelectorAll(".review-file-item").forEach(i => i.classList.remove("active"));
+          el.classList.add("active");
+          diffPreview.innerHTML = "Loading...";
+          try {
+            const fileDiff = await invoke("get_file_diff", { branch: el.dataset.branch, filePath: el.dataset.file });
+            if (!fileDiff.trim()) {
+              diffPreview.innerHTML = '<p class="empty-state">(keine Diff-Daten)</p>';
+            } else {
+              diffPreview.innerHTML = `<pre class="review-diff-body">${renderReviewDiffLines(fileDiff)}</pre>`;
+            }
+          } catch (e) {
+            diffPreview.innerHTML = `<p class="empty-state">Error: ${esc(String(e))}</p>`;
+          }
+        });
+      });
+    }
+  } catch (e) {
+    fileList.innerHTML = `<p class="empty-state">Error: ${esc(String(e))}</p>`;
+  }
+}
+
+function renderReviewDiffLines(diff) {
+  return diff.split("\n").map(line => {
+    if (line.startsWith("+") && !line.startsWith("+++")) {
+      return `<span class="diff-line-add">${esc(line)}</span>`;
+    } else if (line.startsWith("-") && !line.startsWith("---")) {
+      return `<span class="diff-line-del">${esc(line)}</span>`;
+    } else if (line.startsWith("@@")) {
+      return `<span class="diff-line-hdr">${esc(line)}</span>`;
+    }
+    return esc(line);
+  }).join("\n");
 }
 
 function getDragAfterElement(container, y) {

@@ -616,6 +616,13 @@ body {
 .card-action.finish:hover {
   background: var(--accent-hover);
 }
+.card-action.review-diff {
+  background: var(--info);
+  color: #FFF;
+}
+.card-action.review-diff:hover {
+  opacity: 0.9;
+}
 .card-action.merge {
   background: var(--success);
   color: #FFF;
