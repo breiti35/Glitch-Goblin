@@ -1737,6 +1737,92 @@ kbd {
   margin-top: 8px;
 }
 
+.git-group-count {
+  font-size: 10px;
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.git-group-collapsible {
+  cursor: pointer;
+  list-style: none;
+}
+.git-group-collapsible::-webkit-details-marker { display: none; }
+.git-group-collapsible::before {
+  content: "\u25B6 ";
+  font-size: 9px;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+details.git-merged-group[open] > .git-group-collapsible::before {
+  transform: rotate(90deg);
+}
+
+.git-card-commit-msg {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Compact merged branch rows */
+.git-merged-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.git-merged-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  transition: background 0.1s;
+}
+.git-merged-row:hover { background: var(--surface-hover); }
+
+.git-merged-name {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.git-merged-ticket {
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.git-merged-row .git-card-merged {
+  color: var(--success);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.git-merged-row .git-card-btn {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.git-merged-row:hover .git-card-btn {
+  opacity: 1;
+}
+
 .git-branch-cards {
   display: flex;
   flex-direction: column;

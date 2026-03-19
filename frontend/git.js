@@ -3,7 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, timeAgo } from './utils.js';
-import { state, appendLog } from './app.js';
+import { state, appendLog, showToast } from './app.js';
 import { openBoardTerminal } from './terminal.js';
 
 // ── Git Status ──
@@ -42,19 +42,21 @@ export async function loadGitView() {
       return;
     }
 
-    // Find current branch
+    // Categorize branches
     const current = branches.find(b => b.isCurrent);
-    const kanbanBranches = branches.filter(b => b.isKanban && !b.isCurrent);
-    const otherBranches = branches.filter(b => !b.isKanban && !b.isCurrent);
+    const activeBranches = branches.filter(b => !b.isCurrent && !b.isMerged);
+    const mergedBranches = branches.filter(b => !b.isCurrent && b.isMerged);
 
-    // Current branch info
+    // Current branch info (enhanced)
     if (current) {
       const dirty = await invoke("check_uncommitted").catch(() => false);
       document.getElementById("git-current-branch").innerHTML = `
         <div class="git-current-card">
           <span class="git-current-dot ${dirty ? 'dirty' : 'clean'}"></span>
-          <span class="git-current-name">${esc(current.name)}</span>
-          <span class="git-current-label">(aktuell)</span>
+          <div class="git-current-info">
+            <span class="git-current-name">${esc(current.name)}</span>
+            <span class="git-current-label">(aktuell)</span>
+          </div>
           <span class="git-current-status">${dirty ? 'uncommitted changes' : '\u2713 clean'}</span>
         </div>
       `;
@@ -62,16 +64,37 @@ export async function loadGitView() {
 
     let html = "";
 
-    // Kanban branches
-    if (kanbanBranches.length > 0) {
-      html += `<div class="git-group-title">Kanban Branches</div>`;
-      html += kanbanBranches.map(b => renderBranchCard(b)).join("");
+    // Active branches (not merged)
+    if (activeBranches.length > 0) {
+      const kanbanActive = activeBranches.filter(b => b.isKanban);
+      const otherActive = activeBranches.filter(b => !b.isKanban);
+
+      if (kanbanActive.length > 0) {
+        html += `<div class="git-group-title">Aktive Kanban-Branches <span class="git-group-count">${kanbanActive.length}</span></div>`;
+        html += kanbanActive.map(b => renderBranchCard(b, false)).join("");
+      }
+      if (otherActive.length > 0) {
+        html += `<div class="git-group-title">Andere aktive Branches <span class="git-group-count">${otherActive.length}</span></div>`;
+        html += otherActive.map(b => renderBranchCard(b, false)).join("");
+      }
     }
 
-    // Other branches
-    if (otherBranches.length > 0) {
-      html += `<div class="git-group-title">Andere Branches</div>`;
-      html += otherBranches.map(b => renderBranchCard(b)).join("");
+    // Merged branches (compact, collapsible)
+    if (mergedBranches.length > 0) {
+      html += `
+        <details class="git-merged-group">
+          <summary class="git-group-title git-group-collapsible">
+            Merged Branches <span class="git-group-count">${mergedBranches.length}</span>
+          </summary>
+          <div class="git-merged-list">
+            ${mergedBranches.map(b => renderMergedBranchRow(b)).join("")}
+          </div>
+        </details>
+      `;
+    }
+
+    if (!html) {
+      html = '<p class="empty-state">Nur der aktuelle Branch vorhanden</p>';
     }
 
     container.innerHTML = html;
@@ -83,7 +106,7 @@ export async function loadGitView() {
   }
 }
 
-function renderBranchCard(branch) {
+function renderBranchCard(branch, compact) {
   // Match ticket title from board
   let ticketTitle = "";
   if (branch.ticketId) {
@@ -91,11 +114,7 @@ function renderBranchCard(branch) {
     if (ticket) ticketTitle = ticket.title;
   }
 
-  // Status dot color
-  let statusClass = "other";
-  if (branch.isMerged) statusClass = "merged";
-  else if (branch.isKanban) statusClass = "kanban";
-
+  const statusClass = branch.isKanban ? "kanban" : "other";
   const aheadLabel = branch.aheadCount > 0 ? `${branch.aheadCount} \u2191` : "";
   const filesLabel = branch.filesChanged > 0 ? `${branch.filesChanged} Dateien` : "";
   const metaParts = [filesLabel, aheadLabel].filter(Boolean).join(" | ");
@@ -107,16 +126,35 @@ function renderBranchCard(branch) {
         <div class="git-card-info">
           <span class="git-card-name">${esc(branch.name)}</span>
           ${ticketTitle ? `<span class="git-card-ticket">"${esc(ticketTitle)}"</span>` : ""}
-          ${branch.isMerged ? '<span class="git-card-merged">\u2713 merged</span>' : ""}
+          ${branch.lastCommitMsg ? `<span class="git-card-commit-msg">${esc(branch.lastCommitMsg)}</span>` : ""}
         </div>
         ${metaParts ? `<span class="git-card-meta">${metaParts}</span>` : ""}
       </div>
       <div class="git-card-actions">
         <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}">\u25BC Details</button>
-        ${!branch.isMerged && branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u{1F500} Merge</button>` : ""}
+        ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u{1F500} Merge</button>` : ""}
         <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}">\u{1F5D1} L\u00F6schen</button>
       </div>
       <div class="git-card-details hidden" data-details-for="${esc(branch.name)}"></div>
+    </div>
+  `;
+}
+
+// Compact row for merged branches
+function renderMergedBranchRow(branch) {
+  let ticketTitle = "";
+  if (branch.ticketId) {
+    const ticket = (state.board.tickets || []).find(t => t.id === branch.ticketId);
+    if (ticket) ticketTitle = ticket.title;
+  }
+
+  return `
+    <div class="git-merged-row" data-branch="${esc(branch.name)}">
+      <span class="status-dot merged"></span>
+      <span class="git-merged-name">${esc(branch.name)}</span>
+      ${ticketTitle ? `<span class="git-merged-ticket">${esc(ticketTitle)}</span>` : ""}
+      <span class="git-card-merged">\u2713</span>
+      <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}" title="Branch l\u00F6schen">\u{1F5D1}</button>
     </div>
   `;
 }
@@ -197,7 +235,7 @@ async function toggleDetails(branch, btn) {
       panel.innerHTML = html;
       panel.dataset.loaded = "true";
 
-      // Attach click handlers for files and commits
+      // Attach click handlers
       panel.querySelectorAll(".git-file-item").forEach(el => {
         el.addEventListener("click", () => showFileDiff(el.dataset.branch, el.dataset.file));
       });
@@ -269,7 +307,6 @@ async function showCommitDiff(commitHash) {
 
     document.getElementById("git-diff-body").innerHTML = html;
 
-    // Click file to show its diff
     document.getElementById("git-diff-body").querySelectorAll(".git-file-item").forEach(el => {
       el.addEventListener("click", async () => {
         try {
@@ -297,6 +334,7 @@ async function mergeBranch(branch) {
     if (ticket) {
       await invoke("merge_ticket", { ticketId: ticket.id });
       appendLog(`Merged ${branch}`);
+      showToast(`${branch} gemergt`, "success");
     } else {
       appendLog("No ticket found for this branch", true);
     }
@@ -311,6 +349,7 @@ async function deleteBranch(branch) {
   try {
     await invoke("delete_branch_cmd", { branch, force: true });
     appendLog(`Deleted branch: ${branch}`);
+    showToast(`${branch} gel\u00F6scht`, "success");
     loadGitView();
   } catch (e) {
     appendLog("Delete failed: " + e, true);
