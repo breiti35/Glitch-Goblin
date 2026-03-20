@@ -205,12 +205,16 @@ impl AppState {
             crate::db::save_board(conn, &self.board)?;
             // Backup: write a JSON snapshot into kanban-backups/ for safety
             if self.settings.backups_enabled && !self.kanban_path.as_os_str().is_empty() {
-                let _ = kanban::backup_board(&self.kanban_path, self.settings.max_backups);
+                if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
+                    eprintln!("[glitch-goblin] backup failed: {e}");
+                }
             }
         } else {
             kanban::save_board(&self.kanban_path, &self.board)?;
             if self.settings.backups_enabled {
-                let _ = kanban::backup_board(&self.kanban_path, self.settings.max_backups);
+                if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
+                    eprintln!("[glitch-goblin] backup failed: {e}");
+                }
             }
         }
         Ok(())

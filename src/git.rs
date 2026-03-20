@@ -195,18 +195,32 @@ pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
     Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
 }
 
-#[allow(dead_code)]
 pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), String> {
     validate_git_ref(branch)?;
+    let clean_project = strip_unc_prefix(project_path);
     let result = Command::new("git")
         .args(["merge", "--no-ff", "--", branch])
-        .current_dir(project_path)
+        .current_dir(&clean_project)
         .output()
         .await
         .map_err(|e| AppError::GitMerge(e.to_string()))?;
 
     if !result.status.success() {
-        let stderr = String::from_utf8_lossy(&result.stderr);
+        let stderr = String::from_utf8_lossy(&result.stderr).to_string();
+
+        // Check if it's a merge conflict
+        if stderr.contains("CONFLICT") || stderr.contains("Automatic merge failed") {
+            // Abort the merge to leave repo in clean state
+            let _ = Command::new("git")
+                .args(["merge", "--abort"])
+                .current_dir(&clean_project)
+                .output()
+                .await;
+            return Err(AppError::GitMerge(
+                format!("Merge-Konflikt in Branch '{}'. Der Merge wurde abgebrochen. Bitte löse die Konflikte manuell im Terminal.", branch)
+            ).into());
+        }
+
         return Err(AppError::GitMerge(stderr.trim().to_string()).into());
     }
 
@@ -307,7 +321,7 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
                 // Match GG-NNN or KANBAN-NNN pattern at start
                 let dash_parts: Vec<&str> = rest.splitn(3, '-').collect();
                 if dash_parts.len() >= 2 {
-                    if let Ok(_) = dash_parts[1].parse::<u32>() {
+                    if dash_parts[1].parse::<u32>().is_ok() {
                         Some(format!("{}-{}", dash_parts[0], dash_parts[1]))
                     } else {
                         None
@@ -741,4 +755,51 @@ pub async fn current_branch(project_path: &Path) -> Result<String, String> {
         .await
         .map_err(|e| AppError::GitCommand(format!("rev-parse: {e}")))?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+// ── Git Safety Checks ──
+
+/// Check if the project path contains a git repository.
+pub async fn is_git_repo(project_path: &Path) -> bool {
+    let clean_project = strip_unc_prefix(project_path);
+    Command::new("git")
+        .args(["rev-parse", "--git-dir"])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Check if a merge or rebase is currently in progress.
+pub async fn has_in_progress_operation(project_path: &Path) -> Option<String> {
+    let clean_project = strip_unc_prefix(project_path);
+    // Check for merge in progress
+    let git_dir = clean_project.join(".git");
+    if git_dir.join("MERGE_HEAD").exists() {
+        return Some("merge".to_string());
+    }
+    if git_dir.join("rebase-merge").exists() || git_dir.join("rebase-apply").exists() {
+        return Some("rebase".to_string());
+    }
+    if git_dir.join("CHERRY_PICK_HEAD").exists() {
+        return Some("cherry-pick".to_string());
+    }
+    None
+}
+
+/// Abort a merge in progress.
+pub async fn abort_merge(project_path: &Path) -> Result<(), String> {
+    let clean_project = strip_unc_prefix(project_path);
+    let result = Command::new("git")
+        .args(["merge", "--abort"])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map_err(|e| AppError::GitMerge(format!("abort: {e}")))?;
+    if !result.status.success() {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        return Err(AppError::GitMerge(format!("abort: {}", stderr.trim())).into());
+    }
+    Ok(())
 }

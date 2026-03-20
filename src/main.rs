@@ -31,7 +31,9 @@ fn main() {
 
             // One-time migration: if token is plain-text, re-save encrypted
             if !settings.bug_sync.api_token.is_empty() {
-                let _ = config::save_settings_to_disk(&settings);
+                if let Err(e) = config::save_settings_to_disk(&settings) {
+                    eprintln!("[glitch-goblin] settings save error: {e}");
+                }
             }
 
             // Load projects config
@@ -46,13 +48,17 @@ fn main() {
                 Some(p) => {
                     let dd = config::project_data_dir(&p.name).unwrap_or_default();
                     // Migrate old runtime data from .claude/ if needed
-                    let _ = config::migrate_project_data(&p.path, &dd);
+                    if let Err(e) = config::migrate_project_data(&p.path, &dd) {
+                        eprintln!("[glitch-goblin] project data migration: {e}");
+                    }
 
                     let conn = db::open(&dd).ok();
 
                     // Run JSON → SQLite migration (no-op if already done)
                     if let Some(ref c) = conn {
-                        let _ = db::migrate_from_json(c, &dd);
+                        if let Err(e) = db::migrate_from_json(c, &dd) {
+                            eprintln!("[glitch-goblin] JSON to SQLite migration: {e}");
+                        }
                     }
 
                     // Load board from DB (fallback: kanban.json)
@@ -161,7 +167,9 @@ fn main() {
 
                         match bugsync::fetch_unsynced_bugs(&api_url, &api_token).await {
                             Ok(bugs) if !bugs.is_empty() => {
-                                let _ = app_handle.emit("bug-sync-available", bugs.len());
+                                if let Err(e) = app_handle.emit("bug-sync-available", bugs.len()) {
+                                    eprintln!("[glitch-goblin] emit bug-sync-available error: {e}");
+                                }
                             }
                             _ => {}
                         }
@@ -232,6 +240,8 @@ fn main() {
             // Working Tree Diff (Review)
             commands::get_working_diff,
             commands::get_working_file_diff,
+            // Git Status & Safety
+            commands::get_git_status,
             // Activity & Comments (Block C - Phase 3)
             commands::get_activity,
             commands::add_comment,
@@ -261,6 +271,7 @@ fn main() {
             // Git Push
             commands::push_branch,
             commands::push_current_branch,
+            commands::abort_git_merge,
             commands::get_remote_info,
         ])
         .run(tauri::generate_context!())

@@ -15,6 +15,9 @@ pub enum AppError {
     GitCommand(String),
     GitMerge(String),
     GitCheckout(String),
+    GitConflict(String),
+    GitOperationInProgress(String),
+    NoGitRepo,
     NoBranch(String),
     TerminalSpawn(String),
     TerminalNotFound(String),
@@ -45,6 +48,11 @@ impl fmt::Display for AppError {
             AppError::GitCommand(e) => write!(f, "Git-Fehler: {e}"),
             AppError::GitMerge(e) => write!(f, "Git merge fehlgeschlagen: {e}"),
             AppError::GitCheckout(e) => write!(f, "Git checkout fehlgeschlagen: {e}"),
+            AppError::GitConflict(e) => write!(f, "Merge-Konflikt: {e}"),
+            AppError::GitOperationInProgress(op) => {
+                write!(f, "Git-Operation '{op}' ist noch in Arbeit")
+            }
+            AppError::NoGitRepo => write!(f, "Kein Git-Repository gefunden"),
             AppError::NoBranch(e) => write!(f, "Kein Branch vorhanden: {e}"),
             AppError::TerminalSpawn(e) => {
                 write!(f, "Terminal konnte nicht gestartet werden: {e}")

@@ -321,6 +321,24 @@ pub async fn start_ticket(
         return Err("Git ist nicht installiert oder nicht im PATH".to_string());
     }
 
+    // Pre-flight: verify git repo and clean state
+    {
+        let s = state.lock().await;
+        let project_path = s.project_path()
+            .ok_or(AppError::NoProjectSelected)?;
+
+        if !git::is_git_repo(&project_path).await {
+            return Err("Das Projektverzeichnis ist kein Git-Repository. Bitte initialisiere Git zuerst.".to_string());
+        }
+
+        if let Some(op) = git::has_in_progress_operation(&project_path).await {
+            return Err(format!(
+                "Ein {} ist noch in Arbeit. Bitte schließe diesen zuerst ab oder breche ihn ab.",
+                op
+            ));
+        }
+    }
+
     // Phase 1: Lock briefly to update state
     let (ticket, project_path, kanban_path) = {
         let mut s = state.lock().await;
@@ -340,7 +358,7 @@ pub async fn start_ticket(
         let ticket = s.board.tickets[idx].clone();
         let project_path = s
             .project_path()
-            .ok_or_else(|| AppError::NoProjectSelected)?;
+            .ok_or(AppError::NoProjectSelected)?;
         let kanban_path = s.kanban_path.clone();
         s.save_and_backup()?;
         s.log(format!(
@@ -405,45 +423,38 @@ pub async fn finish_ticket(
         let ticket = s.board.tickets[idx].clone();
         let project_path = s
             .project_path()
-            .ok_or_else(|| AppError::NoProjectSelected)?;
+            .ok_or(AppError::NoProjectSelected)?;
         let kanban_path = s.kanban_path.clone();
         let commit_prefix = s.settings.commit_prefix.clone();
         (ticket, project_path, kanban_path, commit_prefix)
     };
 
-    // Auto-commit changes on the ticket branch
-    let commit_msg = format!("{} {} - {}", commit_prefix, ticket.id, ticket.title);
-    match git::auto_commit(&project_path, &commit_msg).await {
-        Ok(committed) => {
-            if !committed {
-                eprintln!("[finish_ticket] No changes to commit for {}", ticket_id);
-            }
-        }
-        Err(e) => {
-            return Err(format!(
-                "Auto-Commit fehlgeschlagen: {}. Ticket bleibt in Progress.",
-                e
-            ));
-        }
-    }
+    // Auto-commit if there are uncommitted changes
+    let clean_project = git::strip_unc_prefix(&project_path);
+    let msg = format!(
+        "{}{}: {}",
+        commit_prefix, ticket.id, ticket.title
+    );
+    let committed = git::auto_commit(&clean_project, &msg).await?;
 
-    // Switch back to main branch
-    let _ = git::checkout_main(&project_path).await;
-
-    // Update state — move to Review (not directly to Done)
+    // Move to Review
     {
         let mut s = state.lock().await;
-        s.running_ticket = None;
         if let Some(idx) = s.board.tickets.iter().position(|t| t.id == ticket_id) {
             s.board.tickets[idx].column = Column::Review;
             s.board.tickets[idx].review_at = Some(kanban::now_iso());
-            s.log(format!("{} finished -> Review", ticket_id));
-            s.log_activity("ticket_completed", Some(&ticket_id), Some(&ticket.title), None);
-            let _ = s.save_and_backup();
+            s.board.tickets[idx].has_changes = Some(committed);
+            s.running_ticket = None;
+            s.save_and_backup()?;
+            s.log(format!(
+                "Finished {} -> Review (committed={})",
+                ticket_id, committed
+            ));
+            let title = s.board.tickets[idx].title.clone();
+            s.log_activity("ticket_finished", Some(&ticket_id), Some(&title), None);
         }
     }
 
-    // Notify frontend
     {
         let s = state.lock().await;
         let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
@@ -475,7 +486,7 @@ pub async fn merge_ticket(
         let ticket = s.board.tickets[idx].clone();
         let project_path = s
             .project_path()
-            .ok_or_else(|| AppError::NoProjectSelected)?;
+            .ok_or(AppError::NoProjectSelected)?;
         let kanban_path = s.kanban_path.clone();
         let auto_push = s.settings.auto_push_after_merge;
         (ticket, project_path, kanban_path, auto_push)
@@ -485,6 +496,14 @@ pub async fn merge_ticket(
         .branch
         .as_deref()
         .ok_or_else(|| format!("Ticket {} has no branch", ticket_id))?;
+
+    // Pre-flight: check for in-progress operations
+    if let Some(op) = git::has_in_progress_operation(&project_path).await {
+        return Err(format!(
+            "Ein {} ist noch in Arbeit. Bitte schließe diesen zuerst ab bevor du mergst.",
+            op
+        ));
+    }
 
     // Ensure we're on main
     git::checkout_main(&project_path).await?;
@@ -545,6 +564,14 @@ pub async fn push_current_branch(state: State<'_>) -> Result<(), String> {
     drop(s);
     let branch = git::current_branch(&project_path).await?;
     git::push_branch(&project_path, &branch).await
+}
+
+#[tauri::command]
+pub async fn abort_git_merge(state: State<'_>) -> Result<(), String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    git::abort_merge(&project_path).await
 }
 
 #[tauri::command]
@@ -1089,6 +1116,73 @@ pub async fn get_working_file_diff(
     let project_path = s.project_path().ok_or("No project selected")?;
     drop(s);
     git::get_working_file_diff(&project_path, &file_path).await
+}
+
+// ── Git Status & Safety ──
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitStatusInfo {
+    pub is_git_repo: bool,
+    pub current_branch: String,
+    pub is_detached: bool,
+    pub is_dirty: bool,
+    pub operation_in_progress: Option<String>,
+    pub has_remote: bool,
+    pub remote_url: Option<String>,
+}
+
+#[tauri::command]
+pub async fn get_git_status(state: State<'_>) -> Result<GitStatusInfo, String> {
+    let s = state.lock().await;
+    let project_path = match s.project_path() {
+        Some(p) => p,
+        None => {
+            return Ok(GitStatusInfo {
+                is_git_repo: false,
+                current_branch: String::new(),
+                is_detached: false,
+                is_dirty: false,
+                operation_in_progress: None,
+                has_remote: false,
+                remote_url: None,
+            })
+        }
+    };
+    drop(s);
+
+    if !git::is_git_repo(&project_path).await {
+        return Ok(GitStatusInfo {
+            is_git_repo: false,
+            current_branch: String::new(),
+            is_detached: false,
+            is_dirty: false,
+            operation_in_progress: None,
+            has_remote: false,
+            remote_url: None,
+        });
+    }
+
+    let branch = git::current_branch(&project_path).await.unwrap_or_default();
+    let is_detached = branch == "HEAD" || branch.is_empty();
+    let is_dirty = git::check_uncommitted(&project_path).await.unwrap_or(false);
+    let operation_in_progress = git::has_in_progress_operation(&project_path).await;
+    let has_remote = git::has_remote(&project_path).await;
+    let remote_url = if has_remote {
+        git::get_remote_url(&project_path).await.ok()
+    } else {
+        None
+    };
+
+    Ok(GitStatusInfo {
+        is_git_repo: true,
+        current_branch: branch,
+        is_detached,
+        is_dirty,
+        operation_in_progress,
+        has_remote,
+        remote_url,
+    })
 }
 
 // ── Activity & Comments (Phase 3 - Block C) ──
