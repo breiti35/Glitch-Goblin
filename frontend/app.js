@@ -161,6 +161,8 @@ function bindEvents() {
   document.getElementById("btn-new-task").addEventListener("click", openNewTaskModal);
   document.getElementById("btn-backlog-add")?.addEventListener("click", openNewTaskModal);
   document.getElementById("btn-create-task").addEventListener("click", createTask);
+  document.getElementById("new-task-type").addEventListener("change", updateTaskHelper);
+  document.getElementById("new-task-desc").addEventListener("input", debounce(updateTaskHelper, 300));
   document.getElementById("btn-cancel-task").addEventListener("click", () => closeModal("modal-new-task"));
 
   // Confirm modal
@@ -779,6 +781,7 @@ function openNewTaskModal() {
   document.getElementById("new-task-desc").value = "";
   document.getElementById("new-task-template").value = "";
   loadTemplatesForModal();
+  updateTaskHelper();
   openModal("modal-new-task");
   document.getElementById("new-task-title").focus();
 }
@@ -1139,6 +1142,51 @@ function handleBoardKeyNav(e) {
     const ticket = (state.board.tickets || []).find(t => t.id === ticketId);
     if (ticket) openDetailPanel(ticket);
   }
+}
+
+// ── Task Helper (Tipps beim Ticket erstellen) ──
+function updateTaskHelper() {
+  const helper = document.getElementById("task-helper");
+  if (!helper) return;
+
+  const type = document.getElementById("new-task-type").value;
+  const desc = document.getElementById("new-task-desc").value;
+
+  const tips = [];
+  const checks = [];
+
+  // Typ-spezifische Tipps
+  if (type === "feature") {
+    tips.push("\u{1F4A1} Beschreibe welche Dateien betroffen sind (z.B. src/controllers/userController.js)");
+    tips.push("\u{1F4A1} Nenne den gew\u00FCnschten Endpunkt oder die UI-Komponente");
+    if (!desc.match(/\.(js|rs|ts|html|css|py)/)) checks.push("\u26A0 Keine Dateipfade in der Beschreibung \u2014 Claude muss die Codebase durchsuchen (mehr Tokens)");
+  } else if (type === "bugfix") {
+    tips.push("\u{1F41B} Beschreibe das erwartete vs. tats\u00E4chliche Verhalten");
+    tips.push("\u{1F41B} Nenne die betroffene Datei/Funktion wenn bekannt");
+    if (!desc.match(/Datei|datei|file|\.js|\.rs|\.ts|controller|function|Funktion/i)) checks.push("\u26A0 Betroffene Datei/Funktion nicht genannt \u2014 hilft Claude den Bug schneller zu finden");
+  } else if (type === "security") {
+    tips.push("\u{1F512} Beschreibe den Angriffsvektor (z.B. SQL Injection, XSS)");
+    tips.push("\u{1F512} Nenne die zu pr\u00FCfenden Dateien/Endpoints");
+  } else if (type === "docs") {
+    tips.push("\u{1F4C4} Nenne welche Dokumentation aktualisiert werden soll");
+    tips.push("\u{1F4C4} Haiku-Modell reicht f\u00FCr Doku-Aufgaben (g\u00FCnstiger)");
+  }
+
+  // Allgemeine Checks
+  if (desc.length > 0 && desc.length < 20) {
+    checks.push("\u26A0 Beschreibung sehr kurz \u2014 je genauer, desto weniger Tokens verbraucht Claude");
+  }
+  if (desc.length === 0) {
+    checks.push("\u26A0 Keine Beschreibung \u2014 Claude muss raten was gemeint ist");
+  }
+  if (desc.length > 50 && !checks.length) {
+    checks.push("\u2713 Gute Beschreibung \u2014 spart Tokens und liefert bessere Ergebnisse");
+  }
+
+  helper.innerHTML = `
+    <div class="helper-tips">${tips.map(t => `<div class="helper-tip">${t}</div>`).join("")}</div>
+    ${checks.length ? `<div class="helper-checks">${checks.map(c => `<div class="helper-check">${c}</div>`).join("")}</div>` : ""}
+  `;
 }
 
 // ── Global Search ──
