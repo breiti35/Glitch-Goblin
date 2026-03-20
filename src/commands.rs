@@ -351,11 +351,9 @@ pub async fn start_ticket(
         (ticket, project_path, kanban_path)
     }; // Lock released
 
-    // Phase 2: Git setup — checkout ticket branch (no lock held)
-    git::checkout_branch(&project_path, &ticket).await?;
-
+    // Phase 2: Stay on main — no branch creation
     let prompt = kanban::build_prompt_for(&ticket);
-    let branch = git::branch_name(&ticket);
+    let branch = git::default_branch_name(&project_path).await;
     let pp_str = git::strip_unc_prefix(&project_path)
         .to_string_lossy()
         .to_string();
@@ -403,17 +401,15 @@ pub async fn finish_ticket(
         (ticket, project_path, kanban_path, commit_prefix)
     };
 
-    // Auto-commit changes on the ticket branch
+    // Auto-commit changes directly on main
     let commit_msg = format!("{} {} - {}", commit_prefix, ticket.id, ticket.title);
     match git::auto_commit(&project_path, &commit_msg).await {
         Ok(committed) => {
             if !committed {
-                // No changes to commit — still proceed (user may have committed manually)
                 eprintln!("[finish_ticket] No changes to commit for {}", ticket_id);
             }
         }
         Err(e) => {
-            // Commit failed — abort finish so user can fix the issue
             return Err(format!(
                 "Auto-Commit fehlgeschlagen: {}. Ticket bleibt in Progress.",
                 e
@@ -421,18 +417,15 @@ pub async fn finish_ticket(
         }
     }
 
-    // Return to main branch
-    git::checkout_main(&project_path).await?;
-
-    // Update state
+    // Update state — skip Review, go directly to Done
     {
         let mut s = state.lock().await;
         s.running_ticket = None;
         if let Some(idx) = s.board.tickets.iter().position(|t| t.id == ticket_id) {
-            s.board.tickets[idx].column = Column::Review;
+            s.board.tickets[idx].column = Column::Done;
             s.board.tickets[idx].review_at = Some(kanban::now_iso());
-            s.board.tickets[idx].branch = Some(git::branch_name(&ticket));
-            s.log(format!("{} finished -> Review", ticket_id));
+            s.board.tickets[idx].done_at = Some(kanban::now_iso());
+            s.log(format!("{} finished -> Done", ticket_id));
             s.log_activity("ticket_completed", Some(&ticket_id), Some(&ticket.title), None);
             let _ = s.save_and_backup();
         }
@@ -459,36 +452,23 @@ pub async fn merge_ticket(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (branch, project_path, kanban_path) = {
+    let kanban_path = {
         let s = state.lock().await;
-        let idx = s
-            .board
-            .tickets
-            .iter()
-            .position(|t| t.id == ticket_id)
-            .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
-        let branch = s.board.tickets[idx]
-            .branch
-            .clone()
-            .ok_or_else(|| AppError::NoBranch(ticket_id.clone()))?;
-        let project_path = s
-            .project_path()
-            .ok_or_else(|| AppError::NoProjectSelected)?;
-        (branch, project_path, s.kanban_path.clone())
+        s.kanban_path.clone()
     };
 
-    git::checkout_main(&project_path).await?;
-    git::merge_branch(&project_path, &branch).await?;
-
+    // No branch merging needed — just move ticket to Done
     {
         let mut s = state.lock().await;
         if let Some(idx) = s.board.tickets.iter().position(|t| t.id == ticket_id) {
             s.board.tickets[idx].column = Column::Done;
             s.board.tickets[idx].done_at = Some(kanban::now_iso());
             let _ = s.save_and_backup();
-            s.log(format!("Merged {} successfully", ticket_id));
+            s.log(format!("{} -> Done", ticket_id));
             let title = s.board.tickets[idx].title.clone();
-            s.log_activity("ticket_merged", Some(&ticket_id), Some(&title), Some(&branch));
+            s.log_activity("ticket_merged", Some(&ticket_id), Some(&title), None);
+        } else {
+            return Err(AppError::TicketNotFound(ticket_id).into());
         }
     }
 

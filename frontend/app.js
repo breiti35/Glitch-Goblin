@@ -518,9 +518,9 @@ async function openReviewModal(ticketId) {
       appendLog(`Finishing ${ticketId}...`);
       await invoke("finish_ticket", { ticketId });
       state.runningTicket = null;
-      appendLog(`\u2713 ${ticketId} -> Review`);
-      showToast(`${ticketId} \u2192 Review`, "success");
-      notifyDesktop("Ticket fertig", `${ticketId} ist in Review`);
+      appendLog(`\u2713 ${ticketId} -> Done`);
+      showToast(`${ticketId} erledigt`, "success");
+      notifyDesktop("Ticket fertig", `${ticketId} ist erledigt`);
       playSound("success");
       refreshBoard();
     } catch (err) {

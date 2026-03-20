@@ -77,10 +77,12 @@ pub struct CommitInfo {
     pub date: String,
 }
 
+#[allow(dead_code)]
 pub fn branch_name(ticket: &Ticket) -> String {
     format!("kanban/{}-{}", ticket.id, ticket.slug)
 }
 
+#[allow(dead_code)]
 pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<String, String> {
     let branch = branch_name(ticket);
     let clean_project = strip_unc_prefix(project_path);
@@ -125,6 +127,7 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
     Ok(branch)
 }
 
+#[allow(dead_code)]
 pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
     let branch = default_branch(project_path).await;
     let clean_project = strip_unc_prefix(project_path);
@@ -195,6 +198,7 @@ pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
     Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
 }
 
+#[allow(dead_code)]
 pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), String> {
     validate_git_ref(branch)?;
     let result = Command::new("git")
@@ -213,6 +217,11 @@ pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), Strin
 }
 
 // ── Git View Commands (Phase 3 - Block B) ──
+
+/// Public wrapper to get default branch name
+pub async fn default_branch_name(project_path: &Path) -> String {
+    default_branch(project_path).await
+}
 
 /// Detect the default branch name (main or master)
 async fn default_branch(project_path: &Path) -> String {
