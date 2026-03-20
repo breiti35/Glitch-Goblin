@@ -111,9 +111,8 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci || npm install
+        working-directory: frontend
+        run: npm ci || npm install
 
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
@@ -121,7 +120,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          tauriScript: npx tauri
+          tauriScript: npx --prefix frontend tauri
 
   publish-release:
     needs: [create-release, build]
