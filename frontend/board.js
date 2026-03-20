@@ -79,7 +79,7 @@ function renderBoardImpl() {
   // Running badge
   const runBadge = document.getElementById("running-badge");
   if (state.runningTicket) {
-    runBadge.textContent = "\u2699 " + t('board.runningTicket', {id: state.runningTicket});
+    runBadge.textContent = t('board.runningTicket', {id: state.runningTicket});
     runBadge.classList.remove("hidden");
   } else {
     runBadge.classList.add("hidden");
@@ -177,12 +177,12 @@ function createCard(ticket, col) {
   // Action button
   let actionHTML = "";
   if (col === "backlog" && !state.runningTicket) {
-    actionHTML = `<button class="card-action start" data-execute="${ticket.id}">\u25B7 ${t('board.start')}</button>`;
+    actionHTML = `<button class="card-action start" data-execute="${ticket.id}">\u25B7 ${esc(t('board.start'))}</button>`;
   } else if (col === "progress") {
-    actionHTML = `<button class="card-action finish" data-finish="${ticket.id}">\u2714 ${t('board.finishTicket')}</button>`;
+    actionHTML = `<button class="card-action finish" data-finish="${ticket.id}">\u2714 ${esc(t('board.finishTicket'))}</button>`;
   } else if (col === "review") {
-    actionHTML = `<button class="card-action review-diff" data-review-diff="${ticket.id}">\u{1F50D} ${t('board.showChanges')}</button>
-      <button class="card-action merge" data-merge="${ticket.id}">\u2714 ${t('board.merge')}</button>`;
+    actionHTML = `<button class="card-action review-diff" data-review-diff="${ticket.id}">\u{1F50D} ${esc(t('board.showChanges'))}</button>
+      <button class="card-action merge" data-merge="${ticket.id}">\u2714 ${esc(t('board.merge'))}</button>`;
   }
 
   // Extra badges (cost, comments, portal-bug)
@@ -358,7 +358,7 @@ export async function handleContextMenuAction(e) {
   } else if (item.dataset.action === "merge") {
     mergeTicket(ticket.id);
   } else if (item.dataset.action === "delete") {
-    if (confirm(`Delete ticket ${ticket.id} - "${ticket.title}"?`)) {
+    if (confirm(t('detail.confirmDelete', {id: ticket.id, title: ticket.title}))) {
       try {
         await invoke("delete_ticket", { ticketId: ticket.id });
         state.board = await invoke("get_board");
@@ -453,7 +453,7 @@ export function applyFilters() {
 
   const badge = document.getElementById("filter-badge");
   if (filteredCount > 0) {
-    badge.textContent = filteredCount + " hidden";
+    badge.textContent = filteredCount + " " + t('board.hidden');
     badge.classList.remove("hidden");
   } else {
     badge.classList.add("hidden");
@@ -466,7 +466,7 @@ export function clearFilters() {
   applyFilters();
 }
 
-// ── Drag & Drop (Event Delegation — listeners registered once) ──
+// ── Drag & Drop (Event Delegation -- listeners registered once) ──
 
 let dragDropInitialized = false;
 
@@ -556,17 +556,17 @@ async function openReviewDiffModal(ticket) {
   const fileList = document.getElementById("review-file-list");
   const diffPreview = document.getElementById("review-diff-preview");
   fileList.innerHTML = '<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short"></div>';
-  diffPreview.innerHTML = '<p class="empty-state">Datei anklicken f\u00FCr Diff-Vorschau</p>';
+  diffPreview.innerHTML = '<p class="empty-state">' + esc(t('board.clickFileForDiff')) + '</p>';
 
   // Hide confirm button, show only close
   const confirmBtn = document.getElementById("btn-review-confirm");
   const cancelBtn = document.getElementById("btn-review-cancel");
-  confirmBtn.textContent = "\u2714 \u00DCbernehmen";
+  confirmBtn.textContent = "\u2714 " + t('board.merge');
   confirmBtn.onclick = () => {
     closeModal("modal-review");
     mergeTicket(ticket.id);
   };
-  cancelBtn.textContent = "Schlie\u00DFen";
+  cancelBtn.textContent = t('board.close');
   cancelBtn.onclick = () => closeModal("modal-review");
 
   openModal("modal-review");
@@ -575,12 +575,12 @@ async function openReviewDiffModal(ticket) {
     const diff = await invoke("get_branch_diff", { branch: ticket.branch });
 
     if (diff.files.length === 0) {
-      fileList.innerHTML = '<p class="empty-state">Keine \u00C4nderungen gefunden</p>';
+      fileList.innerHTML = '<p class="empty-state">' + esc(t('board.noChanges')) + '</p>';
     } else {
       fileList.innerHTML = `
         <div class="review-stats">
           <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span>
-          \u2014 ${diff.files.length} Dateien ge\u00E4ndert
+          \u2014 ${esc(t('board.filesChanged', {count: diff.files.length}))}
         </div>
       ` + diff.files.map(f => `
         <div class="review-file-item" data-file="${esc(f.filePath)}" data-branch="${esc(ticket.branch)}">
@@ -601,7 +601,7 @@ async function openReviewDiffModal(ticket) {
           try {
             const fileDiff = await invoke("get_file_diff", { branch: el.dataset.branch, filePath: el.dataset.file });
             if (!fileDiff.trim()) {
-              diffPreview.innerHTML = '<p class="empty-state">(keine Diff-Daten)</p>';
+              diffPreview.innerHTML = '<p class="empty-state">' + esc(t('board.noDiffData')) + '</p>';
             } else {
               diffPreview.innerHTML = `<pre class="review-diff-body">${renderReviewDiffLines(fileDiff)}</pre>`;
             }
