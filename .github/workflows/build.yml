@@ -108,12 +108,22 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Remove beforeBuildCommand (already built above)
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const c = JSON.parse(fs.readFileSync('tauri.conf.json','utf8'));
+            delete c.build.beforeBuildCommand;
+            delete c.build.beforeDevCommand;
+            fs.writeFileSync('tauri.conf.json', JSON.stringify(c, null, 2));
+          "
+
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
       - name: Build Tauri app
-        shell: bash
-        run: cargo tauri build 2>&1 | tail -30
+        run: cargo tauri build
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
