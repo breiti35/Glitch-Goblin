@@ -234,19 +234,16 @@ pub fn tickets_in_column<'a>(board: &'a KanbanBoard, col: &Column) -> Vec<&'a Ti
 }
 
 pub fn build_prompt_for(ticket: &Ticket) -> String {
-    let base = match ticket.ticket_type {
-        TicketType::Feature => format!("/new-feature {}", ticket.title),
-        TicketType::Bugfix => format!("/bugfix {}", ticket.title),
-        TicketType::Security => format!("/security-audit {}", ticket.title),
-        TicketType::Docs => format!(
-            "Nutze den doc-updater Agent und aktualisiere die Doku: {}",
-            ticket.title
-        ),
+    let cmd = match ticket.ticket_type {
+        TicketType::Feature => "/new-feature",
+        TicketType::Bugfix => "/bugfix",
+        TicketType::Security => "/security-audit",
+        TicketType::Docs => "/kanban",
     };
     if ticket.description.is_empty() {
-        base
+        format!("{cmd} {}", ticket.title)
     } else {
-        format!("{base}\n\nBeschreibung: {}", ticket.description)
+        format!("{cmd} {}\n\n{}", ticket.title, ticket.description)
     }
 }
 
