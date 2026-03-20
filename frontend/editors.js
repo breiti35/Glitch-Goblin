@@ -4,6 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { esc } from './utils.js';
 import { state, appendLog } from './app.js';
+import { t } from './i18n.js';
 
 // ── Agents ──
 
@@ -12,7 +13,7 @@ export async function loadAgents() {
     const agents = await invoke("list_agents");
     const list = document.getElementById("agents-list");
     if (agents.length === 0) {
-      list.innerHTML = '<p class="empty-state">No agents found in .claude/agents/</p>';
+      list.innerHTML = '<p class="empty-state">' + esc(t('editors.noAgents')) + '</p>';
     } else {
       list.innerHTML = agents.map(a => `
         <div class="editor-list-item ${state.editingAgent === a ? "active" : ""}" data-agent="${esc(a)}">
@@ -88,7 +89,7 @@ export async function loadCommands() {
     const cmds = await invoke("list_commands_available");
     const list = document.getElementById("commands-list");
     if (cmds.length === 0) {
-      list.innerHTML = '<p class="empty-state">No commands found in .claude/commands/</p>';
+      list.innerHTML = '<p class="empty-state">' + esc(t('editors.noCommands')) + '</p>';
     } else {
       list.innerHTML = cmds.map(c => `
         <div class="editor-list-item ${state.editingCommand === c ? "active" : ""}" data-command="${esc(c)}">

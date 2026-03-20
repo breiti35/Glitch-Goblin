@@ -187,7 +187,7 @@ pub async fn create_ticket(
     let mut s = state.lock().await;
     let next_num = s.board.next_ticket_id;
     s.board.next_ticket_id += 1;
-    let id = format!("KANBAN-{:03}", next_num);
+    let id = format!("GG-{:03}", next_num);
     let slug = kanban::slugify(&title);
     let ticket = Ticket {
         id: id.clone(),
@@ -351,9 +351,19 @@ pub async fn start_ticket(
         (ticket, project_path, kanban_path)
     }; // Lock released
 
-    // Phase 2: Stay on main — no branch creation
+    // Create and checkout ticket branch
+    let branch = git::checkout_branch(&project_path, &ticket).await?;
+
+    // Store branch on ticket
+    {
+        let mut s = state.lock().await;
+        if let Some(idx) = s.board.tickets.iter().position(|t| t.id == ticket_id) {
+            s.board.tickets[idx].branch = Some(branch.clone());
+            s.save_and_backup()?;
+        }
+    }
+
     let prompt = kanban::build_prompt_for(&ticket);
-    let branch = git::default_branch_name(&project_path).await;
     let pp_str = git::strip_unc_prefix(&project_path)
         .to_string_lossy()
         .to_string();
@@ -401,7 +411,7 @@ pub async fn finish_ticket(
         (ticket, project_path, kanban_path, commit_prefix)
     };
 
-    // Auto-commit changes directly on main
+    // Auto-commit changes on the ticket branch
     let commit_msg = format!("{} {} - {}", commit_prefix, ticket.id, ticket.title);
     match git::auto_commit(&project_path, &commit_msg).await {
         Ok(committed) => {
@@ -417,15 +427,17 @@ pub async fn finish_ticket(
         }
     }
 
-    // Update state — skip Review, go directly to Done
+    // Switch back to main branch
+    let _ = git::checkout_main(&project_path).await;
+
+    // Update state — move to Review (not directly to Done)
     {
         let mut s = state.lock().await;
         s.running_ticket = None;
         if let Some(idx) = s.board.tickets.iter().position(|t| t.id == ticket_id) {
-            s.board.tickets[idx].column = Column::Done;
+            s.board.tickets[idx].column = Column::Review;
             s.board.tickets[idx].review_at = Some(kanban::now_iso());
-            s.board.tickets[idx].done_at = Some(kanban::now_iso());
-            s.log(format!("{} finished -> Done", ticket_id));
+            s.log(format!("{} finished -> Review", ticket_id));
             s.log_activity("ticket_completed", Some(&ticket_id), Some(&ticket.title), None);
             let _ = s.save_and_backup();
         }
@@ -452,23 +464,53 @@ pub async fn merge_ticket(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let kanban_path = {
+    let (ticket, project_path, kanban_path, auto_push) = {
         let s = state.lock().await;
-        s.kanban_path.clone()
+        let idx = s
+            .board
+            .tickets
+            .iter()
+            .position(|t| t.id == ticket_id)
+            .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
+        let ticket = s.board.tickets[idx].clone();
+        let project_path = s
+            .project_path()
+            .ok_or_else(|| AppError::NoProjectSelected)?;
+        let kanban_path = s.kanban_path.clone();
+        let auto_push = s.settings.auto_push_after_merge;
+        (ticket, project_path, kanban_path, auto_push)
     };
 
-    // No branch merging needed — just move ticket to Done
+    let branch = ticket
+        .branch
+        .as_deref()
+        .ok_or_else(|| format!("Ticket {} has no branch", ticket_id))?;
+
+    // Ensure we're on main
+    git::checkout_main(&project_path).await?;
+
+    // Merge the ticket branch
+    git::merge_branch(&project_path, branch).await?;
+
+    // Delete the merged branch (non-fatal)
+    let _ = git::delete_branch(&project_path, branch, false).await;
+
+    // Auto-push main to origin if enabled
+    if auto_push && git::has_remote(&project_path).await {
+        let main_branch = git::default_branch_name(&project_path).await;
+        let _ = git::push_branch(&project_path, &main_branch).await;
+    }
+
+    // Update state: move to Done
     {
         let mut s = state.lock().await;
         if let Some(idx) = s.board.tickets.iter().position(|t| t.id == ticket_id) {
             s.board.tickets[idx].column = Column::Done;
             s.board.tickets[idx].done_at = Some(kanban::now_iso());
             let _ = s.save_and_backup();
-            s.log(format!("{} -> Done", ticket_id));
+            s.log(format!("{} merged -> Done", ticket_id));
             let title = s.board.tickets[idx].title.clone();
             s.log_activity("ticket_merged", Some(&ticket_id), Some(&title), None);
-        } else {
-            return Err(AppError::TicketNotFound(ticket_id).into());
         }
     }
 
@@ -484,6 +526,37 @@ pub async fn merge_ticket(
     }
 
     Ok(())
+}
+
+// ── Git Push Commands ──
+
+#[tauri::command]
+pub async fn push_branch(branch: String, state: State<'_>) -> Result<(), String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    git::push_branch(&project_path, &branch).await
+}
+
+#[tauri::command]
+pub async fn push_current_branch(state: State<'_>) -> Result<(), String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    let branch = git::current_branch(&project_path).await?;
+    git::push_branch(&project_path, &branch).await
+}
+
+#[tauri::command]
+pub async fn get_remote_info(state: State<'_>) -> Result<Option<String>, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    if git::has_remote(&project_path).await {
+        Ok(Some(git::get_remote_url(&project_path).await?))
+    } else {
+        Ok(None)
+    }
 }
 
 // ── Utilities ──
@@ -821,7 +894,7 @@ pub async fn move_ticket_to_project(
     // Re-generate ticket ID based on target board
     let next_num = target_board.next_ticket_id;
     target_board.next_ticket_id += 1;
-    ticket.id = format!("KANBAN-{:03}", next_num);
+    ticket.id = format!("GG-{:03}", next_num);
     ticket.column = Column::Backlog;
     ticket.branch = None;
 
@@ -1254,7 +1327,7 @@ pub async fn create_ticket_from_template(
 
     let next_num = s.board.next_ticket_id;
     s.board.next_ticket_id += 1;
-    let id = format!("KANBAN-{:03}", next_num);
+    let id = format!("GG-{:03}", next_num);
     let full_title = format!("{}{}", tpl.title_prefix, title);
     let slug = kanban::slugify(&full_title);
     let ticket_type = match tpl.ticket_type.as_str() {
@@ -1406,7 +1479,7 @@ pub async fn import_tickets(
                 continue;
             }
             let next_num = s.board.next_ticket_id.saturating_add(new_tickets.len() as u32);
-            let id = format!("KANBAN-{:03}", next_num);
+            let id = format!("GG-{:03}", next_num);
             let title = record.get(1).unwrap_or("").to_string();
             let ticket_type = match record.get(2).unwrap_or("feature") {
                 "bugfix" => TicketType::Bugfix,
@@ -1450,7 +1523,7 @@ pub async fn import_tickets(
             for mut t in imported.tickets {
                 let next_num = s.board.next_ticket_id;
                 s.board.next_ticket_id += 1;
-                t.id = format!("KANBAN-{:03}", next_num);
+                t.id = format!("GG-{:03}", next_num);
                 t.column = Column::Backlog;
                 t.branch = None;
                 s.board.tickets.push(t);
@@ -1698,7 +1771,7 @@ pub async fn sync_portal_bugs(
 
             let next_num = s.board.next_ticket_id;
             s.board.next_ticket_id += 1;
-            let id = format!("KANBAN-{:03}", next_num);
+            let id = format!("GG-{:03}", next_num);
             let slug = kanban::slugify(&bug.title);
 
             let mut desc_parts = Vec::new();

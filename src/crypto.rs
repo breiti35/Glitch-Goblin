@@ -1,7 +1,8 @@
 //! Encrypt/decrypt the Bug-Sync API token using ChaCha20-Poly1305.
 //!
 //! Key derivation:
-//!   v2 – PBKDF2-HMAC-SHA256(machine_id, fixed_salt, 100_000 rounds) → 32 bytes
+//!   v3 – PBKDF2-HMAC-SHA256(machine_id, "glitch-goblin-v3-kdf", 100_000 rounds) → 32 bytes
+//!   v2 – PBKDF2-HMAC-SHA256(machine_id, "kanban-runner-v2-kdf", 100_000 rounds)  [legacy, decrypt-only]
 //!   v1 – SHA-256(machine_id || "kanban-runner-v1")  [legacy, read-only for migration]
 //!
 //! Token formats:
@@ -17,11 +18,13 @@ use sha2::{Digest, Sha256};
 
 const PREFIX_V1: &str = "v1:";
 const PREFIX_V2: &str = "v2:";
+const PREFIX_V3: &str = "v3:";
 
 /// PBKDF2 iteration count – slows brute-force attacks on a stolen config file
 /// while remaining imperceptible during the single encrypt/decrypt call at startup.
 const PBKDF2_ROUNDS: u32 = 100_000;
-const KDF_SALT: &[u8] = b"kanban-runner-v2-kdf";
+const KDF_SALT_V2: &[u8] = b"kanban-runner-v2-kdf";
+const KDF_SALT: &[u8] = b"glitch-goblin-v3-kdf";
 
 // ── Machine ID ───────────────────────────────────────────────────────────────
 
@@ -102,15 +105,23 @@ fn get_or_create_fallback_seed() -> String {
         // Absolute last resort: not persisted, changes every process start.
         return uuid::Uuid::new_v4().to_string();
     };
-    let seed_path = config_dir.join("kanban-runner").join("machine-seed.txt");
+    let seed_path = config_dir.join("glitch-goblin").join("machine-seed.txt");
+    // Also check old location for backward compat
+    let old_seed_path = config_dir.join("kanban-runner").join("machine-seed.txt");
     if let Ok(seed) = std::fs::read_to_string(&seed_path) {
         let seed = seed.trim().to_string();
         if !seed.is_empty() {
             return seed;
         }
     }
+    if let Ok(seed) = std::fs::read_to_string(&old_seed_path) {
+        let seed = seed.trim().to_string();
+        if !seed.is_empty() {
+            return seed;
+        }
+    }
     let new_seed = uuid::Uuid::new_v4().to_string();
-    let _ = std::fs::create_dir_all(config_dir.join("kanban-runner"));
+    let _ = std::fs::create_dir_all(config_dir.join("glitch-goblin"));
     write_seed_restricted(&seed_path, &new_seed);
     new_seed
 }
@@ -133,14 +144,14 @@ fn write_seed_restricted(path: &std::path::Path, content: &str) {
             Ok(mut f) => {
                 if f.write_all(content.as_bytes()).is_err() {
                     eprintln!(
-                        "[kanban-runner] WARN: could not write machine-seed.txt — \
+                        "[glitch-goblin] WARN: could not write machine-seed.txt — \
                          encrypted tokens will be unreadable after restart"
                     );
                 }
             }
             Err(e) => {
                 eprintln!(
-                    "[kanban-runner] WARN: could not create machine-seed.txt ({e}) — \
+                    "[glitch-goblin] WARN: could not create machine-seed.txt ({e}) — \
                      encrypted tokens will be unreadable after restart"
                 );
             }
@@ -154,10 +165,17 @@ fn write_seed_restricted(path: &std::path::Path, content: &str) {
 
 // ── Key derivation ───────────────────────────────────────────────────────────
 
-/// v2: PBKDF2-HMAC-SHA256 with a machine-specific password.
-fn derive_key_v2(machine_id: &str) -> [u8; 32] {
+/// v3: PBKDF2-HMAC-SHA256 with new salt (glitch-goblin).
+fn derive_key_v3(machine_id: &str) -> [u8; 32] {
     let mut key = [0u8; 32];
     pbkdf2_hmac::<Sha256>(machine_id.as_bytes(), KDF_SALT, PBKDF2_ROUNDS, &mut key);
+    key
+}
+
+/// v2: PBKDF2-HMAC-SHA256 with old salt (kanban-runner) – kept for decrypting legacy tokens.
+fn derive_key_v2(machine_id: &str) -> [u8; 32] {
+    let mut key = [0u8; 32];
+    pbkdf2_hmac::<Sha256>(machine_id.as_bytes(), KDF_SALT_V2, PBKDF2_ROUNDS, &mut key);
     key
 }
 
@@ -173,14 +191,17 @@ fn derive_key_v1() -> [u8; 32] {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/// Encrypt `plaintext` and return a `"v2:<nonce_hex>:<ciphertext_hex>"` string.
+/// Encrypt `plaintext` and return a `"v3:<nonce_hex>:<ciphertext_hex>"` string.
 ///
-/// Already-encrypted tokens (`v1:` or `v2:` prefix) are returned unchanged.
+/// Already-encrypted tokens (`v1:`, `v2:`, or `v3:` prefix) are returned unchanged.
 pub fn encrypt_token(plaintext: &str) -> Result<String, String> {
-    if plaintext.starts_with(PREFIX_V1) || plaintext.starts_with(PREFIX_V2) {
+    if plaintext.starts_with(PREFIX_V1)
+        || plaintext.starts_with(PREFIX_V2)
+        || plaintext.starts_with(PREFIX_V3)
+    {
         return Ok(plaintext.to_string());
     }
-    let key = derive_key_v2(&get_machine_id());
+    let key = derive_key_v3(&get_machine_id());
     let cipher = ChaCha20Poly1305::new(&key.into());
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
     let ciphertext = cipher
@@ -188,7 +209,7 @@ pub fn encrypt_token(plaintext: &str) -> Result<String, String> {
         .map_err(|e| format!("Verschlüsselung fehlgeschlagen: {e}"))?;
     Ok(format!(
         "{}{}:{}",
-        PREFIX_V2,
+        PREFIX_V3,
         hex::encode(nonce.as_slice()),
         hex::encode(&ciphertext)
     ))
@@ -196,10 +217,14 @@ pub fn encrypt_token(plaintext: &str) -> Result<String, String> {
 
 /// Decrypt a token produced by `encrypt_token`.
 ///
-/// * `v2:` tokens are decrypted with PBKDF2-derived key.
+/// * `v3:` tokens are decrypted with PBKDF2-derived key (glitch-goblin salt).
+/// * `v2:` tokens are decrypted with PBKDF2-derived key (kanban-runner salt).
 /// * `v1:` tokens are decrypted with the legacy SHA-256-derived key.
 /// * Tokens without a prefix are returned as plaintext (backward compat).
 pub fn decrypt_token(encrypted: &str) -> Result<String, String> {
+    if let Some(rest) = encrypted.strip_prefix(PREFIX_V3) {
+        return decrypt_v3(rest);
+    }
     if let Some(rest) = encrypted.strip_prefix(PREFIX_V2) {
         return decrypt_v2(rest);
     }
@@ -207,6 +232,13 @@ pub fn decrypt_token(encrypted: &str) -> Result<String, String> {
         return decrypt_v1(rest);
     }
     Ok(encrypted.to_string())
+}
+
+fn decrypt_v3(rest: &str) -> Result<String, String> {
+    let (nonce_hex, cipher_hex) = rest
+        .split_once(':')
+        .ok_or_else(|| "Ungültiges v3-Token-Format (kein Trennzeichen)".to_string())?;
+    chacha_decrypt(nonce_hex, cipher_hex, derive_key_v3(&get_machine_id()))
 }
 
 fn decrypt_v2(rest: &str) -> Result<String, String> {

@@ -3,6 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, formatDuration } from './utils.js';
+import { t } from './i18n.js';
 import { state, appendLog, showToast, openModal, closeModal, confirmExecute, finishTicket, mergeTicket, refreshBoard } from './app.js';
 import { openDetailPanel } from './detail.js';
 
@@ -10,12 +11,10 @@ let contextTicket = null;
 
 // ── Board Rendering ──
 
-const EMPTY_STATES = {
-  backlog: "Keine Aufgaben im Backlog",
-  progress: "Keine Aufgaben in Bearbeitung",
-  review: "Nichts zu reviewen",
-  done: "Noch keine Aufgaben erledigt",
-};
+function emptyStateText(col) {
+  const keys = { backlog: 'board.emptyBacklog', progress: 'board.emptyProgress', review: 'board.emptyReview', done: 'board.emptyDone' };
+  return t(keys[col] || 'board.emptyBacklog');
+}
 
 let renderBoardPending = false;
 
@@ -44,7 +43,7 @@ function renderBoardImpl() {
       // Empty state
       const empty = document.createElement("div");
       empty.className = "column-empty-state";
-      empty.textContent = EMPTY_STATES[col];
+      empty.textContent = emptyStateText(col);
       body.appendChild(empty);
     } else {
       colTickets.forEach(ticket => {
@@ -80,7 +79,7 @@ function renderBoardImpl() {
   // Running badge
   const runBadge = document.getElementById("running-badge");
   if (state.runningTicket) {
-    runBadge.textContent = "\u2699 Running: " + state.runningTicket;
+    runBadge.textContent = "\u2699 " + t('board.runningTicket', {id: state.runningTicket});
     runBadge.classList.remove("hidden");
   } else {
     runBadge.classList.add("hidden");
@@ -178,12 +177,12 @@ function createCard(ticket, col) {
   // Action button
   let actionHTML = "";
   if (col === "backlog" && !state.runningTicket) {
-    actionHTML = `<button class="card-action start" data-execute="${ticket.id}">\u25B7 Start</button>`;
+    actionHTML = `<button class="card-action start" data-execute="${ticket.id}">\u25B7 ${t('board.start')}</button>`;
   } else if (col === "progress") {
-    actionHTML = `<button class="card-action finish" data-finish="${ticket.id}">\u2714 Ticket abschlie\u00DFen</button>`;
+    actionHTML = `<button class="card-action finish" data-finish="${ticket.id}">\u2714 ${t('board.finishTicket')}</button>`;
   } else if (col === "review") {
-    actionHTML = `<button class="card-action review-diff" data-review-diff="${ticket.id}">\u{1F50D} \u00C4nderungen anzeigen</button>
-      <button class="card-action merge" data-merge="${ticket.id}">\u2714 \u00DCbernehmen</button>`;
+    actionHTML = `<button class="card-action review-diff" data-review-diff="${ticket.id}">\u{1F50D} ${t('board.showChanges')}</button>
+      <button class="card-action merge" data-merge="${ticket.id}">\u2714 ${t('board.merge')}</button>`;
   }
 
   // Extra badges (cost, comments, portal-bug)
@@ -251,7 +250,7 @@ function createCard(ticket, col) {
         await invoke("update_ticket", { ticket: updated });
         state.board = await invoke("get_board");
         renderBoard();
-        showToast("Ticket aktualisiert", "success");
+        showToast(t('board.ticketUpdated'), "success");
       } catch (err) {
         appendLog("Quick-update error: " + err, true);
       }
@@ -396,7 +395,7 @@ function copyTicketToClipboard(ticket) {
   const text = `[${ticket.id}] ${ticket.title}\nType: ${ticket.ticket_type}\nPrio: ${ticket.prio || "none"}\nColumn: ${ticket.column}\n${ticket.description || ""}`;
   navigator.clipboard.writeText(text).then(() => {
     appendLog("Ticket copied to clipboard");
-    showToast("In Zwischenablage kopiert", "success");
+    showToast(t('board.copiedToClipboard'), "success");
   });
 }
 
@@ -547,7 +546,7 @@ export function setupDragDrop() {
 
 async function openReviewDiffModal(ticket) {
   if (!ticket.branch) {
-    showToast("Kein Branch f\u00FCr dieses Ticket gefunden", "error");
+    showToast(t('board.noBranch'), "error");
     return;
   }
 

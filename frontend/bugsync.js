@@ -4,6 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { state, appendLog } from './app.js';
 import { renderBoard } from './board.js';
+import { t } from './i18n.js';
 
 // ── Bug-Sync Listeners ──
 
@@ -60,7 +61,7 @@ async function performBugSync() {
 
   if (syncBtn) {
     syncBtn.disabled = true;
-    syncBtn.textContent = "\u{1F504} Synchronisiere...";
+    syncBtn.textContent = "\u{1F504} " + t('settings.syncing');
   }
 
   try {
@@ -89,13 +90,13 @@ async function performBugSync() {
   } catch (err) {
     appendLog("Bug-Sync error: " + err, true);
     if (statusEl) {
-      statusEl.textContent = "Fehler: " + err;
+      statusEl.textContent = t('settings.syncError', {error: err});
       statusEl.classList.remove("hidden");
     }
   } finally {
     if (syncBtn) {
       syncBtn.disabled = false;
-      syncBtn.textContent = "\u{1F41B} Bugs synchen";
+      syncBtn.textContent = "\u{1F41B} " + t('board.bugSync');
     }
   }
 }

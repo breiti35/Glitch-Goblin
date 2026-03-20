@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { esc, shellEscape, shellEscapeLocal, validateDeployParam } from './utils.js';
 import { state, appendLog, openModal, closeModal } from './app.js';
 import { openDeployTerminal } from './terminal.js';
+import { t } from './i18n.js';
 
 // ── Deploy Listeners ──
 
@@ -38,7 +39,7 @@ export async function loadDeployConfig() {
     updateDeployButtons();
     loadDeploySettingsForm();
   } catch (e) {
-    appendLog("Deploy-Konfiguration konnte nicht geladen werden: " + e, true);
+    appendLog(t('toast.deployConfigError') + ": " + e, true);
   }
 }
 
@@ -70,8 +71,8 @@ function confirmLocalDeploy() {
   if (!cfg) return;
   const modal = document.getElementById("modal-deploy-confirm");
   modal.dataset.action = "local";
-  document.getElementById("deploy-confirm-title").textContent = "Lokal testen (Docker)";
-  document.getElementById("deploy-confirm-message").textContent = "Docker Compose starten?";
+  document.getElementById("deploy-confirm-title").textContent = t('modal.localTest');
+  document.getElementById("deploy-confirm-message").textContent = t('modal.dockerComposeStart');
 
   const files = (cfg.composeFiles?.length > 0) ? cfg.composeFiles : ["docker-compose.yml"];
   let cmd = "docker compose";
@@ -115,8 +116,8 @@ function confirmLiveDeploy() {
   if (!cfg || !cfg.liveEnabled) return;
   const modal = document.getElementById("modal-deploy-confirm");
   modal.dataset.action = "live";
-  document.getElementById("deploy-confirm-title").textContent = "Live deployen";
-  document.getElementById("deploy-confirm-message").textContent = `Deploy zu ${cfg.sshHost}?`;
+  document.getElementById("deploy-confirm-title").textContent = t('settings.liveServer');
+  document.getElementById("deploy-confirm-message").textContent = t('modal.liveDeployTo', {host: cfg.sshHost});
 
   const allCmds = [
     ...(cfg.preCommands || []),

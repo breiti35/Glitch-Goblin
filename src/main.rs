@@ -18,6 +18,9 @@ use tauri::Manager;
 use tokio::sync::Mutex;
 
 fn main() {
+    // Migrate config dir from kanban-runner to glitch-goblin if needed
+    config::migrate_config_dir();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -255,6 +258,10 @@ fn main() {
             commands::get_version,
             // Claude Usage
             commands::get_claude_usage,
+            // Git Push
+            commands::push_branch,
+            commands::push_current_branch,
+            commands::get_remote_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

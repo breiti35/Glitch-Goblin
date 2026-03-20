@@ -8,6 +8,7 @@ import { renderBoard } from './board.js';
 import { loadShellOptions } from './terminal.js';
 import { saveDeploySettingsForm } from './deploy.js';
 import { updateBugSyncVisibility } from './bugsync.js';
+import { t, setLocale, getLocale } from './i18n.js';
 
 // ── Settings Form ──
 
@@ -30,6 +31,9 @@ export function loadSettingsForm() {
   document.getElementById("set-terminal-fontsize").value = s.terminal_font_size || 14;
   document.getElementById("terminal-fontsize-label").textContent = (s.terminal_font_size || 14) + "px";
   loadShellOptions("set-default-shell", s.default_shell || "");
+  // Language
+  const langEl = document.getElementById("set-language");
+  if (langEl) langEl.value = s.language || 'de';
   // Bug-Sync settings
   const bs = s.bug_sync || {};
   document.getElementById("set-bugsync-enabled").checked = !!bs.enabled;
@@ -57,6 +61,7 @@ export async function saveSettingsForm() {
     cost_per_output_mtok: parseFloat(document.getElementById("set-cost-output").value) || 15,
     default_shell: document.getElementById("set-default-shell").value,
     terminal_font_size: parseInt(document.getElementById("set-terminal-fontsize").value) || 14,
+    language: document.getElementById("set-language")?.value || 'de',
     bug_sync: {
       enabled: document.getElementById("set-bugsync-enabled").checked,
       api_url: document.getElementById("set-bugsync-url").value.trim(),
@@ -74,10 +79,11 @@ export async function saveSettingsForm() {
     document.body.dataset.theme = settings.theme;
     updateThemeUI();
     applyAccentColor(settings.accent_color);
+    setLocale(settings.language);
     updateBugSyncVisibility();
     await saveDeploySettingsForm();
     appendLog("Settings saved");
-    showToast("Settings gespeichert", "success");
+    showToast(t('settings.saved'), "success");
   } catch (err) {
     appendLog("Save settings error: " + err, true);
   }
@@ -93,7 +99,7 @@ export async function openBackupModal() {
   try {
     const backups = await invoke("list_backups");
     if (backups.length === 0) {
-      list.innerHTML = '<p class="empty-state">No backups found</p>';
+      list.innerHTML = '<p class="empty-state">' + esc(t('settings.noBackups')) + '</p>';
       return;
     }
     list.innerHTML = backups.map(b => `
@@ -111,7 +117,7 @@ export async function openBackupModal() {
           closeModal("modal-backup");
           renderBoard();
           appendLog("Backup restored: " + btn.dataset.backup);
-          showToast("Backup wiederhergestellt", "success");
+          showToast(t('settings.backupRestored'), "success");
         } catch (err) {
           appendLog("Restore error: " + err, true);
         }

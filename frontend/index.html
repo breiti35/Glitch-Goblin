@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost">
-  <title>Aufgabenhelfer</title>
+  <title>Glitch Goblin</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="vendor/xterm/xterm.css">
 </head>
@@ -12,14 +12,14 @@
   <div id="toast-container" class="toast-container"></div>
   <header class="app-header">
     <div class="app-header-left">
-      <span class="app-logo">✦</span>
-      <span class="app-name">Aufgabenhelfer</span>
+      <span class="app-logo">&#10022;</span>
+      <span class="app-name">Glitch Goblin</span>
       <span class="app-version" id="app-version"></span>
     </div>
     <div class="app-header-center">
       <div class="global-search">
-        <span class="search-icon">⌕</span>
-        <input type="text" id="global-search-input" placeholder="Search...">
+        <span class="search-icon">&#9173;</span>
+        <input type="text" id="global-search-input" placeholder="Search..." data-i18n-placeholder="header.search">
       </div>
     </div>
     <div class="app-header-right">
@@ -27,100 +27,100 @@
         <div class="header-avatar" id="header-avatar">U</div>
         <div class="header-user-info">
           <div class="header-username" id="header-username">User</div>
-          <div class="header-status">● online</div>
+          <div class="header-status">&#9679; <span data-i18n="header.online">online</span></div>
         </div>
       </div>
       <div class="notif-wrapper">
-        <button class="header-notif-btn" id="header-notif-btn" title="Notifications">
+        <button class="header-notif-btn" id="header-notif-btn" title="Notifications" data-i18n-title="header.notifications">
           &#128276;
           <span class="header-notif-badge hidden" id="header-notif-badge">0</span>
         </button>
         <div class="notif-panel hidden" id="notif-panel">
           <div class="notif-panel-header">
-            <span>Benachrichtigungen</span>
-            <button id="btn-notif-clear" class="icon-btn" title="Alle l&ouml;schen">&#10005;</button>
+            <span data-i18n="header.notifications">Benachrichtigungen</span>
+            <button id="btn-notif-clear" class="icon-btn" title="Alle l&ouml;schen" data-i18n-title="header.clearAll">&#10005;</button>
           </div>
           <div class="notif-list" id="notif-list">
-            <p class="empty-state">Keine Benachrichtigungen</p>
+            <p class="empty-state" data-i18n="header.noNotifications">Keine Benachrichtigungen</p>
           </div>
         </div>
       </div>
-      <button class="btn-create-project" id="btn-header-add-project">+ Create Project</button>
+      <button class="btn-create-project" id="btn-header-add-project" data-i18n="header.createProject">+ Create Project</button>
     </div>
   </header>
   <div id="app">
     <!-- Sidebar -->
     <aside id="sidebar">
       <div class="sidebar-header">
-        <span class="app-title">Aufgabenhelfer</span>
-        <button id="btn-app-settings" class="icon-btn" title="App Settings">&#9881;</button>
+        <span class="app-title">Glitch Goblin</span>
+        <button id="btn-app-settings" class="icon-btn" title="App Settings" data-i18n-title="nav.settings">&#9881;</button>
       </div>
 
       <!-- Project Selector -->
       <button id="project-selector" class="sidebar-project">
         <span class="project-icon">&#9660;</span>
         <div>
-          <div id="sidebar-project-name" class="project-name">No project</div>
+          <div id="sidebar-project-name" class="project-name" data-i18n="header.noProject">No project</div>
           <div id="sidebar-project-path" class="project-path">&mdash;</div>
         </div>
       </button>
 
       <!-- Navigation -->
       <nav class="sidebar-nav">
-        <div class="nav-section-label">PROJECT</div>
+        <div class="nav-section-label" data-i18n="nav.sectionProject">PROJECT</div>
         <button data-view="dashboard" class="nav-item">
-          <span class="nav-icon">&#9632;</span> Dashboard
+          <span class="nav-icon">&#9632;</span> <span data-i18n="nav.dashboard">Dashboard</span>
         </button>
         <button data-view="board" class="nav-item active">
-          <span class="nav-icon">&#9632;</span> Kanban Board <span class="nav-badge" id="ticket-count">0</span>
+          <span class="nav-icon">&#9632;</span> <span data-i18n="nav.board">Kanban Board</span> <span class="nav-badge" id="ticket-count">0</span>
         </button>
         <button data-view="statistics" class="nav-item">
-          <span class="nav-icon">&#9636;</span> Statistics <span class="nav-badge" id="stats-badge">-</span>
+          <span class="nav-icon">&#9636;</span> <span data-i18n="nav.statistics">Statistics</span> <span class="nav-badge" id="stats-badge">-</span>
         </button>
         <button id="nav-terminal" class="nav-item">
-          <span class="nav-icon">&#9002;</span> Terminal
+          <span class="nav-icon">&#9002;</span> <span data-i18n="nav.terminal">Terminal</span>
         </button>
         <button data-view="git" class="nav-item">
-          <span class="nav-icon">&#8644;</span> Git <span class="nav-badge" id="branch-count">0</span>
+          <span class="nav-icon">&#8644;</span> <span data-i18n="nav.git">Git</span> <span class="nav-badge" id="branch-count">0</span>
         </button>
         <button data-view="activity" class="nav-item">
-          <span class="nav-icon">&#9776;</span> Activity
+          <span class="nav-icon">&#9776;</span> <span data-i18n="nav.activity">Activity</span>
         </button>
         <button class="nav-item hidden" id="nav-bug-sync">
-          <span class="nav-icon">&#128027;</span> Bug-Sync <span class="nav-badge" id="bug-sync-count">0</span>
+          <span class="nav-icon">&#128027;</span> <span data-i18n="nav.bugSync">Bug-Sync</span> <span class="nav-badge" id="bug-sync-count">0</span>
         </button>
         <button data-view="agents" class="nav-item">
-          <span class="nav-icon">&#9655;</span> Agents <span class="nav-badge" id="agent-count">0</span>
+          <span class="nav-icon">&#9655;</span> <span data-i18n="nav.agents">Agents</span> <span class="nav-badge" id="agent-count">0</span>
         </button>
         <button data-view="commands" class="nav-item">
-          <span class="nav-icon">&#8984;</span> Commands <span class="nav-badge" id="command-count">0</span>
+          <span class="nav-icon">&#8984;</span> <span data-i18n="nav.commands">Commands</span> <span class="nav-badge" id="command-count">0</span>
         </button>
       </nav>
 
       <!-- Claude Usage -->
       <div class="sidebar-usage" id="sidebar-usage">
-        <div class="usage-title">Claude Kontingent</div>
+        <div class="usage-title" data-i18n="usage.title">Claude Kontingent</div>
         <div class="usage-row">
           <span class="usage-label">5h</span>
           <div class="usage-bar-track"><div class="usage-bar-fill" id="usage-5h-fill"></div></div>
-          <span class="usage-pct" id="usage-5h-pct">–</span>
+          <span class="usage-pct" id="usage-5h-pct">&ndash;</span>
         </div>
         <div class="usage-row">
           <span class="usage-label">7d</span>
           <div class="usage-bar-track"><div class="usage-bar-fill" id="usage-7d-fill"></div></div>
-          <span class="usage-pct" id="usage-7d-pct">–</span>
+          <span class="usage-pct" id="usage-7d-pct">&ndash;</span>
         </div>
       </div>
 
       <!-- Footer -->
       <div class="sidebar-footer">
         <button data-view="settings" class="nav-item">
-          <span class="nav-icon">&#9881;</span> Settings
+          <span class="nav-icon">&#9881;</span> <span data-i18n="nav.settings">Settings</span>
         </button>
         <button id="theme-toggle" class="nav-item" title="Toggle Theme">
-          <span class="nav-icon" id="theme-icon">&#9790;</span> <span id="theme-label">Dark Mode</span>
+          <span class="nav-icon" id="theme-icon">&#9790;</span> <span id="theme-label" data-i18n="nav.darkMode">Dark Mode</span>
         </button>
-        <button id="btn-new-task" class="btn-new-task">+ New Task</button>
+        <button id="btn-new-task" class="btn-new-task" data-i18n="nav.newTask">+ New Task</button>
       </div>
     </aside>
 
@@ -130,7 +130,7 @@
       <section id="view-dashboard" class="view">
         <div class="view-header">
           <h1 id="dashboard-project-name">Dashboard</h1>
-          <button id="dash-goto-board" class="btn-secondary" style="font-size:12px">Zum Board &rarr;</button>
+          <button id="dash-goto-board" class="btn-secondary" style="font-size:12px" data-i18n="dashboard.goToBoard">Zum Board &rarr;</button>
         </div>
         <!-- Action Cards -->
         <div class="dash-actions" id="dash-actions"></div>
@@ -139,25 +139,25 @@
           <!-- Left: Stats + Tech -->
           <div class="dash-col-left">
             <div class="dash-card dash-card-compact">
-              <div class="dash-card-title">Projekt</div>
+              <div class="dash-card-title" data-i18n="dashboard.project">Projekt</div>
               <div class="dash-card-body">
                 <div id="dash-tech-badges" style="margin-bottom:8px"></div>
                 <div id="dash-stats-body"></div>
               </div>
             </div>
             <div class="dash-card dash-card-compact">
-              <div class="dash-card-title">README</div>
+              <div class="dash-card-title" data-i18n="dashboard.readme">README</div>
               <div class="dash-card-body dash-readme-content" id="dash-readme-body"></div>
             </div>
           </div>
           <!-- Right: Commits + Activity -->
           <div class="dash-col-right">
             <div class="dash-card dash-card-compact">
-              <div class="dash-card-title">Recent Commits</div>
+              <div class="dash-card-title" data-i18n="dashboard.recentCommits">Recent Commits</div>
               <div class="dash-card-body" id="dash-commits-body"></div>
             </div>
             <div class="dash-card dash-card-compact">
-              <div class="dash-card-title">Recent Activity</div>
+              <div class="dash-card-title" data-i18n="dashboard.recentActivity">Recent Activity</div>
               <div class="dash-card-body" id="dash-activity-body"></div>
             </div>
           </div>
@@ -167,10 +167,10 @@
       <!-- View: Kanban Board -->
       <section id="view-board" class="view active">
         <div class="view-header">
-          <h1 id="board-title">Kanban Board</h1>
+          <h1 id="board-title" data-i18n="board.title">Kanban Board</h1>
           <div class="board-header-meta">
             <div class="health-bar-wrap">
-              <span class="health-label">Project health status</span>
+              <span class="health-label" data-i18n="board.healthStatus">Project health status</span>
               <div class="health-bar-track" id="health-bar">
                 <div class="health-seg health-seg-teal"  id="health-teal"  style="width:60%"></div>
                 <div class="health-seg health-seg-yellow" id="health-yellow" style="width:25%"></div>
@@ -178,22 +178,22 @@
               </div>
             </div>
           <div class="header-actions">
-            <button id="btn-export-tickets" class="icon-btn" title="Export">&#128190;</button>
-            <button id="btn-import-tickets" class="icon-btn" title="Import">&#128194;</button>
-            <button id="btn-filter-toggle" class="icon-btn" title="Filter (Ctrl+F)">&#128269;</button>
-            <button id="btn-local-deploy" class="deploy-btn local-deploy-btn hidden" title="Lokal testen (Docker)">&#129514; Lokal testen</button>
-            <button id="btn-live-deploy" class="deploy-btn live-deploy-btn hidden" title="Live deployen">&#128640; Live deployen</button>
+            <button id="btn-export-tickets" class="icon-btn" title="Export" data-i18n-title="board.export">&#128190;</button>
+            <button id="btn-import-tickets" class="icon-btn" title="Import" data-i18n-title="board.import">&#128194;</button>
+            <button id="btn-filter-toggle" class="icon-btn" title="Filter (Ctrl+F)" data-i18n-title="board.filter">&#128269;</button>
+            <button id="btn-local-deploy" class="deploy-btn local-deploy-btn hidden" title="Lokal testen (Docker)" data-i18n-title="board.localDeploy"><span>&#129514;</span> <span data-i18n="board.localDeploy">Lokal testen</span></button>
+            <button id="btn-live-deploy" class="deploy-btn live-deploy-btn hidden" title="Live deployen" data-i18n-title="board.liveDeploy"><span>&#128640;</span> <span data-i18n="board.liveDeploy">Live deployen</span></button>
             <span id="deploy-status-badge" class="deploy-badge hidden"></span>
-            <button id="btn-bug-sync" class="deploy-btn bug-sync-btn hidden" title="Portal Bugs synchronisieren">&#128027; Bugs synchen</button>
+            <button id="btn-bug-sync" class="deploy-btn bug-sync-btn hidden" title="Portal Bugs synchronisieren" data-i18n-title="board.bugSync"><span>&#128027;</span> <span data-i18n="board.bugSync">Bugs synchen</span></button>
             <span id="bug-sync-badge" class="bug-sync-badge hidden">0</span>
-            <span id="git-status" class="git-badge clean">&#9679; clean</span>
-            <span id="running-badge" class="running-badge hidden">&#9881; Running...</span>
+            <span id="git-status" class="git-badge clean">&#9679; <span data-i18n="board.clean">clean</span></span>
+            <span id="running-badge" class="running-badge hidden">&#9881; <span data-i18n="board.running">Running...</span></span>
           </div>
           </div>
         </div>
         <!-- Filter Bar (Block B2) -->
         <div id="filter-bar" class="filter-bar hidden">
-          <input type="text" id="filter-input" class="filter-input" placeholder="Search tickets...">
+          <input type="text" id="filter-input" class="filter-input" placeholder="Search tickets..." data-i18n-placeholder="header.search">
           <div class="filter-toggles">
             <button class="filter-toggle" data-filter-type="feature">feat</button>
             <button class="filter-toggle" data-filter-type="bugfix">fix</button>
@@ -205,7 +205,7 @@
             <button class="filter-toggle" data-filter-prio="medium">med</button>
             <button class="filter-toggle" data-filter-prio="low">low</button>
           </div>
-          <button id="filter-clear" class="icon-btn" title="Clear Filters">&#10005;</button>
+          <button id="filter-clear" class="icon-btn" title="Clear Filters" data-i18n-title="board.clear">&#10005;</button>
           <span id="filter-badge" class="filter-badge hidden">0</span>
         </div>
         <div id="board">
@@ -213,10 +213,10 @@
             <div class="column-header">
               <div class="column-title-row">
                 <span class="col-icon col-icon-backlog">&#9776;</span>
-                <span class="column-title">Backlog</span>
+                <span class="column-title" data-i18n="board.backlog">Backlog</span>
               </div>
               <span class="column-count" data-count="backlog">0</span>
-              <button id="btn-backlog-add" class="column-add-btn" title="Neues Ticket">+</button>
+              <button id="btn-backlog-add" class="column-add-btn" title="Neues Ticket" data-i18n-title="board.newTicket">+</button>
             </div>
             <div class="column-wip-bar" data-wip="backlog"></div>
             <div class="column-stat" data-stat="backlog"></div>
@@ -226,7 +226,7 @@
             <div class="column-header">
               <div class="column-title-row">
                 <span class="col-icon col-icon-progress">&#9654;</span>
-                <span class="column-title">Progress</span>
+                <span class="column-title" data-i18n="board.progress">Progress</span>
               </div>
               <span class="column-count" data-count="progress">0</span>
               <span class="wip-limit-label">max 3</span>
@@ -239,7 +239,7 @@
             <div class="column-header">
               <div class="column-title-row">
                 <span class="col-icon col-icon-review">&#9678;</span>
-                <span class="column-title">Review</span>
+                <span class="column-title" data-i18n="board.review">Review</span>
               </div>
               <span class="column-count" data-count="review">0</span>
               <span class="wip-limit-label">max 5</span>
@@ -252,7 +252,7 @@
             <div class="column-header">
               <div class="column-title-row">
                 <span class="col-icon col-icon-done">&#10003;</span>
-                <span class="column-title">Done</span>
+                <span class="column-title" data-i18n="board.done">Done</span>
               </div>
               <span class="column-count" data-count="done">0</span>
             </div>
@@ -263,61 +263,68 @@
         </div>
         <div id="log-panel">
           <div class="log-header">
-            <span>Claude Output</span>
+            <span data-i18n="board.claudeOutput">Claude Output</span>
             <div class="log-actions">
-              <button id="log-export" class="icon-btn" title="Export Log">&#128190;</button>
-              <button id="log-clear" class="icon-btn" title="Clear">&#10005;</button>
+              <button id="log-export" class="icon-btn" title="Export Log" data-i18n-title="board.exportLog">&#128190;</button>
+              <button id="log-clear" class="icon-btn" title="Clear" data-i18n-title="board.clear">&#10005;</button>
             </div>
           </div>
           <div id="log-body"></div>
         </div>
         <div class="system-status-bar">
-          <span class="sys-label">System status</span>
+          <span class="sys-label" data-i18n="board.systemStatus">System status</span>
           <span class="sys-dot online" id="sys-status-dot"></span>
         </div>
       </section>
 
       <!-- View: Settings -->
       <section id="view-settings" class="view">
-        <div class="view-header"><h1>Settings</h1></div>
+        <div class="view-header"><h1 data-i18n="settings.title">Settings</h1></div>
         <div class="settings-tabs">
-          <button class="settings-tab active" data-settings-tab="general">Allgemein</button>
-          <button class="settings-tab" data-settings-tab="terminal">Terminal</button>
-          <button class="settings-tab" data-settings-tab="deploy">Deploy</button>
-          <button class="settings-tab" data-settings-tab="bugsync">Bug-Sync</button>
+          <button class="settings-tab active" data-settings-tab="general" data-i18n="settings.general">Allgemein</button>
+          <button class="settings-tab" data-settings-tab="terminal" data-i18n="settings.terminal">Terminal</button>
+          <button class="settings-tab" data-settings-tab="deploy" data-i18n="settings.deploy">Deploy</button>
+          <button class="settings-tab" data-settings-tab="bugsync" data-i18n="settings.bugSync">Bug-Sync</button>
         </div>
         <div class="settings-form">
           <div class="settings-tab-content active" data-tab-content="general">
           <label class="settings-label">
-            Claude CLI Path
+            <span data-i18n="settings.claudeCliPath">Claude CLI Path</span>
             <input type="text" id="set-claude-path" class="settings-input" placeholder="claude">
           </label>
           <label class="settings-label">
-            Commit Prefix
+            <span data-i18n="settings.commitPrefix">Commit Prefix</span>
             <input type="text" id="set-commit-prefix" class="settings-input" placeholder="kanban:">
           </label>
           <label class="settings-label">
-            Auto-Execute Types (comma-separated)
+            <span data-i18n="settings.autoExecuteTypes">Auto-Execute Types (comma-separated)</span>
             <input type="text" id="set-auto-execute" class="settings-input" placeholder="docs, security">
           </label>
           <label class="settings-label">
-            Accent Color
+            <span data-i18n="settings.accentColor">Accent Color</span>
             <div class="color-row">
               <input type="color" id="set-accent-color" value="#F97316">
               <span id="accent-color-label">#F97316</span>
             </div>
           </label>
           <label class="settings-label">
-            Theme
+            <span data-i18n="settings.theme">Theme</span>
             <select id="set-theme" class="settings-input">
-              <option value="dark">Dark</option>
-              <option value="light">Light (Cream)</option>
+              <option value="dark" data-i18n="settings.themeDark">Dark</option>
+              <option value="light" data-i18n="settings.themeLight">Light (Cream)</option>
+            </select>
+          </label>
+          <label class="settings-label">
+            <span data-i18n="settings.language">Sprache</span>
+            <select id="set-language" class="settings-input">
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
             </select>
           </label>
           <hr class="settings-divider">
           <label class="settings-label">
             <span class="toggle-row">
-              Desktop Notifications
+              <span data-i18n="settings.notifications">Desktop Notifications</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="set-notifications" checked>
                 <span class="toggle-slider"></span>
@@ -326,7 +333,7 @@
           </label>
           <label class="settings-label">
             <span class="toggle-row">
-              Sound Effects
+              <span data-i18n="settings.sounds">Sound Effects</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="set-sounds" checked>
                 <span class="toggle-slider"></span>
@@ -335,7 +342,7 @@
           </label>
           <label class="settings-label">
             <span class="toggle-row">
-              Auto-Backup
+              <span data-i18n="settings.autoBackup">Auto-Backup</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="set-backups" checked>
                 <span class="toggle-slider"></span>
@@ -343,16 +350,26 @@
             </span>
           </label>
           <label class="settings-label">
-            Max Backups
+            <span data-i18n="settings.maxBackups">Max Backups</span>
             <div class="settings-range-row">
               <input type="range" id="set-max-backups" class="settings-range" min="1" max="20" value="10">
               <span id="max-backups-label">10</span>
             </div>
           </label>
           <hr class="settings-divider">
-          <div class="settings-section-title">Claude Model &amp; Costs</div>
           <label class="settings-label">
-            Claude Model
+            <span class="toggle-row">
+              <span data-i18n="settings.autoGitPush">Auto-Push nach Merge</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="set-auto-push">
+                <span class="toggle-slider"></span>
+              </label>
+            </span>
+          </label>
+          <hr class="settings-divider">
+          <div class="settings-section-title" data-i18n="settings.claudeModelCosts">Claude Model &amp; Costs</div>
+          <label class="settings-label">
+            <span data-i18n="settings.claudeModel">Claude Model</span>
             <select id="set-claude-model" class="settings-input">
               <option value="claude-sonnet-4-6">Sonnet 4.6 ($3/$15 per MTok)</option>
               <option value="claude-opus-4-6">Opus 4.6 ($15/$75 per MTok)</option>
@@ -360,22 +377,22 @@
             </select>
           </label>
           <label class="settings-label">
-            Input Cost ($/MTok)
+            <span data-i18n="settings.inputCost">Input Cost ($/MTok)</span>
             <input type="number" id="set-cost-input" class="settings-input" step="0.1" min="0" value="3">
           </label>
           <label class="settings-label">
-            Output Cost ($/MTok)
+            <span data-i18n="settings.outputCost">Output Cost ($/MTok)</span>
             <input type="number" id="set-cost-output" class="settings-input" step="0.1" min="0" value="15">
           </label>
           </div><!-- /general -->
           <div class="settings-tab-content" data-tab-content="terminal">
-          <div class="settings-section-title">Terminal</div>
+          <div class="settings-section-title" data-i18n="settings.terminal">Terminal</div>
           <label class="settings-label">
-            Default Shell
+            <span data-i18n="settings.defaultShell">Default Shell</span>
             <select id="set-default-shell" class="settings-input"></select>
           </label>
           <label class="settings-label">
-            Terminal Font Size
+            <span data-i18n="settings.terminalFontSize">Terminal Font Size</span>
             <div class="settings-range-row">
               <input type="range" id="set-terminal-fontsize" class="settings-range" min="10" max="20" value="14">
               <span id="terminal-fontsize-label">14px</span>
@@ -383,10 +400,10 @@
           </label>
           </div><!-- /terminal -->
           <div class="settings-tab-content" data-tab-content="bugsync">
-          <div class="settings-section-title">Bug-Sync (Portal)</div>
+          <div class="settings-section-title" data-i18n="settings.bugSyncPortal">Bug-Sync (Portal)</div>
           <label class="settings-label">
             <span class="toggle-row">
-              Bug-Sync aktivieren
+              <span data-i18n="settings.bugSyncEnable">Bug-Sync aktivieren</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="set-bugsync-enabled">
                 <span class="toggle-slider"></span>
@@ -394,51 +411,51 @@
             </span>
           </label>
           <label class="settings-label">
-            API URL
+            <span data-i18n="settings.apiUrl">API URL</span>
             <input type="text" id="set-bugsync-url" class="settings-input" placeholder="https://example.com/api/internal/bugs">
           </label>
           <label class="settings-label">
-            API Token
-            <input type="password" id="set-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token">
+            <span data-i18n="settings.apiToken">API Token</span>
+            <input type="password" id="set-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token" data-i18n-placeholder="settings.apiTokenPlaceholder">
           </label>
           <label class="settings-label">
-            Sync-Intervall (Sekunden)
+            <span data-i18n="settings.syncInterval">Sync-Intervall (Sekunden)</span>
             <div class="settings-range-row">
               <input type="range" id="set-bugsync-interval" class="settings-range" min="60" max="1800" step="60" value="300">
               <span id="bugsync-interval-label">5 min</span>
             </div>
           </label>
-          <button id="btn-bugsync-test" class="btn-secondary" style="margin-bottom:8px">Jetzt synchronisieren</button>
+          <button id="btn-bugsync-test" class="btn-secondary" style="margin-bottom:8px" data-i18n="settings.syncNow">Jetzt synchronisieren</button>
           <div id="bugsync-status" class="deploy-detection-info hidden"></div>
           </div><!-- /bugsync -->
           <div class="settings-tab-content" data-tab-content="deploy">
-          <div class="settings-section-title">Docker Deploy</div>
+          <div class="settings-section-title" data-i18n="settings.dockerDeploy">Docker Deploy</div>
           <label class="settings-label">
-            Deploy-Typ
+            <span data-i18n="settings.deployType">Deploy-Typ</span>
             <select id="set-deploy-type" class="settings-input">
               <option value="compose">Docker Compose</option>
               <option value="dockerfile">Dockerfile</option>
             </select>
           </label>
           <label class="settings-label">
-            Compose Files (comma-separated)
+            <span data-i18n="settings.composeFiles">Compose Files (comma-separated)</span>
             <input type="text" id="set-compose-files" class="settings-input" placeholder="docker-compose.yml">
           </label>
           <label class="settings-label">
-            Env File
+            <span data-i18n="settings.envFile">Env File</span>
             <input type="text" id="set-env-file" class="settings-input" placeholder=".env">
           </label>
           <label class="settings-label">
-            Local URL (nach Deploy)
+            <span data-i18n="settings.localUrl">Local URL (nach Deploy)</span>
             <input type="text" id="set-local-url" class="settings-input" placeholder="http://localhost:3000">
           </label>
-          <button id="btn-detect-env" class="btn-secondary" style="margin-bottom:8px">Umgebung erkennen</button>
+          <button id="btn-detect-env" class="btn-secondary" style="margin-bottom:8px" data-i18n="settings.detectEnv">Umgebung erkennen</button>
           <div id="deploy-detection-info" class="deploy-detection-info hidden"></div>
           <hr class="settings-divider">
-          <div class="settings-section-title">Live Server (SSH)</div>
+          <div class="settings-section-title" data-i18n="settings.liveServer">Live Server (SSH)</div>
           <label class="settings-label">
             <span class="toggle-row">
-              Live Deploy aktivieren
+              <span data-i18n="settings.liveDeployEnable">Live Deploy aktivieren</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="set-live-enabled">
                 <span class="toggle-slider"></span>
@@ -447,79 +464,79 @@
           </label>
           <div id="live-settings-panel">
             <label class="settings-label">
-              SSH Host (user@host)
+              <span data-i18n="settings.sshHost">SSH Host (user@host)</span>
               <input type="text" id="set-ssh-host" class="settings-input" placeholder="user@example.com">
             </label>
             <label class="settings-label">
-              SSH Key
+              <span data-i18n="settings.sshKey">SSH Key</span>
               <input type="text" id="set-ssh-key" class="settings-input" placeholder="~/.ssh/id_rsa">
             </label>
             <label class="settings-label">
-              SSH Port
+              <span data-i18n="settings.sshPort">SSH Port</span>
               <input type="number" id="set-ssh-port" class="settings-input" value="22" min="1" max="65535">
             </label>
             <label class="settings-label">
-              Server-Pfad
+              <span data-i18n="settings.serverPath">Server-Pfad</span>
               <input type="text" id="set-server-path" class="settings-input" placeholder="/var/www/myapp">
             </label>
             <label class="settings-label">
-              Branch
+              <span data-i18n="settings.branch">Branch</span>
               <input type="text" id="set-server-branch" class="settings-input" placeholder="main">
             </label>
             <label class="settings-label">
-              Pre-Commands (one per line)
+              <span data-i18n="settings.preCommands">Pre-Commands (one per line)</span>
               <textarea id="set-pre-commands" class="settings-input settings-textarea" rows="2" placeholder="git pull origin main"></textarea>
             </label>
             <label class="settings-label">
-              Deploy-Commands (one per line)
+              <span data-i18n="settings.deployCommands">Deploy-Commands (one per line)</span>
               <textarea id="set-deploy-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose up --build -d"></textarea>
             </label>
             <label class="settings-label">
-              Post-Commands (one per line)
+              <span data-i18n="settings.postCommands">Post-Commands (one per line)</span>
               <textarea id="set-post-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose logs -f --tail=50"></textarea>
             </label>
             <label class="settings-label">
-              Live URL
+              <span data-i18n="settings.liveUrl">Live URL</span>
               <input type="text" id="set-live-url" class="settings-input" placeholder="https://example.com">
             </label>
           </div>
           </div><!-- /deploy -->
-          <button id="btn-open-backups" class="btn-secondary" style="margin-bottom:16px">Backup wiederherstellen...</button>
-          <button id="btn-save-settings" class="btn-primary">Save Settings</button>
+          <button id="btn-open-backups" class="btn-secondary" style="margin-bottom:16px" data-i18n="settings.restoreBackup">Backup wiederherstellen...</button>
+          <button id="btn-save-settings" class="btn-primary" data-i18n="settings.saveSettings">Save Settings</button>
           <div class="settings-version" id="settings-version"></div>
         </div>
       </section>
 
       <!-- View: Statistics (Block D2) -->
       <section id="view-statistics" class="view">
-        <div class="view-header"><h1>Statistics</h1></div>
+        <div class="view-header"><h1 data-i18n="stats.title">Statistics</h1></div>
         <div class="stats-dashboard">
           <div class="stats-row">
-            <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Tickets</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-done">0</div><div class="stat-label">Completed</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-cycle">-</div><div class="stat-label">Avg Cycle Time</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-review">-</div><div class="stat-label">Avg Review Time</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-total-cost">-</div><div class="stat-label">Total Cost</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-avg-cost">-</div><div class="stat-label">Avg Cost/Ticket</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label" data-i18n="stats.totalTickets">Total Tickets</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-done">0</div><div class="stat-label" data-i18n="stats.completed">Completed</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-cycle">-</div><div class="stat-label" data-i18n="stats.avgCycleTime">Avg Cycle Time</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-review">-</div><div class="stat-label" data-i18n="stats.avgReviewTime">Avg Review Time</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-total-cost">-</div><div class="stat-label" data-i18n="stats.totalCost">Total Cost</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-avg-cost">-</div><div class="stat-label" data-i18n="stats.avgCostTicket">Avg Cost/Ticket</div></div>
           </div>
           <div class="stats-row">
             <div class="stat-card chart-card">
-              <div class="stat-label">By Type</div>
+              <div class="stat-label" data-i18n="stats.byType">By Type</div>
               <div id="pie-chart" class="pie-chart"></div>
               <div id="pie-legend" class="pie-legend"></div>
             </div>
             <div class="stat-card chart-card">
-              <div class="stat-label">By Column</div>
+              <div class="stat-label" data-i18n="stats.byColumn">By Column</div>
               <div id="bar-chart" class="bar-chart"></div>
             </div>
           </div>
           <div class="stats-row">
             <div class="stat-card chart-card">
-              <div class="stat-label">Velocity (Tickets/Woche)</div>
+              <div class="stat-label" data-i18n="stats.velocity">Velocity (Tickets/Woche)</div>
               <div id="velocity-chart" class="velocity-chart"></div>
             </div>
             <div class="stat-card" style="flex:1">
-              <div class="stat-label">Recent Completed</div>
+              <div class="stat-label" data-i18n="stats.recentCompleted">Recent Completed</div>
               <div id="recent-completed" class="recent-list"></div>
             </div>
           </div>
@@ -529,14 +546,14 @@
       <!-- View: Git (Phase 3 - Block B) -->
       <section id="view-git" class="view">
         <div class="view-header">
-          <h1>Git</h1>
+          <h1 data-i18n="git.title">Git</h1>
           <span id="git-branch-count" class="badge-count">0</span>
-          <button id="btn-refresh-branches" class="icon-btn" title="Refresh">&#8635;</button>
+          <button id="btn-refresh-branches" class="icon-btn" title="Refresh" data-i18n-title="git.refresh">&#8635;</button>
         </div>
         <div class="git-card-view">
           <div id="git-current-branch" class="git-current-info"></div>
           <div id="git-branch-cards" class="git-branch-cards">
-            <p class="empty-state">Loading branches...</p>
+            <p class="empty-state" data-i18n="common.loading">Loading...</p>
           </div>
         </div>
         <!-- Diff overlay (shared) -->
@@ -552,7 +569,7 @@
       <!-- View: Activity (Phase 3 - Block C) -->
       <section id="view-activity" class="view">
         <div class="view-header">
-          <h1>Activity</h1>
+          <h1 data-i18n="nav.activity">Activity</h1>
           <div class="activity-filters">
             <button class="activity-filter active" data-activity-filter="all">All</button>
             <button class="activity-filter" data-activity-filter="ticket_created">Created</button>
@@ -567,19 +584,19 @@
       <!-- View: Agents (Block E - Editor Layout) -->
       <section id="view-agents" class="view">
         <div class="view-header">
-          <h1>Agents</h1>
-          <button id="btn-new-agent" class="btn-primary">+ New Agent</button>
+          <h1 data-i18n="editors.agents">Agents</h1>
+          <button id="btn-new-agent" class="btn-primary" data-i18n="editors.newAgent">+ New Agent</button>
         </div>
         <div class="editor-layout">
           <div id="agents-list" class="editor-list">
-            <p class="empty-state">No agents found in .claude/agents/</p>
+            <p class="empty-state" data-i18n="editors.noAgents">No agents found in .claude/agents/</p>
           </div>
           <div id="agent-editor" class="editor-pane hidden">
             <div class="editor-toolbar">
               <span class="editor-filename" id="agent-editor-name"></span>
               <div class="editor-toolbar-actions">
-                <button id="btn-save-agent" class="btn-primary">Save</button>
-                <button id="btn-delete-agent" class="btn-danger">Delete</button>
+                <button id="btn-save-agent" class="btn-primary" data-i18n="editors.save">Save</button>
+                <button id="btn-delete-agent" class="btn-danger" data-i18n="editors.delete">Delete</button>
               </div>
             </div>
             <textarea id="agent-editor-content" class="editor-textarea" spellcheck="false"></textarea>
@@ -590,19 +607,19 @@
       <!-- View: Commands (Block E - Editor Layout) -->
       <section id="view-commands" class="view">
         <div class="view-header">
-          <h1>Commands</h1>
-          <button id="btn-new-command" class="btn-primary">+ New Command</button>
+          <h1 data-i18n="editors.commands">Commands</h1>
+          <button id="btn-new-command" class="btn-primary" data-i18n="editors.newCommand">+ New Command</button>
         </div>
         <div class="editor-layout">
           <div id="commands-list" class="editor-list">
-            <p class="empty-state">No commands found in .claude/commands/</p>
+            <p class="empty-state" data-i18n="editors.noCommands">No commands found in .claude/commands/</p>
           </div>
           <div id="command-editor" class="editor-pane hidden">
             <div class="editor-toolbar">
               <span class="editor-filename" id="command-editor-name"></span>
               <div class="editor-toolbar-actions">
-                <button id="btn-save-command" class="btn-primary">Save</button>
-                <button id="btn-delete-command" class="btn-danger">Delete</button>
+                <button id="btn-save-command" class="btn-primary" data-i18n="editors.save">Save</button>
+                <button id="btn-delete-command" class="btn-danger" data-i18n="editors.delete">Delete</button>
               </div>
             </div>
             <textarea id="command-editor-content" class="editor-textarea" spellcheck="false"></textarea>
@@ -614,31 +631,31 @@
         <div class="focus-sidebar">
           <div class="focus-ticket-header">
             <span class="focus-ticket-id" id="focus-ticket-id"></span>
-            <button id="btn-focus-exit" class="icon-btn" title="Fokus-Modus verlassen">&#10005;</button>
+            <button id="btn-focus-exit" class="icon-btn" title="Fokus-Modus verlassen" data-i18n-title="focus.exitTitle">&#10005;</button>
           </div>
           <h3 class="focus-ticket-title" id="focus-ticket-title"></h3>
           <div class="focus-ticket-desc" id="focus-ticket-desc"></div>
           <div class="focus-meta">
             <div class="focus-meta-row">
-              <span class="focus-meta-label">Branch</span>
-              <span class="focus-meta-value" id="focus-branch">—</span>
+              <span class="focus-meta-label" data-i18n="focus.branch">Branch</span>
+              <span class="focus-meta-value" id="focus-branch">&mdash;</span>
             </div>
             <div class="focus-meta-row">
-              <span class="focus-meta-label">Modell</span>
-              <span class="focus-meta-value" id="focus-model">—</span>
+              <span class="focus-meta-label" data-i18n="focus.model">Modell</span>
+              <span class="focus-meta-value" id="focus-model">&mdash;</span>
             </div>
             <div class="focus-meta-row">
-              <span class="focus-meta-label">Laufzeit</span>
+              <span class="focus-meta-label" data-i18n="focus.elapsed">Laufzeit</span>
               <span class="focus-meta-value" id="focus-elapsed">0:00</span>
             </div>
           </div>
           <div class="focus-notes">
-            <div class="focus-notes-title">Notizen</div>
-            <textarea id="focus-notes-input" class="focus-notes-input" placeholder="Schnelle Notiz..."></textarea>
-            <button id="btn-focus-note-save" class="btn-secondary" style="width:100%;padding:4px;font-size:11px;margin-top:4px">Speichern</button>
+            <div class="focus-notes-title" data-i18n="focus.notes">Notizen</div>
+            <textarea id="focus-notes-input" class="focus-notes-input" placeholder="Schnelle Notiz..." data-i18n-placeholder="focus.notePlaceholder"></textarea>
+            <button id="btn-focus-note-save" class="btn-secondary" style="width:100%;padding:4px;font-size:11px;margin-top:4px" data-i18n="focus.saveNote">Speichern</button>
           </div>
           <div class="focus-actions">
-            <button id="btn-focus-finish" class="btn-primary focus-finish-btn">&#10004; Ticket abschlie&szlig;en</button>
+            <button id="btn-focus-finish" class="btn-primary focus-finish-btn" data-i18n="focus.finishTicket">&#10004; Ticket abschlie&szlig;en</button>
           </div>
         </div>
         <div class="focus-terminal" id="focus-terminal-area"></div>
@@ -648,7 +665,7 @@
       <div id="board-terminal-panel" class="board-terminal-panel collapsed">
         <div class="board-terminal-drag" id="board-terminal-drag"></div>
         <div class="board-terminal-bar">
-          <button id="board-terminal-toggle" class="board-terminal-toggle-btn" title="Toggle Terminal (Ctrl+`)">&#9654; Terminal</button>
+          <button id="board-terminal-toggle" class="board-terminal-toggle-btn" title="Toggle Terminal (Ctrl+`)">&#9654; <span data-i18n="nav.terminal">Terminal</span></button>
           <div class="board-terminal-tabs" id="board-terminal-tabs"></div>
           <div class="terminal-running-status hidden" id="terminal-running-status">
             <span class="terminal-running-dot"></span>
@@ -657,7 +674,7 @@
           </div>
           <div class="board-terminal-actions">
             <select id="board-terminal-shell-select" class="settings-input terminal-shell-select"></select>
-            <button id="board-terminal-new" class="btn-primary" style="padding:3px 10px;font-size:12px">+ New</button>
+            <button id="board-terminal-new" class="btn-primary" style="padding:3px 10px;font-size:12px" data-i18n="terminal.newTab">+ New</button>
           </div>
         </div>
         <div class="board-terminal-body" id="board-terminal-instances">
@@ -673,12 +690,12 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content modal-picker-content">
         <div class="modal-header">
-          <h2>Select Project</h2>
+          <h2 data-i18n="modal.selectProject">Select Project</h2>
           <button class="modal-close icon-btn">&#10005;</button>
         </div>
         <div id="picker-list" class="picker-list"></div>
         <div class="modal-footer">
-          <button id="btn-add-project" class="btn-secondary">+ Add Project</button>
+          <button id="btn-add-project" class="btn-secondary" data-i18n="modal.addProject">+ Add Project</button>
         </div>
       </div>
     </div>
@@ -688,11 +705,11 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content modal-confirm-content">
         <div class="modal-header">
-          <h2>Confirm Execution</h2>
+          <h2 data-i18n="modal.confirmExecution">Confirm Execution</h2>
         </div>
-        <p id="confirm-message">Execute this ticket?</p>
+        <p id="confirm-message" data-i18n="modal.executeQuestion">Execute this ticket?</p>
         <label class="settings-label">
-          Claude Model
+          <span data-i18n="modal.claudeModel">Claude Model</span>
           <select id="confirm-model-select" class="settings-input">
             <option value="claude-sonnet-4-6">Sonnet 4.6</option>
             <option value="claude-opus-4-6">Opus 4.6</option>
@@ -701,8 +718,8 @@
           <span id="model-recommendation-hint" class="model-hint"></span>
         </label>
         <div class="modal-actions">
-          <button id="btn-confirm-yes" class="btn-primary">Yes, Execute</button>
-          <button id="btn-confirm-no" class="btn-secondary">Cancel</button>
+          <button id="btn-confirm-yes" class="btn-primary" data-i18n="modal.yesExecute">Yes, Execute</button>
+          <button id="btn-confirm-no" class="btn-secondary" data-i18n="modal.cancel">Cancel</button>
         </div>
       </div>
     </div>
@@ -712,13 +729,13 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content modal-confirm-content">
         <div class="modal-header">
-          <h2 id="deploy-confirm-title">Deploy</h2>
+          <h2 id="deploy-confirm-title" data-i18n="modal.deploy">Deploy</h2>
         </div>
         <p id="deploy-confirm-message"></p>
         <pre id="deploy-confirm-details" class="deploy-confirm-details"></pre>
         <div class="modal-actions">
-          <button id="btn-deploy-confirm-yes" class="btn-primary">Ja, deployen</button>
-          <button id="btn-deploy-confirm-no" class="btn-secondary">Abbrechen</button>
+          <button id="btn-deploy-confirm-yes" class="btn-primary" data-i18n="modal.yesDeploy">Ja, deployen</button>
+          <button id="btn-deploy-confirm-no" class="btn-secondary" data-i18n="modal.cancel">Abbrechen</button>
         </div>
       </div>
     </div>
@@ -728,21 +745,21 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h2>New Task</h2>
+          <h2 data-i18n="modal.newTask">New Task</h2>
           <button class="modal-close icon-btn">&#10005;</button>
         </div>
         <label class="settings-label">
-          Template
+          <span data-i18n="modal.template">Template</span>
           <select id="new-task-template" class="settings-input">
-            <option value="">Kein Template</option>
+            <option value="" data-i18n="dashboard.noTemplate">Kein Template</option>
           </select>
         </label>
         <label class="settings-label">
-          Title
-          <input type="text" id="new-task-title" class="settings-input" placeholder="Task title...">
+          <span data-i18n="modal.title">Title</span>
+          <input type="text" id="new-task-title" class="settings-input" placeholder="Task title..." data-i18n-placeholder="modal.titlePlaceholder">
         </label>
         <label class="settings-label">
-          Type
+          <span data-i18n="modal.type">Type</span>
           <select id="new-task-type" class="settings-input">
             <option value="feature">Feature</option>
             <option value="bugfix">Bugfix</option>
@@ -751,22 +768,22 @@
           </select>
         </label>
         <label class="settings-label">
-          Priority
+          <span data-i18n="modal.priority">Priority</span>
           <select id="new-task-prio" class="settings-input">
-            <option value="">None</option>
+            <option value="" data-i18n="detail.none">None</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
         </label>
         <label class="settings-label">
-          Description
-          <textarea id="new-task-desc" class="settings-input settings-textarea" rows="4" placeholder="Describe the task..."></textarea>
+          <span data-i18n="modal.description">Description</span>
+          <textarea id="new-task-desc" class="settings-input settings-textarea" rows="4" placeholder="Describe the task..." data-i18n-placeholder="modal.descPlaceholder"></textarea>
         </label>
         <div id="task-helper" class="task-helper"></div>
         <div class="modal-actions">
-          <button id="btn-create-task" class="btn-primary">Create Task</button>
-          <button id="btn-cancel-task" class="btn-secondary">Cancel</button>
+          <button id="btn-create-task" class="btn-primary" data-i18n="modal.createTask">Create Task</button>
+          <button id="btn-cancel-task" class="btn-secondary" data-i18n="modal.cancel">Cancel</button>
         </div>
       </div>
     </div>
@@ -776,11 +793,11 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Backup wiederherstellen</h2>
+          <h2 data-i18n="modal.restoreBackup">Backup wiederherstellen</h2>
           <button class="modal-close icon-btn">&#10005;</button>
         </div>
         <div id="backup-list" class="backup-list">
-          <p class="empty-state">Loading...</p>
+          <p class="empty-state" data-i18n="modal.loading">Loading...</p>
         </div>
       </div>
     </div>
@@ -790,14 +807,14 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h2>&#9888; Unterbrochenes Ticket</h2>
+          <h2>&#9888; <span data-i18n="modal.interruptedTicket">Unterbrochenes Ticket</span></h2>
         </div>
         <p id="recovery-message" style="margin-bottom:12px"></p>
         <div id="recovery-status" class="recovery-status" style="margin-bottom:16px"></div>
         <div class="recovery-actions">
-          <button id="btn-recovery-continue" class="btn-primary">&#9654; Weiterarbeiten</button>
-          <button id="btn-recovery-finish" class="btn-secondary">&#10004; Abschlie&szlig;en</button>
-          <button id="btn-recovery-reset" class="btn-secondary">&#8634; Zur&uuml;ck ins Backlog</button>
+          <button id="btn-recovery-continue" class="btn-primary" data-i18n="modal.continueWork">&#9654; Weiterarbeiten</button>
+          <button id="btn-recovery-finish" class="btn-secondary" data-i18n="modal.finish">&#10004; Abschlie&szlig;en</button>
+          <button id="btn-recovery-reset" class="btn-secondary" data-i18n="modal.backToBacklog">&#8634; Zur&uuml;ck ins Backlog</button>
         </div>
       </div>
     </div>
@@ -807,18 +824,18 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content modal-review-content">
         <div class="modal-header">
-          <h2 id="review-title">Review</h2>
+          <h2 id="review-title" data-i18n="modal.review">Review</h2>
           <button class="modal-close icon-btn">&#10005;</button>
         </div>
         <div class="review-body">
           <div id="review-file-list" class="review-file-list"></div>
           <div id="review-diff-preview" class="review-diff-preview">
-            <p class="empty-state">Datei anklicken f&uuml;r Diff-Vorschau</p>
+            <p class="empty-state" data-i18n="board.clickFileForDiff">Datei anklicken f&uuml;r Diff-Vorschau</p>
           </div>
         </div>
         <div class="review-actions">
-          <button id="btn-review-confirm" class="btn-primary">&check; Committen &amp; Erledigen</button>
-          <button id="btn-review-cancel" class="btn-secondary">&cross; Zur&uuml;ck zum Terminal</button>
+          <button id="btn-review-confirm" class="btn-primary" data-i18n="board.commitAndFinish">&check; Committen &amp; Erledigen</button>
+          <button id="btn-review-cancel" class="btn-secondary" data-i18n="board.backToTerminal">&cross; Zur&uuml;ck zum Terminal</button>
         </div>
       </div>
     </div>
@@ -828,18 +845,18 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Keyboard Shortcuts</h2>
+          <h2 data-i18n="modal.keyboardShortcuts">Keyboard Shortcuts</h2>
           <button class="modal-close icon-btn">&#10005;</button>
         </div>
         <div class="shortcut-grid">
-          <div class="shortcut-row"><kbd>Ctrl+N</kbd><span>New Task</span></div>
-          <div class="shortcut-row"><kbd>Ctrl+F</kbd><span>Toggle Filter</span></div>
-          <div class="shortcut-row"><kbd>Ctrl+P</kbd><span>Project Picker</span></div>
-          <div class="shortcut-row"><kbd>Ctrl+,</kbd><span>Settings</span></div>
-          <div class="shortcut-row"><kbd>Ctrl+L</kbd><span>Toggle Log Panel</span></div>
-          <div class="shortcut-row"><kbd>Escape</kbd><span>Close Panel/Modal</span></div>
-          <div class="shortcut-row"><kbd>Ctrl+`</kbd><span>Toggle Terminal</span></div>
-          <div class="shortcut-row"><kbd>?</kbd><span>This Help</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+N</kbd><span data-i18n="modal.newTask_btn">New Task</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+F</kbd><span data-i18n="modal.toggleFilter">Toggle Filter</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+P</kbd><span data-i18n="modal.projectPicker">Project Picker</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+,</kbd><span data-i18n="nav.settings">Settings</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+L</kbd><span data-i18n="modal.toggleLog">Toggle Log Panel</span></div>
+          <div class="shortcut-row"><kbd>Escape</kbd><span data-i18n="modal.closePanel">Close Panel/Modal</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+`</kbd><span data-i18n="modal.toggleTerminal">Toggle Terminal</span></div>
+          <div class="shortcut-row"><kbd>?</kbd><span data-i18n="modal.thisHelp">This Help</span></div>
         </div>
       </div>
     </div>
@@ -847,16 +864,16 @@
     <!-- Slide Panel: Ticket Detail -->
     <div id="panel-detail" class="slide-panel hidden">
       <div class="panel-header">
-        <h2 id="detail-title">Ticket</h2>
+        <h2 id="detail-title" data-i18n="detail.ticket">Ticket</h2>
         <button id="panel-close" class="icon-btn">&#10005;</button>
       </div>
       <div class="panel-body">
         <label class="settings-label">
-          Title
+          <span data-i18n="detail.title">Title</span>
           <input type="text" id="detail-edit-title" class="settings-input">
         </label>
         <label class="settings-label">
-          Type
+          <span data-i18n="detail.type">Type</span>
           <select id="detail-edit-type" class="settings-input">
             <option value="feature">Feature</option>
             <option value="bugfix">Bugfix</option>
@@ -865,73 +882,73 @@
           </select>
         </label>
         <label class="settings-label">
-          Priority
+          <span data-i18n="detail.priority">Priority</span>
           <select id="detail-edit-prio" class="settings-input">
-            <option value="">None</option>
+            <option value="" data-i18n="detail.none">None</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
         </label>
         <label class="settings-label">
-          Description
+          <span data-i18n="detail.description">Description</span>
           <textarea id="detail-edit-desc" class="settings-input settings-textarea" rows="6"></textarea>
         </label>
         <div class="panel-info">
-          <div><strong>ID:</strong> <span id="detail-id"></span></div>
-          <div><strong>Column:</strong> <span id="detail-column"></span></div>
-          <div><strong>Branch:</strong> <span id="detail-branch"></span></div>
+          <div><strong data-i18n="detail.id">ID:</strong> <span id="detail-id"></span></div>
+          <div><strong data-i18n="detail.column">Column:</strong> <span id="detail-column"></span></div>
+          <div><strong data-i18n="detail.branch">Branch:</strong> <span id="detail-branch"></span></div>
         </div>
         <!-- Token/Cost Info -->
         <div id="detail-cost-info" class="panel-cost-info hidden">
-          <div><strong>Model:</strong> <span id="detail-model"></span></div>
-          <div><strong>Tokens:</strong> <span id="detail-tokens"></span></div>
-          <div><strong>Cost:</strong> <span id="detail-cost"></span></div>
+          <div><strong data-i18n="detail.model">Model:</strong> <span id="detail-model"></span></div>
+          <div><strong data-i18n="detail.tokens">Tokens:</strong> <span id="detail-tokens"></span></div>
+          <div><strong data-i18n="detail.cost">Cost:</strong> <span id="detail-cost"></span></div>
         </div>
         <!-- Portal Bug Info -->
         <div id="detail-portal-info" class="panel-cost-info hidden">
-          <div><strong>Portal Bug:</strong> <span id="detail-portal-id"></span></div>
-          <div><strong>Portal URL:</strong> <a id="detail-portal-url" href="#" target="_blank" class="portal-link"></a></div>
+          <div><strong data-i18n="detail.portalBug">Portal Bug:</strong> <span id="detail-portal-id"></span></div>
+          <div><strong data-i18n="detail.portalUrl">Portal URL:</strong> <a id="detail-portal-url" href="#" target="_blank" class="portal-link"></a></div>
         </div>
         <!-- Timeline (Block A1) -->
         <div id="detail-timeline" class="panel-timeline"></div>
         <!-- Comments -->
         <div class="panel-comments">
-          <h3>Comments</h3>
+          <h3 data-i18n="detail.comments">Comments</h3>
           <div id="detail-comments-list"></div>
           <div class="comment-add">
-            <textarea id="detail-comment-input" class="settings-input settings-textarea" rows="2" placeholder="Add a comment..."></textarea>
-            <button id="btn-add-comment" class="btn-secondary">Add Comment</button>
+            <textarea id="detail-comment-input" class="settings-input settings-textarea" rows="2" placeholder="Add a comment..." data-i18n-placeholder="detail.addComment"></textarea>
+            <button id="btn-add-comment" class="btn-secondary" data-i18n="detail.addCommentBtn">Add Comment</button>
           </div>
         </div>
         <div class="panel-actions">
-          <button id="btn-detail-save" class="btn-primary">Save Changes</button>
-          <button id="btn-detail-delete" class="btn-danger">Delete Ticket</button>
+          <button id="btn-detail-save" class="btn-primary" data-i18n="detail.saveChanges">Save Changes</button>
+          <button id="btn-detail-delete" class="btn-danger" data-i18n="detail.deleteTicket">Delete Ticket</button>
         </div>
       </div>
     </div>
 
     <!-- Context Menu (Block B3) -->
     <div id="context-menu" class="context-menu hidden">
-      <div class="ctx-item" data-action="start">&#9655; Start</div>
-      <div class="ctx-item" data-action="edit">&#9998; Bearbeiten</div>
-      <div class="ctx-item ctx-has-submenu" data-action="move-to">&#8644; Verschieben nach
+      <div class="ctx-item" data-action="start"><span>&#9655;</span> <span data-i18n="ctx.start">Start</span></div>
+      <div class="ctx-item" data-action="edit"><span>&#9998;</span> <span data-i18n="ctx.edit">Bearbeiten</span></div>
+      <div class="ctx-item ctx-has-submenu" data-action="move-to"><span>&#8644;</span> <span data-i18n="ctx.moveTo">Verschieben nach</span>
         <div class="ctx-submenu">
-          <div class="ctx-sub-item" data-move="backlog">Backlog</div>
-          <div class="ctx-sub-item" data-move="progress">Progress</div>
-          <div class="ctx-sub-item" data-move="review">Review</div>
-          <div class="ctx-sub-item" data-move="done">Done</div>
+          <div class="ctx-sub-item" data-move="backlog" data-i18n="board.backlog">Backlog</div>
+          <div class="ctx-sub-item" data-move="progress" data-i18n="board.progress">Progress</div>
+          <div class="ctx-sub-item" data-move="review" data-i18n="board.review">Review</div>
+          <div class="ctx-sub-item" data-move="done" data-i18n="board.done">Done</div>
         </div>
       </div>
-      <div class="ctx-item" data-action="merge">&#10003; Merge</div>
+      <div class="ctx-item" data-action="merge"><span>&#10003;</span> <span data-i18n="ctx.merge">Merge</span></div>
       <div class="ctx-divider"></div>
-      <div class="ctx-item" data-action="export-log">&#128190; Log exportieren</div>
-      <div class="ctx-item" data-action="copy">&#128203; Kopieren</div>
-      <div class="ctx-item ctx-has-submenu" data-action="move-project">&#128193; Projekt verschieben
+      <div class="ctx-item" data-action="export-log"><span>&#128190;</span> <span data-i18n="ctx.exportLog">Log exportieren</span></div>
+      <div class="ctx-item" data-action="copy"><span>&#128203;</span> <span data-i18n="ctx.copy">Kopieren</span></div>
+      <div class="ctx-item ctx-has-submenu" data-action="move-project"><span>&#128193;</span> <span data-i18n="ctx.moveProject">Projekt verschieben</span>
         <div class="ctx-submenu" id="ctx-project-submenu"></div>
       </div>
       <div class="ctx-divider"></div>
-      <div class="ctx-item ctx-danger" data-action="delete">&#128465; L&ouml;schen</div>
+      <div class="ctx-item ctx-danger" data-action="delete"><span>&#128465;</span> <span data-i18n="ctx.delete">L&ouml;schen</span></div>
     </div>
   </div>
 

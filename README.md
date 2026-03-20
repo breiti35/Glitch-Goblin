@@ -1,4 +1,4 @@
-# Aufgabenhelfer
+# Glitch Goblin
 
 Ein Tauri-basiertes Desktop-Kanban-Board für Entwicklungsprojekte.
 Verwaltet Tickets, Git-Branches, Deployments und synchronisiert Bugs aus einem Portal Bug-Tracker — alles in einer nativen App für Windows und Linux.
@@ -61,7 +61,7 @@ Verwaltet Tickets, Git-Branches, Deployments und synchronisiert Bugs aus einem P
 ### Development Build
 
 ```bash
-cd kanban-runner
+cd glitch-goblin
 cargo tauri dev
 ```
 
@@ -71,7 +71,7 @@ cargo tauri dev
 cargo tauri build
 ```
 
-Das fertige Binary liegt unter `target/release/kanban-runner` (Linux) bzw. `target/release/kanban-runner.exe` (Windows).
+Das fertige Binary liegt unter `target/release/glitch-goblin` (Linux) bzw. `target/release/glitch-goblin.exe` (Windows).
 
 ## Usage
 
@@ -113,7 +113,7 @@ Das fertige Binary liegt unter `target/release/kanban-runner` (Linux) bzw. `targ
 ## Architektur
 
 ```
-kanban-runner/
+glitch-goblin/
   Cargo.toml              # Rust-Dependencies
   tauri.conf.json          # Tauri-Konfiguration
   src/
@@ -153,7 +153,7 @@ kanban-runner/
 
 ## Version
 
-Aktuelle Version: **0.0.2**
+Aktuelle Version: **0.1.0**
 
 Siehe [CHANGELOG.md](CHANGELOG.md) für die vollständige Versionshistorie.
 

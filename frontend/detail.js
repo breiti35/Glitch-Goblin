@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { esc, formatDuration, formatTimeShort, timeAgo } from './utils.js';
 import { state, appendLog } from './app.js';
 import { renderBoard } from './board.js';
+import { t } from './i18n.js';
 
 // ── Detail Panel ──
 
@@ -97,7 +98,7 @@ export function renderTimeline(ticket) {
     return;
   }
 
-  container.innerHTML = `<div class="timeline-title">Timeline</div>` +
+  container.innerHTML = `<div class="timeline-title">${esc(t('detail.timeline'))}</div>` +
     entries.map(e => `
       <div class="timeline-entry">
         <span class="timeline-icon">${e.icon}</span>
@@ -152,7 +153,7 @@ export function renderComments(ticket) {
   const comments = ticket.comments || [];
 
   if (comments.length === 0) {
-    list.innerHTML = '<p class="empty-state" style="font-size:12px;margin:4px 0">No comments yet</p>';
+    list.innerHTML = '<p class="empty-state" style="font-size:12px;margin:4px 0">' + esc(t('detail.noComments')) + '</p>';
     return;
   }
 

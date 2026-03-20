@@ -5,6 +5,14 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## v0.1.0 — Glitch Goblin (2026-03-20)
+
+### Rename
+- App umbenannt von "Aufgabenhelfer" zu "Glitch Goblin"
+- Ticket-ID-Prefix geändert von KANBAN- zu GG-
+- Config-Verzeichnis migriert von kanban-runner/ zu glitch-goblin/
+- Branch-Prefix geändert von kanban/ zu gg/
+
 ## [0.0.2] - 2026-03-19
 
 ### Added

@@ -162,7 +162,8 @@ pub fn load_board(path: &Path) -> Result<KanbanBoard, String> {
             .tickets
             .iter()
             .filter_map(|t| {
-                t.id.strip_prefix("KANBAN-")
+                t.id.strip_prefix("GG-")
+                    .or_else(|| t.id.strip_prefix("KANBAN-"))
                     .and_then(|n| n.parse::<u32>().ok())
             })
             .max()
@@ -349,13 +350,13 @@ mod tests {
           "project_name": "test",
           "tickets": [
             {
-              "id": "KANBAN-001",
+              "id": "GG-001",
               "title": "Add Auth",
               "slug": "add-auth",
               "ticket_type": "bugfix",
               "column": "review",
               "description": "Fix login",
-              "branch": "kanban/KANBAN-001-add-auth"
+              "branch": "gg/GG-001-add-auth"
             }
           ]
         }"#;
@@ -366,7 +367,7 @@ mod tests {
         assert_eq!(t.slug, "add-auth");
         assert_eq!(t.ticket_type, TicketType::Bugfix);
         assert_eq!(t.description, "Fix login");
-        assert_eq!(t.branch.as_deref(), Some("kanban/KANBAN-001-add-auth"));
+        assert_eq!(t.branch.as_deref(), Some("gg/GG-001-add-auth"));
     }
 
     #[test]

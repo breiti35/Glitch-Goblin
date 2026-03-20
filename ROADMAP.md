@@ -1,4 +1,4 @@
-# Kanban Runner — Roadmap
+# Glitch Goblin — Roadmap
 
 Priorisierte Feature-Ideen und geplante Verbesserungen, geordnet nach Aufwand und Nutzen.
 

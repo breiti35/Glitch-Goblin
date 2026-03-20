@@ -77,12 +77,10 @@ pub struct CommitInfo {
     pub date: String,
 }
 
-#[allow(dead_code)]
 pub fn branch_name(ticket: &Ticket) -> String {
-    format!("kanban/{}-{}", ticket.id, ticket.slug)
+    format!("gg/{}-{}", ticket.id, ticket.slug)
 }
 
-#[allow(dead_code)]
 pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<String, String> {
     let branch = branch_name(ticket);
     let clean_project = strip_unc_prefix(project_path);
@@ -127,7 +125,6 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
     Ok(branch)
 }
 
-#[allow(dead_code)]
 pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
     let branch = default_branch(project_path).await;
     let clean_project = strip_unc_prefix(project_path);
@@ -300,12 +297,14 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
             continue;
         }
         let name = parts[0].trim().to_string();
-        let is_kanban = name.starts_with("kanban/");
+        let is_kanban = name.starts_with("gg/") || name.starts_with("kanban/");
 
-        // Extract ticket ID from kanban branch name: kanban/KANBAN-018-slug → KANBAN-018
+        // Extract ticket ID from branch name: gg/GG-018-slug → GG-018, kanban/KANBAN-018-slug → KANBAN-018
         let ticket_id = if is_kanban {
-            name.strip_prefix("kanban/").and_then(|rest| {
-                // Match KANBAN-NNN pattern at start
+            name.strip_prefix("gg/")
+                .or_else(|| name.strip_prefix("kanban/"))
+                .and_then(|rest| {
+                // Match GG-NNN or KANBAN-NNN pattern at start
                 let dash_parts: Vec<&str> = rest.splitn(3, '-').collect();
                 if dash_parts.len() >= 2 {
                     if let Ok(_) = dash_parts[1].parse::<u32>() {
@@ -687,4 +686,59 @@ pub async fn get_working_file_diff(project_path: &Path, file: &str) -> Result<St
         .map_err(|e| AppError::GitCommand(format!("diff file: {e}")))?;
 
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+// ── Push & Remote ──
+
+/// Push a branch to the remote (origin).
+pub async fn push_branch(project_path: &Path, branch: &str) -> Result<(), String> {
+    validate_git_ref(branch)?;
+    let clean_project = strip_unc_prefix(project_path);
+    let result = Command::new("git")
+        .args(["push", "-u", "origin", branch])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("push: {e}")))?;
+    if !result.status.success() {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        return Err(AppError::GitCommand(format!("push: {}", stderr.trim())).into());
+    }
+    Ok(())
+}
+
+/// Check if a remote named "origin" exists.
+pub async fn has_remote(project_path: &Path) -> bool {
+    let clean_project = strip_unc_prefix(project_path);
+    Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Get the remote URL for "origin".
+pub async fn get_remote_url(project_path: &Path) -> Result<String, String> {
+    let clean_project = strip_unc_prefix(project_path);
+    let output = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("remote: {e}")))?;
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Get the current branch name.
+pub async fn current_branch(project_path: &Path) -> Result<String, String> {
+    let clean_project = strip_unc_prefix(project_path);
+    let output = Command::new("git")
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("rev-parse: {e}")))?;
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }

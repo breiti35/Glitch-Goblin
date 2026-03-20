@@ -16,10 +16,46 @@ pub struct ProjectsConfig {
     pub default_project: Option<String>,
 }
 
+/// Migrate old kanban-runner config dir to glitch-goblin if needed.
+pub fn migrate_config_dir() {
+    if let Some(config_dir) = dirs::config_dir() {
+        let old_dir = config_dir.join("kanban-runner");
+        let new_dir = config_dir.join("glitch-goblin");
+        if old_dir.exists() && !new_dir.exists() {
+            if let Err(e) = std::fs::rename(&old_dir, &new_dir) {
+                // Rename failed (e.g. cross-device), try copy
+                eprintln!("[glitch-goblin] Could not rename config dir: {e}, trying copy...");
+                if let Err(e2) = copy_dir_recursive(&old_dir, &new_dir) {
+                    eprintln!("[glitch-goblin] Config migration failed: {e2}");
+                } else {
+                    eprintln!("[glitch-goblin] Migrated config from kanban-runner/ to glitch-goblin/");
+                }
+            } else {
+                eprintln!("[glitch-goblin] Migrated config from kanban-runner/ to glitch-goblin/");
+            }
+        }
+    }
+}
+
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let dest = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_recursive(&entry.path(), &dest)?;
+        } else {
+            std::fs::copy(entry.path(), dest)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn config_path() -> Result<PathBuf, String> {
     let config_dir = dirs::config_dir()
         .ok_or_else(|| AppError::ConfigLoad("Konfigurationsverzeichnis nicht gefunden".into()))?;
-    Ok(config_dir.join("kanban-runner").join("projects.json"))
+    Ok(config_dir.join("glitch-goblin").join("projects.json"))
 }
 
 /// Return the project-specific data directory under ~/.config/kanban-runner/projects/<name>/
@@ -39,7 +75,7 @@ pub fn project_data_dir(project_name: &str) -> Result<PathBuf, String> {
     }
     let config_dir =
         dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())?;
-    let base = config_dir.join("kanban-runner").join("projects");
+    let base = config_dir.join("glitch-goblin").join("projects");
     let dir = base.join(&safe_name);
     std::fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create project data dir: {e}"))?;
@@ -100,7 +136,7 @@ pub fn add_project(name: &str, path: &str) -> Result<(), String> {
         let old_kanban = abs_path.join(".claude").join("kanban.json");
         if old_kanban.exists() {
             migrate_project_data(&abs_path, &data_dir)?;
-            eprintln!("[kanban-runner] Migrated runtime data from .claude/ to {}", data_dir.display());
+            eprintln!("[glitch-goblin] Migrated runtime data from .claude/ to {}", data_dir.display());
         } else {
             let default_board = serde_json::json!({
                 "project_name": name,
@@ -110,7 +146,7 @@ pub fn add_project(name: &str, path: &str) -> Result<(), String> {
                 .map_err(|e| format!("Failed to serialize default board: {e}"))?;
             std::fs::write(&kanban_file, json)
                 .map_err(|e| format!("Failed to write kanban.json: {e}"))?;
-            eprintln!("[kanban-runner] Created default kanban.json at {}", kanban_file.display());
+            eprintln!("[glitch-goblin] Created default kanban.json at {}", kanban_file.display());
         }
     }
 
@@ -142,7 +178,7 @@ pub fn resolve_default_project() -> Result<Option<ProjectEntry>, String> {
 pub fn settings_path() -> Result<PathBuf, String> {
     let config_dir = dirs::config_dir()
         .ok_or_else(|| AppError::ConfigLoad("Konfigurationsverzeichnis nicht gefunden".into()))?;
-    Ok(config_dir.join("kanban-runner").join("settings.json"))
+    Ok(config_dir.join("glitch-goblin").join("settings.json"))
 }
 
 pub fn load_settings() -> Result<Settings, String> {
@@ -309,7 +345,7 @@ pub fn migrate_project_data(project_path: &Path, data_dir: &Path) -> Result<bool
 
     if migrated {
         eprintln!(
-            "[kanban-runner] Migrated runtime data from {} to {}",
+            "[glitch-goblin] Migrated runtime data from {} to {}",
             claude_dir.display(),
             data_dir.display()
         );

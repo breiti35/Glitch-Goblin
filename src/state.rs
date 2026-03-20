@@ -20,6 +20,10 @@ fn default_terminal_font_size() -> u32 {
     14
 }
 
+fn default_language() -> String {
+    "de".to_string()
+}
+
 fn default_model() -> String {
     "claude-sonnet-4-6".to_string()
 }
@@ -86,6 +90,10 @@ pub struct Settings {
     pub cost_per_input_mtok: f64,
     #[serde(default = "default_cost_output")]
     pub cost_per_output_mtok: f64,
+    #[serde(default = "default_language")]
+    pub language: String,
+    #[serde(default)]
+    pub auto_push_after_merge: bool,
     #[serde(default)]
     pub bug_sync: BugSyncSettings,
 }
@@ -107,6 +115,8 @@ impl Default for Settings {
             claude_model: "claude-sonnet-4-6".into(),
             cost_per_input_mtok: 3.0,
             cost_per_output_mtok: 15.0,
+            language: "de".into(),
+            auto_push_after_merge: false,
             bug_sync: BugSyncSettings::default(),
         }
     }

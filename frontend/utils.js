@@ -1,6 +1,8 @@
 // ── Utility Functions ──
 // Pure utility functions with no app dependencies.
 
+import { t, getLocale } from './i18n.js';
+
 export function esc(str) {
   if (!str) return "";
   const div = document.createElement("div");
@@ -15,22 +17,22 @@ export function timeAgo(dateStr) {
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
 
-    if (diff < 0) return "gerade eben";
-    if (diff < 60) return "gerade eben";
+    if (diff < 0) return t('time.justNow');
+    if (diff < 60) return t('time.justNow');
     if (diff < 3600) {
       const m = Math.floor(diff / 60);
-      return `vor ${m} Min.`;
+      return t('time.minutesAgo', {n: m});
     }
     if (diff < 86400) {
       const h = Math.floor(diff / 3600);
-      return `vor ${h} Std.`;
+      return t('time.hoursAgo', {n: h});
     }
     const d = Math.floor(diff / 86400);
-    if (d === 1) return "vor 1 Tag";
-    if (d < 30) return `vor ${d} Tagen`;
+    if (d === 1) return t('time.oneDayAgo');
+    if (d < 30) return t('time.daysAgo', {n: d});
     const months = Math.floor(d / 30);
-    if (months === 1) return "vor 1 Monat";
-    return `vor ${months} Monaten`;
+    if (months === 1) return t('time.oneMonthAgo');
+    return t('time.monthsAgo', {n: months});
   } catch {
     return "";
   }
@@ -50,9 +52,10 @@ export function formatDuration(ms) {
 
 export function formatTimeShort(dateStr) {
   try {
+    const locale = getLocale() === 'de' ? 'de-DE' : 'en-US';
     const d = new Date(dateStr);
-    return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " +
-           d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" }) + " " +
+           d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   } catch {
     return dateStr;
   }

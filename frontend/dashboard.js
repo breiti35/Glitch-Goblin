@@ -5,12 +5,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { esc, timeAgo, formatDuration } from './utils.js';
 import { state, appendLog, switchView, confirmExecute } from './app.js';
 import { renderBoard } from './board.js';
+import { t } from './i18n.js';
 
 // ── Dashboard ──
 
 export async function loadDashboard() {
   if (!state.project) {
-    document.getElementById("dashboard-project-name").textContent = "No Project";
+    document.getElementById("dashboard-project-name").textContent = t('dashboard.noProject');
     return;
   }
   document.getElementById("dashboard-project-name").textContent = state.project.name;
@@ -25,13 +26,13 @@ export async function loadDashboard() {
     document.getElementById("dash-tech-badges").innerHTML =
       info.techStack.length > 0
         ? info.techStack.map(t => `<span class="tech-badge">${esc(t)}</span>`).join("")
-        : '<span style="color:var(--muted)">Unknown</span>';
+        : '<span style="color:var(--muted)">' + esc(t('dashboard.unknown')) + '</span>';
 
     // Quick stats
     const tc = info.ticketCounts || {};
     document.getElementById("dash-stats-body").innerHTML = `
       <div class="dash-stat-row"><span>Backlog</span><span class="dash-stat-val">${tc.backlog || 0}</span></div>
-      <div class="dash-stat-row"><span>In Progress</span><span class="dash-stat-val">${tc.progress || 0}</span></div>
+      <div class="dash-stat-row"><span>${esc(t('dashboard.inProgress'))}</span><span class="dash-stat-val">${tc.progress || 0}</span></div>
       <div class="dash-stat-row"><span>Review</span><span class="dash-stat-val">${tc.review || 0}</span></div>
       <div class="dash-stat-row"><span>Done</span><span class="dash-stat-val">${tc.done || 0}</span></div>
       <div class="dash-stat-row"><span>Branches</span><span class="dash-stat-val">${info.branchCount}</span></div>
@@ -41,7 +42,7 @@ export async function loadDashboard() {
 
     // README
     document.getElementById("dash-readme-body").textContent =
-      info.readmePreview || "(no README found)";
+      info.readmePreview || t('dashboard.noReadme');
 
     // Recent commits
     document.getElementById("dash-commits-body").innerHTML =
@@ -56,7 +57,7 @@ export async function loadDashboard() {
               <span class="date">${timeAgo(c.date)}</span>
             </div>`;
           }).join("")
-        : '<span style="color:var(--muted)">No commits</span>';
+        : '<span style="color:var(--muted)">' + esc(t('dashboard.noCommits')) + '</span>';
 
     // Recent activity
     document.getElementById("dash-activity-body").innerHTML =
@@ -66,7 +67,7 @@ export async function loadDashboard() {
               <span class="act-label">${esc(a.action.replace(/_/g, " "))}${a.ticket_title ? " \u2014 " + esc(a.ticket_title) : ""}</span>
               <span class="act-time">${timeAgo(a.timestamp)}</span>
             </div>`).join("")
-        : '<span style="color:var(--muted)">No activity</span>';
+        : '<span style="color:var(--muted)">' + esc(t('dashboard.noActivity')) + '</span>';
 
   } catch (e) {
     console.error("Dashboard error:", e);
@@ -80,8 +81,8 @@ export async function loadTemplatesForModal() {
   if (!select) return;
   try {
     const templates = await invoke("list_templates");
-    select.innerHTML = '<option value="">Kein Template</option>' +
-      templates.map(t => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join("");
+    select.innerHTML = '<option value="">' + esc(t('dashboard.noTemplate')) + '</option>' +
+      templates.map(tpl => `<option value="${esc(tpl.name)}">${esc(tpl.name)}</option>`).join("");
   } catch (e) {
     console.error("Failed to load templates:", e);
   }
@@ -124,7 +125,7 @@ export function setupImportExportListeners() {
   });
 
   document.getElementById("btn-import-tickets")?.addEventListener("click", async () => {
-    const mode = confirm("Replace entire board? OK = Replace, Cancel = Append to Backlog")
+    const mode = confirm(t('dashboard.replaceBoard'))
       ? "replace" : "append";
     try {
       state.board = await invoke("import_tickets", { mode });
@@ -140,7 +141,7 @@ export function setupImportExportListeners() {
 
 function pickExportFormat() {
   return new Promise(resolve => {
-    const choice = confirm("Export as JSON? OK = JSON, Cancel = CSV");
+    const choice = confirm(t('dashboard.exportFormat'));
     resolve(choice ? "json" : "csv");
   });
 }
@@ -157,70 +158,71 @@ function renderDashActions() {
 
   // 1. "Weitermachen" — running ticket or last started
   if (state.runningTicket) {
-    const t = tickets.find(t => t.id === state.runningTicket);
-    if (t) {
+    const tk = tickets.find(tk => tk.id === state.runningTicket);
+    if (tk) {
       cards.push(`
         <div class="dash-action-card accent">
           <div class="dash-action-icon">\u25B6</div>
           <div class="dash-action-body">
-            <div class="dash-action-title">Weitermachen</div>
-            <div class="dash-action-desc">${esc(t.id)} \u2014 ${esc(t.title)}</div>
+            <div class="dash-action-title">${esc(t('dashboard.continueWork'))}</div>
+            <div class="dash-action-desc">${esc(tk.id)} \u2014 ${esc(tk.title)}</div>
           </div>
-          <button class="btn-primary dash-action-btn" data-dash-action="resume">Zum Terminal</button>
+          <button class="btn-primary dash-action-btn" data-dash-action="resume">${esc(t('dashboard.toTerminal'))}</button>
         </div>
       `);
     }
   } else {
     // Last worked on: most recently started ticket in progress
-    const inProgress = tickets.filter(t => t.column === "progress" && t.started_at)
+    const inProgress = tickets.filter(tk => tk.column === "progress" && tk.started_at)
       .sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
     if (inProgress.length > 0) {
-      const t = inProgress[0];
+      const tk = inProgress[0];
       cards.push(`
         <div class="dash-action-card">
           <div class="dash-action-icon">\u25B6</div>
           <div class="dash-action-body">
-            <div class="dash-action-title">Zuletzt bearbeitet</div>
-            <div class="dash-action-desc">${esc(t.id)} \u2014 ${esc(t.title)}</div>
+            <div class="dash-action-title">${esc(t('dashboard.lastEdited'))}</div>
+            <div class="dash-action-desc">${esc(tk.id)} \u2014 ${esc(tk.title)}</div>
           </div>
-          <button class="btn-secondary dash-action-btn" data-dash-action="start" data-ticket-id="${t.id}">Starten</button>
+          <button class="btn-secondary dash-action-btn" data-dash-action="start" data-ticket-id="${tk.id}">${esc(t('dashboard.startTask'))}</button>
         </div>
       `);
     }
   }
 
-  // 2. "Nächste Aufgabe" — oldest high-prio backlog ticket
-  const backlog = tickets.filter(t => t.column === "backlog");
-  const highPrio = backlog.filter(t => t.prio === "high");
+  // 2. "Naechste Aufgabe" — oldest high-prio backlog ticket
+  const backlog = tickets.filter(tk => tk.column === "backlog");
+  const highPrio = backlog.filter(tk => tk.prio === "high");
   const nextTicket = highPrio.length > 0 ? highPrio[0] : (backlog.length > 0 ? backlog[0] : null);
   if (nextTicket && !state.runningTicket) {
+    const titleKey = nextTicket.prio === "high" ? 'dashboard.nextTaskHighPrio' : 'dashboard.nextTask';
     cards.push(`
       <div class="dash-action-card">
         <div class="dash-action-icon">\u{1F4CB}</div>
         <div class="dash-action-body">
-          <div class="dash-action-title">N\u00E4chste Aufgabe${nextTicket.prio === "high" ? " (High Prio)" : ""}</div>
+          <div class="dash-action-title">${esc(t(titleKey))}</div>
           <div class="dash-action-desc">${esc(nextTicket.id)} \u2014 ${esc(nextTicket.title)}</div>
         </div>
-        <button class="btn-secondary dash-action-btn" data-dash-action="start" data-ticket-id="${nextTicket.id}">Starten</button>
+        <button class="btn-secondary dash-action-btn" data-dash-action="start" data-ticket-id="${nextTicket.id}">${esc(t('dashboard.startTask'))}</button>
       </div>
     `);
   }
 
   // 3. Review-Erinnerung
-  const inReview = tickets.filter(t => t.column === "review");
+  const inReview = tickets.filter(tk => tk.column === "review");
   if (inReview.length > 0) {
     const oldest = inReview
-      .filter(t => t.review_at)
+      .filter(tk => tk.review_at)
       .sort((a, b) => new Date(a.review_at) - new Date(b.review_at))[0];
     const age = oldest ? formatDuration(now - new Date(oldest.review_at)) : "";
     cards.push(`
       <div class="dash-action-card ${inReview.length >= 3 ? 'warn' : ''}">
         <div class="dash-action-icon">\u{1F50D}</div>
         <div class="dash-action-body">
-          <div class="dash-action-title">${inReview.length} Ticket${inReview.length > 1 ? "s" : ""} warten auf Review</div>
-          <div class="dash-action-desc">${age ? "\u00C4ltestes seit " + age : "Zum Board wechseln"}</div>
+          <div class="dash-action-title">${esc(t('dashboard.ticketsWaitingReview', {count: inReview.length}))}</div>
+          <div class="dash-action-desc">${age ? esc(t('dashboard.oldestSince', {time: age})) : esc(t('dashboard.switchToBoard'))}</div>
         </div>
-        <button class="btn-secondary dash-action-btn" data-dash-action="board">Zum Board</button>
+        <button class="btn-secondary dash-action-btn" data-dash-action="board">${esc(t('dashboard.goToBoard'))}</button>
       </div>
     `);
   }
@@ -234,7 +236,7 @@ function renderDashActions() {
       if (action === "resume" || action === "board") {
         switchView("board");
       } else if (action === "start") {
-        const ticket = tickets.find(t => t.id === btn.dataset.ticketId);
+        const ticket = tickets.find(tk => tk.id === btn.dataset.ticketId);
         if (ticket) confirmExecute(ticket);
       }
     });

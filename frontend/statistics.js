@@ -3,6 +3,7 @@
 
 import { esc, formatDuration } from './utils.js';
 import { state } from './app.js';
+import { t } from './i18n.js';
 
 export function loadStatistics() {
   const tickets = state.board.tickets || [];
@@ -102,7 +103,7 @@ function renderRecentCompleted(doneTickets) {
 
   const container = document.getElementById("recent-completed");
   if (sorted.length === 0) {
-    container.innerHTML = '<span class="empty-state" style="padding:8px 0">No completed tickets</span>';
+    container.innerHTML = '<span class="empty-state" style="padding:8px 0">' + esc(t('stats.noCompleted')) + '</span>';
     return;
   }
 

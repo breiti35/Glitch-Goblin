@@ -3,6 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, timeAgo } from './utils.js';
+import { t } from './i18n.js';
 
 let activityFilter = "all";
 
@@ -25,7 +26,7 @@ function renderActivityList(entries) {
     : entries.filter(e => e.action === activityFilter);
 
   if (filtered.length === 0) {
-    list.innerHTML = '<p class="empty-state">No activity found</p>';
+    list.innerHTML = '<p class="empty-state">' + esc(t('dashboard.noActivity')) + '</p>';
     return;
   }
 

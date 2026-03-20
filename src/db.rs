@@ -712,7 +712,7 @@ pub fn migrate_from_json(conn: &Connection, data_dir: &Path) -> Result<bool, Str
         }
     }
 
-    eprintln!("[kanban-runner] Migration von JSON nach SQLite abgeschlossen");
+    eprintln!("[glitch-goblin] Migration von JSON nach SQLite abgeschlossen");
     Ok(true)
 }
 

@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { esc, timeAgo } from './utils.js';
 import { state, appendLog, showToast } from './app.js';
 import { openBoardTerminal } from './terminal.js';
+import { t } from './i18n.js';
 
 // ── Git Status ──
 
@@ -13,11 +14,11 @@ export async function checkGitStatus() {
     const dirty = await invoke("check_uncommitted");
     const badge = document.getElementById("git-status");
     if (dirty) {
-      badge.textContent = "\u25CF uncommitted changes";
+      badge.textContent = "\u25CF " + t('board.uncommitted');
       badge.classList.add("dirty");
       badge.classList.remove("clean");
     } else {
-      badge.textContent = "\u25CF clean";
+      badge.textContent = "\u25CF " + t('board.clean');
       badge.classList.add("clean");
       badge.classList.remove("dirty");
     }
@@ -43,7 +44,7 @@ export async function loadGitView() {
     if (viewBadge) viewBadge.textContent = countStr;
 
     if (branches.length === 0) {
-      container.innerHTML = '<p class="empty-state">No branches found</p>';
+      container.innerHTML = '<p class="empty-state">' + esc(t('git.noBranches')) + '</p>';
       return;
     }
 
@@ -61,7 +62,7 @@ export async function loadGitView() {
       if (recentCommits.length > 0) {
         commitsHtml = `
           <div class="git-current-commits">
-            <div class="git-current-commits-title">Letzte Commits</div>
+            <div class="git-current-commits-title">${esc(t('git.recentCommits'))}</div>
             ${recentCommits.map(c => `
               <div class="git-current-commit-row">
                 <span class="commit-hash">${esc(c.hash)}</span>
@@ -79,9 +80,9 @@ export async function loadGitView() {
             <span class="git-current-dot ${dirty ? 'dirty' : 'clean'}"></span>
             <div class="git-current-info">
               <span class="git-current-name">${esc(current.name)}</span>
-              <span class="git-current-label">(aktueller Branch)</span>
+              <span class="git-current-label">${esc(t('git.currentBranch'))}</span>
             </div>
-            <span class="git-current-status">${dirty ? '\u26A0 \u00C4nderungen nicht committed' : '\u2713 alles committed'}</span>
+            <span class="git-current-status">${dirty ? '\u26A0 ' + esc(t('git.uncommittedChanges')) : '\u2713 ' + esc(t('git.allCommitted'))}</span>
           </div>
           ${commitsHtml}
         </div>
@@ -96,22 +97,22 @@ export async function loadGitView() {
       const otherActive = activeBranches.filter(b => !b.isKanban);
 
       if (kanbanActive.length > 0) {
-        html += `<div class="git-group-title">In Arbeit (Ticket-Branches) <span class="git-group-count">${kanbanActive.length}</span></div>`;
+        html += `<div class="git-group-title">${esc(t('git.activeBranches'))} <span class="git-group-count">${kanbanActive.length}</span></div>`;
         html += kanbanActive.map(b => renderBranchCard(b, false)).join("");
       }
       if (otherActive.length > 0) {
-        html += `<div class="git-group-title">Weitere Branches <span class="git-group-count">${otherActive.length}</span></div>`;
+        html += `<div class="git-group-title">${esc(t('git.otherBranches'))} <span class="git-group-count">${otherActive.length}</span></div>`;
         html += otherActive.map(b => renderBranchCard(b, false)).join("");
       }
     }
 
-    // Merged branches (compact, collapsible — open by default if no active branches)
+    // Merged branches (compact, collapsible -- open by default if no active branches)
     if (mergedBranches.length > 0) {
       const autoOpen = activeBranches.length === 0 ? " open" : "";
       html += `
         <details class="git-merged-group"${autoOpen}>
           <summary class="git-group-title git-group-collapsible">
-            Erledigte Branches (bereits in ${esc(current?.name || 'main')} eingebaut) <span class="git-group-count">${mergedBranches.length}</span>
+            ${esc(t('git.mergedBranches', {branch: current?.name || 'main'}))} <span class="git-group-count">${mergedBranches.length}</span>
           </summary>
           <div class="git-merged-list">
             ${mergedBranches.map(b => renderMergedBranchRow(b)).join("")}
@@ -121,7 +122,7 @@ export async function loadGitView() {
     }
 
     if (!html) {
-      html = '<p class="empty-state">Nur der aktuelle Branch vorhanden</p>';
+      html = '<p class="empty-state">' + esc(t('git.onlyCurrentBranch')) + '</p>';
     }
 
     container.innerHTML = html;
@@ -137,13 +138,13 @@ function renderBranchCard(branch, compact) {
   // Match ticket title from board
   let ticketTitle = "";
   if (branch.ticketId) {
-    const ticket = (state.board.tickets || []).find(t => t.id === branch.ticketId);
+    const ticket = (state.board.tickets || []).find(tk => tk.id === branch.ticketId);
     if (ticket) ticketTitle = ticket.title;
   }
 
   const statusClass = branch.isKanban ? "kanban" : "other";
   const aheadLabel = branch.aheadCount > 0 ? `${branch.aheadCount} \u2191` : "";
-  const filesLabel = branch.filesChanged > 0 ? `${branch.filesChanged} Dateien` : "";
+  const filesLabel = branch.filesChanged > 0 ? `${branch.filesChanged} ${t('git.files')}` : "";
   const metaParts = [filesLabel, aheadLabel].filter(Boolean).join(" | ");
 
   return `
@@ -158,9 +159,9 @@ function renderBranchCard(branch, compact) {
         ${metaParts ? `<span class="git-card-meta">${metaParts}</span>` : ""}
       </div>
       <div class="git-card-actions">
-        <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}">\u25BC Details</button>
-        ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u2714 \u00DCbernehmen</button>` : ""}
-        <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}">\u{1F5D1} L\u00F6schen</button>
+        <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}">\u25BC ${esc(t('git.details'))}</button>
+        ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u2714 ${esc(t('git.merge'))}</button>` : ""}
+        <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}">\u{1F5D1} ${esc(t('git.deleteBranch'))}</button>
       </div>
       <div class="git-card-details hidden" data-details-for="${esc(branch.name)}"></div>
     </div>
@@ -171,7 +172,7 @@ function renderBranchCard(branch, compact) {
 function renderMergedBranchRow(branch) {
   let ticketTitle = "";
   if (branch.ticketId) {
-    const ticket = (state.board.tickets || []).find(t => t.id === branch.ticketId);
+    const ticket = (state.board.tickets || []).find(tk => tk.id === branch.ticketId);
     if (ticket) ticketTitle = ticket.title;
   }
   // Fallback: use last commit message if no ticket title
@@ -183,7 +184,7 @@ function renderMergedBranchRow(branch) {
       <span class="git-merged-name">${esc(branch.name)}</span>
       ${description ? `<span class="git-merged-ticket">${esc(description)}</span>` : ""}
       <span class="git-card-merged">\u2713</span>
-      <button class="git-card-btn delete git-merged-delete" data-action="delete" data-branch="${esc(branch.name)}" title="Branch l\u00F6schen">\u{1F5D1}</button>
+      <button class="git-card-btn delete git-merged-delete" data-action="delete" data-branch="${esc(branch.name)}" title="${esc(t('git.deleteBranchTitle'))}">\u{1F5D1}</button>
     </div>
   `;
 }
@@ -210,7 +211,7 @@ async function toggleDetails(branch, btn) {
 
   if (!panel.classList.contains("hidden")) {
     panel.classList.add("hidden");
-    btn.textContent = "\u25BC Details";
+    btn.textContent = "\u25BC " + t('git.details');
     return;
   }
 
@@ -218,7 +219,7 @@ async function toggleDetails(branch, btn) {
   if (!panel.dataset.loaded) {
     panel.innerHTML = '<p class="empty-state" style="font-size:12px">Loading...</p>';
     panel.classList.remove("hidden");
-    btn.textContent = "\u25B2 Details";
+    btn.textContent = "\u25B2 " + t('git.details');
 
     try {
       const [commits, diff] = await Promise.all([
@@ -230,7 +231,7 @@ async function toggleDetails(branch, btn) {
 
       // Diff stats
       html += `<div class="git-detail-stats">
-        <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span> in ${diff.files.length} files
+        <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span> ${esc(t('git.inFiles', {count: diff.files.length}))}
       </div>`;
 
       // Commits
@@ -250,7 +251,7 @@ async function toggleDetails(branch, btn) {
 
       // Files
       if (diff.files.length > 0) {
-        html += `<div class="git-detail-section"><h4>Ge\u00E4nderte Dateien</h4>`;
+        html += `<div class="git-detail-section"><h4>${esc(t('git.changedFiles'))}</h4>`;
         html += diff.files.map(f => `
           <div class="git-file-item" data-file="${esc(f.filePath)}" data-branch="${esc(branch)}">
             <span class="file-status ${esc(f.status)}">${esc(f.status)}</span>
@@ -276,7 +277,7 @@ async function toggleDetails(branch, btn) {
     }
   } else {
     panel.classList.remove("hidden");
-    btn.textContent = "\u25B2 Details";
+    btn.textContent = "\u25B2 " + t('git.details');
   }
 }
 
@@ -305,7 +306,7 @@ async function showFileDiff(branch, filePath) {
     const diff = await invoke("get_file_diff", { branch, filePath });
     const body = document.getElementById("git-diff-body");
     if (!diff.trim()) {
-      body.textContent = "(no diff available)";
+      body.textContent = t('git.noDiff');
       return;
     }
     body.innerHTML = renderDiffLines(diff);
@@ -323,7 +324,7 @@ async function showCommitDiff(commitHash) {
   try {
     const diff = await invoke("get_commit_diff", { commitHash });
     let html = `<div class="git-detail-stats" style="margin-bottom:8px">
-      <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span> in ${diff.files.length} files
+      <span class="stat-add">+${diff.totalAdditions}</span> / <span class="stat-del">-${diff.totalDeletions}</span> ${esc(t('git.inFiles', {count: diff.files.length}))}
     </div>`;
 
     html += diff.files.map(f => `
@@ -343,7 +344,7 @@ async function showCommitDiff(commitHash) {
           document.getElementById("git-diff-filename").textContent = el.dataset.file;
           document.getElementById("git-diff-body").innerHTML = fileDiff.trim()
             ? renderDiffLines(fileDiff)
-            : "(no diff available)";
+            : t('git.noDiff');
         } catch (e2) {
           document.getElementById("git-diff-body").textContent = "Error: " + e2;
         }
@@ -357,13 +358,13 @@ async function showCommitDiff(commitHash) {
 // ── Branch Actions ──
 
 async function mergeBranch(branch) {
-  if (!confirm(`"${branch}" \u00FCbernehmen?\nDie \u00C4nderungen werden in den Hauptbranch \u00FCbernommen.`)) return;
+  if (!confirm(t('git.confirmMerge', {branch}))) return;
   try {
-    const ticket = state.board.tickets.find(t => t.branch === branch);
+    const ticket = state.board.tickets.find(tk => tk.branch === branch);
     if (ticket) {
       await invoke("merge_ticket", { ticketId: ticket.id });
       appendLog(`Merged ${branch}`);
-      showToast(`${branch} gemergt`, "success");
+      showToast(`${branch} ${t('git.merged')}`, "success");
     } else {
       appendLog("No ticket found for this branch", true);
     }
@@ -374,11 +375,11 @@ async function mergeBranch(branch) {
 }
 
 async function deleteBranch(branch) {
-  if (!confirm(`Branch "${branch}" l\u00F6schen?`)) return;
+  if (!confirm(t('git.confirmDelete', {branch}))) return;
   try {
     await invoke("delete_branch_cmd", { branch, force: true });
     appendLog(`Deleted branch: ${branch}`);
-    showToast(`${branch} gel\u00F6scht`, "success");
+    showToast(`${branch} ${t('git.deleted')}`, "success");
     loadGitView();
   } catch (e) {
     appendLog("Delete failed: " + e, true);

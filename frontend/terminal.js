@@ -4,6 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { esc } from './utils.js';
 import { state, appendLog, modelToFlag, switchView, refreshBoard } from './app.js';
+import { t } from './i18n.js';
 
 // ── Shell Options ──
 
@@ -12,7 +13,7 @@ export async function loadShellOptions(selectId, selectedValue) {
   if (!select) return;
   try {
     const shells = await invoke("list_available_shells");
-    select.innerHTML = '<option value="">Auto-detect</option>' +
+    select.innerHTML = '<option value="">' + esc(t('terminal.autoDetect')) + '</option>' +
       shells.map(s => `<option value="${esc(s.path)}"${s.path === selectedValue ? " selected" : ""}>${esc(s.name)}</option>`).join("");
   } catch (e) {
     console.warn("terminal: failed to load shells", e);

@@ -16,6 +16,7 @@ import { loadActivityView, setupActivityListeners } from './activity.js';
 import { loadAgents, loadCommands, newAgentFlow, saveAgentEditor, deleteAgentEditor, newCommandFlow, saveCommandEditor, deleteCommandEditor } from './editors.js';
 import { setupDeployListeners, loadDeployConfig } from './deploy.js';
 import { setupBugSyncListeners, updateBugSyncBadge } from './bugsync.js';
+import { t, setLocale, onLocaleChange, translateDOM } from './i18n.js';
 
 // ── Re-export renderBoard for modules that need it ──
 export { renderBoard } from './board.js';
@@ -96,6 +97,15 @@ async function loadInitialState() {
       document.body.dataset.theme = state.settings.theme;
       updateThemeUI();
     }
+
+    // Apply language from settings
+    setLocale(state.settings.language || 'de');
+
+    // Re-render active views on locale change
+    onLocaleChange(() => {
+      renderBoard();
+      translateDOM();
+    });
 
     // Apply accent color
     applyAccentColor(state.settings.accent_color || state.settings.accentColor);
@@ -434,14 +444,14 @@ const executeTicket = withGuard(async function(ticketId, model) {
       enterFocusMode(ticket, result.branch, selectedModel);
     } catch (termErr) {
       appendLog("Terminal error: " + termErr, true);
-      showToast("Terminal konnte nicht gestartet werden", "error");
+      showToast(t('toast.terminalFailed'), "error");
     }
   } catch (err) {
     state.runningTicket = null;
     // Sync backend state — running_ticket may need clearing
     invoke("get_running_ticket").then(rt => { state.runningTicket = rt; }).catch(() => {});
     appendLog("Start error: " + err, true);
-    notifyDesktop("Fehler", `${ticketTitle} fehlgeschlagen`);
+    notifyDesktop(t('notify.error'), t('notify.failed', {title: ticketTitle}));
     playSound("error");
     refreshBoard();
   }
@@ -519,8 +529,8 @@ async function openReviewModal(ticketId) {
       await invoke("finish_ticket", { ticketId });
       state.runningTicket = null;
       appendLog(`\u2713 ${ticketId} -> Done`);
-      showToast(`${ticketId} erledigt`, "success");
-      notifyDesktop("Ticket fertig", `${ticketId} ist erledigt`);
+      showToast(t('toast.ticketDone', {id: ticketId}), "success");
+      notifyDesktop(t('notify.ticketDone'), t('notify.ticketFinished', {id: ticketId}));
       playSound("success");
       refreshBoard();
     } catch (err) {
@@ -555,7 +565,7 @@ export const mergeTicket = withGuard(async function(ticketId) {
     appendLog(`Merging ${ticketId}...`);
     await invoke("merge_ticket", { ticketId });
     appendLog(`\u2713 ${ticketId} merged successfully`);
-    showToast(`${ticketId} erfolgreich gemergt`, "success");
+    showToast(t('toast.ticketMerged', {id: ticketId}), "success");
     refreshBoard();
   } catch (err) {
     appendLog("Merge error: " + err, true);
@@ -658,7 +668,7 @@ function updateSidebar() {
     nameEl.textContent = state.project.name;
     pathEl.textContent = state.project.path;
   } else {
-    nameEl.textContent = "No project";
+    nameEl.textContent = t('header.noProject');
     pathEl.textContent = "\u2014";
   }
 }
@@ -740,7 +750,7 @@ async function switchProject(name) {
       else if (viewName === "commands") loadCommands();
     }
 
-    showToast(`Projekt "${name}" geladen`, "success");
+    showToast(t('toast.projectLoaded', {name}), "success");
   } catch (err) {
     appendLog("Switch project error: " + err, true);
   }
@@ -881,7 +891,7 @@ function renderNotifList() {
   const list = document.getElementById("notif-list");
   if (!list) return;
   if (notifications.length === 0) {
-    list.innerHTML = '<p class="empty-state">Keine Benachrichtigungen</p>';
+    list.innerHTML = `<p class="empty-state">${t('header.noNotifications')}</p>`;
     return;
   }
   list.innerHTML = notifications.map(n => {
@@ -953,7 +963,7 @@ async function checkTicketRecovery() {
   document.getElementById("btn-recovery-continue").onclick = async () => {
     closeModal("modal-recovery");
     openBoardTerminal();
-    showToast("Terminal ge\u00F6ffnet \u2014 weiterarbeiten", "info");
+    showToast(t('toast.terminalOpened'), "info");
   };
 
   // "Abschließen" — commit + review
@@ -970,7 +980,7 @@ async function checkTicketRecovery() {
       state.runningTicket = null;
       state.board = await invoke("get_board");
       renderBoard();
-      showToast(`${ticket.id} zur\u00FCck ins Backlog`, "info");
+      showToast(t('toast.backToBacklog', {id: ticket.id}), "info");
     } catch (err) {
       appendLog("Recovery error: " + err, true);
     }
@@ -1001,7 +1011,7 @@ function enterFocusMode(ticket, branch, model) {
   const statusBar = document.getElementById("terminal-running-status");
   if (statusBar) {
     statusBar.classList.remove("hidden");
-    document.getElementById("terminal-running-label").textContent = `${ticket.id} arbeitet...`;
+    document.getElementById("terminal-running-label").textContent = t('terminal.working', {id: ticket.id});
   }
 
   focusElapsedInterval = setInterval(() => {
@@ -1033,7 +1043,7 @@ function enterFocusMode(ticket, branch, model) {
     try {
       await invoke("add_comment", { ticketId: state.runningTicket, text: "\u{1F4DD} " + text });
       input.value = "";
-      showToast("Notiz gespeichert", "success");
+      showToast(t('focus.noteSaved'), "success");
     } catch (e) {
       appendLog("Note error: " + e, true);
     }
@@ -1225,7 +1235,7 @@ function globalSearch() {
   });
 
   if (results.length === 0) {
-    dropdown.innerHTML = '<div class="search-empty">Keine Ergebnisse</div>';
+    dropdown.innerHTML = `<div class="search-empty">${t('search.noResults')}</div>`;
   } else {
     dropdown.innerHTML = results.slice(0, 10).map((r, i) => `
       <div class="search-result-item" data-search-idx="${i}">
