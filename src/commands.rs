@@ -7,6 +7,7 @@ use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 use tokio::sync::Mutex;
+use tracing::{error, info};
 
 use crate::activity;
 use crate::bugsync;
@@ -104,7 +105,7 @@ pub async fn switch_project(
     let _ = config::migrate_project_data(&project.path, &data_dir);
 
     // Open SQLite DB + run JSON migration if needed
-    let new_conn = crate::db::open(&data_dir).map_err(|e| eprintln!("[db] open error: {e}")).ok();
+    let new_conn = crate::db::open(&data_dir).map_err(|e| error!(error = %e, "DB open failed")).ok();
     if let Some(ref conn) = new_conn {
         let _ = crate::db::migrate_from_json(conn, &data_dir);
     }
@@ -113,7 +114,7 @@ pub async fn switch_project(
     let kanban_path = data_dir.join("kanban.json");
     let board = new_conn
         .as_ref()
-        .and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
+        .and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
         .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(kanban::KanbanBoard {
             project_name: String::new(),
             tickets: Vec::new(),
@@ -369,6 +370,8 @@ pub async fn start_ticket(
         (ticket, project_path, kanban_path)
     }; // Lock released
 
+    info!(ticket_id = %ticket_id, "Ticket started");
+
     // Create and checkout ticket branch
     let branch = git::checkout_branch(&project_path, &ticket).await?;
 
@@ -389,7 +392,7 @@ pub async fn start_ticket(
     // Notify frontend of board change (re-read current state from DB or file)
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
+        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
             .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
                 project_name: String::new(),
                 tickets: Vec::new(),
@@ -455,9 +458,11 @@ pub async fn finish_ticket(
         }
     }
 
+    info!(ticket_id = %ticket_id, "Ticket finished");
+
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
+        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
             .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
                 project_name: String::new(),
                 tickets: Vec::new(),
@@ -533,9 +538,11 @@ pub async fn merge_ticket(
         }
     }
 
+    info!(ticket_id = %ticket_id, "Ticket merged");
+
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| eprintln!("[db] load_board error: {e}")).ok())
+        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
             .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
                 project_name: String::new(),
                 tickets: Vec::new(),
@@ -1968,6 +1975,34 @@ pub async fn get_bug_sync_settings(
 #[tauri::command]
 pub fn get_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+#[tauri::command]
+pub async fn get_log_file_path() -> Result<String, String> {
+    let log_dir = dirs::config_dir()
+        .map(|d| d.join("glitch-goblin"))
+        .ok_or("Could not determine config directory")?;
+
+    let entries = std::fs::read_dir(&log_dir)
+        .map_err(|e| format!("Could not read log directory: {e}"))?;
+
+    let mut log_files: Vec<_> = entries
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .starts_with("glitch-goblin.log")
+        })
+        .collect();
+
+    log_files.sort_by_key(|e| {
+        std::cmp::Reverse(e.metadata().ok().and_then(|m| m.modified().ok()))
+    });
+
+    log_files
+        .first()
+        .map(|e| e.path().to_string_lossy().to_string())
+        .ok_or_else(|| "No log files found".to_string())
 }
 
 // ── Claude Usage (OAuth API) ──

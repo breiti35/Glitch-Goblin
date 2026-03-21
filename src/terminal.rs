@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::Emitter;
+use tracing::warn;
 
 #[derive(Clone, Serialize)]
 pub struct ShellInfo {
@@ -21,7 +22,7 @@ pub struct TerminalOutput {
 
 pub enum TerminalCmd {
     Write(String),
-    Resize(u32, u32), // cols, rows — matches xterm.js { cols, rows } destructuring
+    Resize(u32, u32), // cols, rows -- matches xterm.js { cols, rows } destructuring
     Close,
 }
 
@@ -154,7 +155,7 @@ pub async fn spawn_terminal(
             }
         };
 
-        // Reader thread — streams PTY output to frontend
+        // Reader thread -- streams PTY output to frontend
         let closed = Arc::new(AtomicBool::new(false));
         let closed2 = closed.clone();
         let app2 = app_handle.clone();
@@ -179,7 +180,7 @@ pub async fn spawn_terminal(
                         // Log the error so unexpected failures are diagnosable.
                         // EIO / EPIPE on process exit are normal on some platforms;
                         // any other error indicates a real PTY problem.
-                        eprintln!("[terminal {id2}] PTY read error: {e}");
+                        warn!(terminal_id = %id2, error = %e, "PTY read error");
                         break;
                     }
                 }
@@ -194,7 +195,7 @@ pub async fn spawn_terminal(
         // Signal successful setup
         let _ = setup_tx.send(Ok(()));
 
-        // Command loop — master stays in this thread for resize
+        // Command loop -- master stays in this thread for resize
         let master = pair.master;
         loop {
             match cmd_rx.recv_timeout(Duration::from_secs(1)) {

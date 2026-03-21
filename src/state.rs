@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use tracing::error;
 
 use crate::config::ProjectEntry;
 use crate::kanban::{self, KanbanBoard};
@@ -206,14 +207,14 @@ impl AppState {
             // Backup: write a JSON snapshot into kanban-backups/ for safety
             if self.settings.backups_enabled && !self.kanban_path.as_os_str().is_empty() {
                 if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
-                    eprintln!("[glitch-goblin] backup failed: {e}");
+                    error!(error = %e, "Backup failed");
                 }
             }
         } else {
             kanban::save_board(&self.kanban_path, &self.board)?;
             if self.settings.backups_enabled {
                 if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
-                    eprintln!("[glitch-goblin] backup failed: {e}");
+                    error!(error = %e, "Backup failed");
                 }
             }
         }

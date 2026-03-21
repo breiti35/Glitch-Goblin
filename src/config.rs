@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use tracing::{error, info, warn};
 
 use crate::error::AppError;
 use crate::state::Settings;
@@ -24,14 +25,14 @@ pub fn migrate_config_dir() {
         if old_dir.exists() && !new_dir.exists() {
             if let Err(e) = std::fs::rename(&old_dir, &new_dir) {
                 // Rename failed (e.g. cross-device), try copy
-                eprintln!("[glitch-goblin] Could not rename config dir: {e}, trying copy...");
+                warn!(error = %e, "Could not rename config dir, trying copy");
                 if let Err(e2) = copy_dir_recursive(&old_dir, &new_dir) {
-                    eprintln!("[glitch-goblin] Config migration failed: {e2}");
+                    error!(error = %e2, "Config migration failed");
                 } else {
-                    eprintln!("[glitch-goblin] Migrated config from kanban-runner/ to glitch-goblin/");
+                    info!("Migrated config from kanban-runner/ to glitch-goblin/");
                 }
             } else {
-                eprintln!("[glitch-goblin] Migrated config from kanban-runner/ to glitch-goblin/");
+                info!("Migrated config from kanban-runner/ to glitch-goblin/");
             }
         }
     }
@@ -136,7 +137,7 @@ pub fn add_project(name: &str, path: &str) -> Result<(), String> {
         let old_kanban = abs_path.join(".claude").join("kanban.json");
         if old_kanban.exists() {
             migrate_project_data(&abs_path, &data_dir)?;
-            eprintln!("[glitch-goblin] Migrated runtime data from .claude/ to {}", data_dir.display());
+            info!(data_dir = %data_dir.display(), "Migrated runtime data from .claude/");
         } else {
             let default_board = serde_json::json!({
                 "project_name": name,
@@ -146,7 +147,7 @@ pub fn add_project(name: &str, path: &str) -> Result<(), String> {
                 .map_err(|e| format!("Failed to serialize default board: {e}"))?;
             std::fs::write(&kanban_file, json)
                 .map_err(|e| format!("Failed to write kanban.json: {e}"))?;
-            eprintln!("[glitch-goblin] Created default kanban.json at {}", kanban_file.display());
+            info!(path = %kanban_file.display(), "Created default kanban.json");
         }
     }
 
@@ -344,10 +345,10 @@ pub fn migrate_project_data(project_path: &Path, data_dir: &Path) -> Result<bool
     }
 
     if migrated {
-        eprintln!(
-            "[glitch-goblin] Migrated runtime data from {} to {}",
-            claude_dir.display(),
-            data_dir.display()
+        info!(
+            from = %claude_dir.display(),
+            to = %data_dir.display(),
+            "Migrated runtime data"
         );
     }
 

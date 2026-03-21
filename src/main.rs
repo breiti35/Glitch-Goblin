@@ -16,8 +16,46 @@ use state::AppState;
 use tauri::Emitter;
 use tauri::Manager;
 use tokio::sync::Mutex;
+use tracing::{error, warn};
+
+fn init_logging() {
+    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_appender::rolling;
+
+    // Log file: ~/.config/glitch-goblin/glitch-goblin.log (daily rotation)
+    let log_dir = dirs::config_dir()
+        .map(|d| d.join("glitch-goblin"))
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let _ = std::fs::create_dir_all(&log_dir);
+
+    let file_appender = rolling::daily(&log_dir, "glitch-goblin.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    // Keep the guard alive for the entire app lifetime
+    // We leak it intentionally since the app runs until exit
+    std::mem::forget(_guard);
+
+    // Filter: INFO by default, DEBUG with RUST_LOG=debug
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("glitch_goblin=info"));
+
+    fmt()
+        .with_env_filter(filter)
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .with_target(true)
+        .with_thread_ids(false)
+        .with_file(true)
+        .with_line_number(true)
+        .init();
+
+    tracing::info!("Glitch Goblin starting");
+}
 
 fn main() {
+    // Initialize structured logging
+    init_logging();
+
     // Migrate config dir from kanban-runner to glitch-goblin if needed
     config::migrate_config_dir();
 
@@ -32,7 +70,7 @@ fn main() {
             // One-time migration: if token is plain-text, re-save encrypted
             if !settings.bug_sync.api_token.is_empty() {
                 if let Err(e) = config::save_settings_to_disk(&settings) {
-                    eprintln!("[glitch-goblin] settings save error: {e}");
+                    error!(error = %e, "Settings save error");
                 }
             }
 
@@ -49,7 +87,7 @@ fn main() {
                     let dd = config::project_data_dir(&p.name).unwrap_or_default();
                     // Migrate old runtime data from .claude/ if needed
                     if let Err(e) = config::migrate_project_data(&p.path, &dd) {
-                        eprintln!("[glitch-goblin] project data migration: {e}");
+                        warn!(error = %e, "Project data migration issue");
                     }
 
                     let conn = db::open(&dd).ok();
@@ -57,7 +95,7 @@ fn main() {
                     // Run JSON → SQLite migration (no-op if already done)
                     if let Some(ref c) = conn {
                         if let Err(e) = db::migrate_from_json(c, &dd) {
-                            eprintln!("[glitch-goblin] JSON to SQLite migration: {e}");
+                            warn!(error = %e, "JSON to SQLite migration issue");
                         }
                     }
 
@@ -168,7 +206,7 @@ fn main() {
                         match bugsync::fetch_unsynced_bugs(&api_url, &api_token).await {
                             Ok(bugs) if !bugs.is_empty() => {
                                 if let Err(e) = app_handle.emit("bug-sync-available", bugs.len()) {
-                                    eprintln!("[glitch-goblin] emit bug-sync-available error: {e}");
+                                    warn!(error = %e, "Emit bug-sync-available failed");
                                 }
                             }
                             _ => {}
@@ -176,6 +214,14 @@ fn main() {
                     }
                 });
             }
+
+            let project_name = s.project.as_ref().map(|p| p.name.as_str()).unwrap_or("<none>");
+            let ticket_count = s.board.tickets.len();
+            tracing::info!(
+                project = project_name,
+                tickets = ticket_count,
+                "App initialized"
+            );
 
             Ok(())
         })
@@ -264,8 +310,9 @@ fn main() {
             // Bug-Sync (Portal Bug-Tracker)
             commands::sync_portal_bugs,
             commands::get_bug_sync_settings,
-            // Version
+            // Version / Utilities
             commands::get_version,
+            commands::get_log_file_path,
             // Claude Usage
             commands::get_claude_usage,
             // Git Push

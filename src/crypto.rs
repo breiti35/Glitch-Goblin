@@ -128,7 +128,7 @@ fn get_or_create_fallback_seed() -> String {
 
 /// Write `content` to `path` with owner-only permissions (0600 on Unix).
 /// Errors are silently ignored — a failed write means the seed is ephemeral
-/// for this process start (logged to stderr so token loss is detectable).
+/// for this process start (logged so token loss is detectable).
 fn write_seed_restricted(path: &std::path::Path, content: &str) {
     #[cfg(unix)]
     {
@@ -143,15 +143,16 @@ fn write_seed_restricted(path: &std::path::Path, content: &str) {
         {
             Ok(mut f) => {
                 if f.write_all(content.as_bytes()).is_err() {
-                    eprintln!(
-                        "[glitch-goblin] WARN: could not write machine-seed.txt — \
+                    tracing::warn!(
+                        "Could not write machine-seed.txt -- \
                          encrypted tokens will be unreadable after restart"
                     );
                 }
             }
             Err(e) => {
-                eprintln!(
-                    "[glitch-goblin] WARN: could not create machine-seed.txt ({e}) — \
+                tracing::warn!(
+                    error = %e,
+                    "Could not create machine-seed.txt -- \
                      encrypted tokens will be unreadable after restart"
                 );
             }

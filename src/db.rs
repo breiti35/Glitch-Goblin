@@ -7,6 +7,7 @@
 /// because they are small, global, and user-editable.
 use rusqlite::{params, Connection, Result as SqlResult};
 use std::path::Path;
+use tracing::info;
 
 use crate::activity::ActivityEntry;
 use crate::config::TicketTemplate;
@@ -712,7 +713,7 @@ pub fn migrate_from_json(conn: &Connection, data_dir: &Path) -> Result<bool, Str
         }
     }
 
-    eprintln!("[glitch-goblin] Migration von JSON nach SQLite abgeschlossen");
+    info!("Migration von JSON nach SQLite abgeschlossen");
     Ok(true)
 }
 
