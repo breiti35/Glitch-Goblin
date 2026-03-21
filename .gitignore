@@ -5,3 +5,5 @@ node_modules/
 /package.json
 /package-lock.json
 frontend/dist/
+CODE_QUALITY_PLAN.md
+ROADMAP_NEXT.md
