@@ -122,28 +122,30 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
-      - name: Build Tauri app
-        run: cargo tauri build --bundles none
-
-      - name: Upload Windows binary
+      - name: Build Tauri app (Windows)
         if: matrix.os == 'windows-latest'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.create-release.outputs.version }}
-          draft: true
-          files: target/release/glitch-goblin.exe
+        run: cargo tauri build --bundles nsis
 
-      - name: Upload Linux binary
+      - name: Build Tauri app (Linux)
         if: matrix.os == 'ubuntu-22.04'
+        run: cargo tauri build --bundles appimage
+
+      - name: Prepare portable binaries
         shell: bash
         run: |
-          cp target/release/glitch-goblin target/release/glitch-goblin-linux-amd64
-      - if: matrix.os == 'ubuntu-22.04'
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp target/release/glitch-goblin.exe "target/release/Glitch-Goblin-v${{ needs.create-release.outputs.version }}-windows-x64.exe"
+          else
+            cp target/release/glitch-goblin "target/release/Glitch-Goblin-v${{ needs.create-release.outputs.version }}-linux-amd64"
+          fi
+
+      - name: Upload artifacts
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
           draft: true
-          files: target/release/glitch-goblin-linux-amd64
+          files: |
+            target/release/Glitch-Goblin-v*
 
   publish-release:
     needs: [create-release, build]
