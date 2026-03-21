@@ -2519,7 +2519,6 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 }
 
 /* ── Activity (Phase 3 - Block C) ── */
-/* Old activity styles removed — replaced by Stitch activity-timeline below */
 
 .activity-icon {
   width: 24px;
@@ -2712,8 +2711,6 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   padding: 6px 14px;
   font-size: 12px;
 }
-
-/* Old dashboard layout removed — replaced by Stitch dash-grid below */
 
 .tech-badge {
   display: inline-block;
@@ -3898,8 +3895,6 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   color: var(--text);
 }
 .toast-info .toast-icon { color: var(--accent); }
-
-/* ── Sidebar header removed in Stitch redesign ── */
 
 /* ── Git Warning Banner ── */
 .git-warning-banner {
