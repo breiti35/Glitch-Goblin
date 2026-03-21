@@ -7,6 +7,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Docs
+- **Rust-Dokumentation:** Alle `#[tauri::command]`-Funktionen in `src/commands.rs` (73 Commands) und alle öffentlichen Funktionen in `src/git.rs` mit `///`-Kommentaren versehen
+
 ### Fixed
 - **Frontend Fehler-Logging:** Alle `console.error`/`console.warn` Aufrufe in `app.js`, `dashboard.js`, `deploy.js` und `terminal.js` durch `logError()` aus `utils.js` ersetzt — Fehler landen jetzt sichtbar im Log-Panel der App statt nur in der DevConsole
 - **Stille Fehler beseitigt:** `invoke("get_running_ticket").catch(() => {})` gibt Fehler jetzt weiter; `invoke("save_settings").catch(console.error)` durch typisiertes `logError()` ersetzt
