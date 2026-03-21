@@ -1144,6 +1144,141 @@ mod integration_tests {
     }
 
     #[test]
+    fn ticket_lifecycle_backlog_to_done() {
+        let dir = temp_db_dir();
+        let conn = open(&dir).unwrap();
+
+        // Create board with ticket in Backlog
+        let mut board = KanbanBoard {
+            project_name: "Lifecycle".to_string(),
+            tickets: vec![Ticket {
+                id: "GG-100".into(),
+                title: "Lifecycle DB Test".into(),
+                slug: "lifecycle-db-test".into(),
+                ticket_type: TicketType::Feature,
+                column: Column::Backlog,
+                description: "End-to-end lifecycle".into(),
+                prio: Some("high".into()),
+                created_at: Some("2026-03-21T10:00:00Z".into()),
+                started_at: None,
+                review_at: None,
+                done_at: None,
+                has_changes: None,
+                branch: None,
+                tokens_used: None,
+                cost_usd: None,
+                model_used: None,
+                comments: None,
+                portal_bug_id: None,
+                portal_bug_url: None,
+            }],
+            next_ticket_id: 101,
+        };
+        save_board(&conn, &board).unwrap();
+
+        // START: move to Progress
+        board.tickets[0].column = Column::Progress;
+        board.tickets[0].started_at = Some("2026-03-21T10:05:00Z".into());
+        board.tickets[0].branch = Some("gg/GG-100-lifecycle-db-test".into());
+        board.tickets[0].model_used = Some("claude-opus-4-6".into());
+        save_board(&conn, &board).unwrap();
+        log_activity(&conn, "ticket_started", Some("GG-100"), Some("Lifecycle DB Test"), None);
+
+        let loaded = load_board(&conn).unwrap();
+        assert_eq!(loaded.tickets[0].column, Column::Progress);
+        assert_eq!(loaded.tickets[0].started_at, Some("2026-03-21T10:05:00Z".into()));
+        assert_eq!(loaded.tickets[0].branch, Some("gg/GG-100-lifecycle-db-test".into()));
+
+        // FINISH: move to Review
+        board.tickets[0].column = Column::Review;
+        board.tickets[0].review_at = Some("2026-03-21T11:00:00Z".into());
+        board.tickets[0].has_changes = Some(true);
+        save_board(&conn, &board).unwrap();
+        log_activity(&conn, "ticket_finished", Some("GG-100"), Some("Lifecycle DB Test"), None);
+
+        let loaded = load_board(&conn).unwrap();
+        assert_eq!(loaded.tickets[0].column, Column::Review);
+        assert_eq!(loaded.tickets[0].review_at, Some("2026-03-21T11:00:00Z".into()));
+        assert_eq!(loaded.tickets[0].has_changes, Some(true));
+
+        // MERGE: move to Done
+        board.tickets[0].column = Column::Done;
+        board.tickets[0].done_at = Some("2026-03-21T11:30:00Z".into());
+        board.tickets[0].tokens_used = Some(12000);
+        board.tickets[0].cost_usd = Some(0.36);
+        save_board(&conn, &board).unwrap();
+        log_activity(&conn, "ticket_merged", Some("GG-100"), Some("Lifecycle DB Test"), None);
+
+        // Verify final state
+        let loaded = load_board(&conn).unwrap();
+        let t = &loaded.tickets[0];
+        assert_eq!(t.column, Column::Done);
+        assert_eq!(t.created_at, Some("2026-03-21T10:00:00Z".into()));
+        assert_eq!(t.started_at, Some("2026-03-21T10:05:00Z".into()));
+        assert_eq!(t.review_at, Some("2026-03-21T11:00:00Z".into()));
+        assert_eq!(t.done_at, Some("2026-03-21T11:30:00Z".into()));
+        assert_eq!(t.has_changes, Some(true));
+        assert_eq!(t.branch, Some("gg/GG-100-lifecycle-db-test".into()));
+        assert_eq!(t.tokens_used, Some(12000));
+        assert_eq!(t.cost_usd, Some(0.36));
+        assert_eq!(t.model_used, Some("claude-opus-4-6".into()));
+
+        // Verify activity log captures all lifecycle events
+        let activities = get_activity(&conn, 10);
+        assert_eq!(activities.len(), 3);
+        assert_eq!(activities[0].action, "ticket_merged");
+        assert_eq!(activities[1].action, "ticket_finished");
+        assert_eq!(activities[2].action, "ticket_started");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn ticket_lifecycle_finish_without_changes() {
+        let dir = temp_db_dir();
+        let conn = open(&dir).unwrap();
+
+        let mut board = KanbanBoard {
+            project_name: "NoChanges".to_string(),
+            tickets: vec![Ticket {
+                id: "GG-102".into(),
+                title: "No Changes Test".into(),
+                slug: "no-changes-test".into(),
+                ticket_type: TicketType::Bugfix,
+                column: Column::Progress,
+                description: String::new(),
+                prio: None,
+                created_at: Some("2026-03-21T10:00:00Z".into()),
+                started_at: Some("2026-03-21T10:00:00Z".into()),
+                review_at: None,
+                done_at: None,
+                has_changes: None,
+                branch: Some("gg/GG-102-no-changes-test".into()),
+                tokens_used: None,
+                cost_usd: None,
+                model_used: None,
+                comments: None,
+                portal_bug_id: None,
+                portal_bug_url: None,
+            }],
+            next_ticket_id: 103,
+        };
+        save_board(&conn, &board).unwrap();
+
+        // Finish without changes
+        board.tickets[0].column = Column::Review;
+        board.tickets[0].review_at = Some("2026-03-21T10:05:00Z".into());
+        board.tickets[0].has_changes = Some(false);
+        save_board(&conn, &board).unwrap();
+
+        let loaded = load_board(&conn).unwrap();
+        assert_eq!(loaded.tickets[0].column, Column::Review);
+        assert_eq!(loaded.tickets[0].has_changes, Some(false));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn activity_prune_at_limit() {
         let dir = temp_db_dir();
         let conn = open(&dir).unwrap();

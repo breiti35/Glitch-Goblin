@@ -7,6 +7,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+- **Integration Tests Ticket-Lifecycle:** 6 neue End-to-End Tests fuer den kritischen Ticket-Workflow — vollstaendiger Flow (start → commit → finish → merge → Done), Merge mit Auto-Push via Remote, Finish ohne Aenderungen, Start ohne Git-Repo, sowie DB-Lifecycle-Roundtrip (Backlog → Done mit allen Timestamps/Feldern)
+
 ### Docs
 - **JSDoc Frontend:** Alle exportierten Funktionen in `app.js` (15 Exporte), `board.js` (11), `git.js` (3), `dashboard.js` (4) und `settings.js` (5) mit JSDoc-Kommentaren versehen
 - **Rust-Dokumentation:** Alle `#[tauri::command]`-Funktionen in `src/commands.rs` (73 Commands) und alle öffentlichen Funktionen in `src/git.rs` mit `///`-Kommentaren versehen
