@@ -80,7 +80,11 @@ export function shellEscape(s) {
 
 export function validateDeployParam(name, value) {
   if (!value) return true;
-  if (/[;\|&\$`\n\r\0]/.test(value)) {
+  if (value.length > 500) {
+    console.error(`Security: ${name} exceeds max length (500)`);
+    return false;
+  }
+  if (/[;\|&\$`\n\r\0<>\(\)\{\}!\~\#\%\^\*\?\[\]]/.test(value)) {
     console.error(`Security: ${name} contains forbidden characters`);
     return false;
   }

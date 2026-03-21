@@ -10,6 +10,15 @@ fn validate_git_ref(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err(AppError::InvalidInput("Branch-Name darf nicht leer sein".into()).into());
     }
+    if name.len() > 100 {
+        return Err(
+            AppError::InvalidInput(format!(
+                "Branch-Name darf maximal 100 Zeichen lang sein (aktuell: {})",
+                name.len()
+            ))
+            .into(),
+        );
+    }
     if name.starts_with('-') {
         return Err(
             AppError::InvalidInput("Branch-Name darf nicht mit '-' beginnen".into()).into(),
@@ -879,6 +888,18 @@ mod tests {
     #[test]
     fn validate_git_ref_rejects_null_byte() {
         assert!(validate_git_ref("branch\0name").is_err());
+    }
+
+    #[test]
+    fn validate_git_ref_rejects_too_long() {
+        let long_name = "a".repeat(101);
+        assert!(validate_git_ref(&long_name).is_err());
+    }
+
+    #[test]
+    fn validate_git_ref_accepts_max_length() {
+        let max_name = "a".repeat(100);
+        assert!(validate_git_ref(&max_name).is_ok());
     }
 
     #[test]
