@@ -98,16 +98,36 @@ export async function loadGitView() {
         `;
       }
 
-      document.getElementById("git-current-branch").innerHTML = commitsTableHtml;
-
-      // Show remote info
+      // Push button for current branch
+      let pushHtml = "";
       try {
         const status = await invoke("get_git_status");
-        if (status.hasRemote && status.remoteUrl) {
-          document.getElementById("git-current-branch").insertAdjacentHTML('beforeend',
-            `<div style="font-size:11px;color:var(--text-muted);margin-top:8px"><span class="material-symbols-outlined" style="font-size:14px">link</span> ${esc(status.remoteUrl)}</div>`);
+        if (status.hasRemote) {
+          pushHtml = `
+            <div class="git-current-actions">
+              <button class="btn-primary" id="btn-push-current" style="padding:6px 16px;font-size:12px">
+                <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">cloud_upload</span>
+                Push ${esc(current.name)}
+              </button>
+              <span style="font-size:11px;color:var(--text-muted)"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">link</span> ${esc(status.remoteUrl || '')}</span>
+            </div>`;
         }
       } catch {}
+
+      document.getElementById("git-current-branch").innerHTML = commitsTableHtml + pushHtml;
+
+      // Wire push button
+      document.getElementById("btn-push-current")?.addEventListener("click", async () => {
+        try {
+          showToast(t('git.pushing', {branch: current.name}), "info");
+          await invoke("push_current_branch");
+          showToast(t('git.pushSuccess', {branch: current.name}), "success");
+          loadGitView();
+        } catch (e) {
+          appendLog("Push failed: " + e, true);
+          showToast(t('git.pushFailed'), "error");
+        }
+      });
     }
 
     let html = "";
