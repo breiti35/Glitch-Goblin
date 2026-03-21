@@ -15,6 +15,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Integration Tests Ticket-Lifecycle:** 6 neue End-to-End Tests fuer den kritischen Ticket-Workflow — vollstaendiger Flow (start → commit → finish → merge → Done), Merge mit Auto-Push via Remote, Finish ohne Aenderungen, Start ohne Git-Repo, sowie DB-Lifecycle-Roundtrip (Backlog → Done mit allen Timestamps/Feldern)
 
 ### Security
+- **DB-Backup vor Schema-Migration:** `db::open()` erstellt automatisch ein Backup (`kanban.db.pre-migration`) via SQLite Online Backup API bevor Schema-Upgrades ausgefuehrt werden. Bei fehlgeschlagener Migration wird das Backup automatisch wiederhergestellt (inkl. WAL/SHM Cleanup)
 - **Branch-Name Laengenlimit:** `validate_git_ref()` begrenzt Branch-Namen auf maximal 100 Zeichen — verhindert DoS durch extrem lange Referenz-Namen
 - **Deploy-Parameter Haertung:** `validateDeployParam()` blockiert zusaetzliche gefaehrliche Zeichen (`< > ( ) { } ! ~ # % ^ * ? [ ]`) und erzwingt ein Laengenlimit von 500 Zeichen
 - **CSP Audit:** `unsafe-inline` fuer `style-src` geprueft — wird benoetigt (30+ inline Styles), akzeptiertes Risiko dokumentiert

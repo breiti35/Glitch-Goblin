@@ -100,8 +100,14 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
 // ── Open / Init ───────────────────────────────────────────────────────────────
 
 /// Open (or create) the project database at `<data_dir>/kanban.db`.
+///
+/// If the DB already exists and a schema upgrade is needed (`SCHEMA_VERSION`
+/// increased), a backup is created at `kanban.db.pre-migration` before any
+/// migration runs.  On migration failure the backup is restored automatically.
 pub fn open(data_dir: &Path) -> Result<Connection, String> {
     let db_path = data_dir.join("kanban.db");
+    let backup_path = data_dir.join("kanban.db.pre-migration");
+
     let conn = Connection::open(&db_path)
         .map_err(|e| format!("DB öffnen fehlgeschlagen '{}': {e}", db_path.display()))?;
 
@@ -109,22 +115,94 @@ pub fn open(data_dir: &Path) -> Result<Connection, String> {
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
         .map_err(|e| format!("PRAGMA fehlgeschlagen: {e}"))?;
 
-    // Create schema
+    // Create base tables (IF NOT EXISTS — idempotent, always safe)
     conn.execute_batch(CREATE_SCHEMA)
         .map_err(|e| format!("Schema-Erstellung fehlgeschlagen: {e}"))?;
 
-    // Record schema version if not already present
-    let version: SqlResult<i64> =
-        conn.query_row("SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0));
-    if version.is_err() {
+    // Determine current schema version (0 = fresh DB)
+    let current_version: i64 = conn
+        .query_row("SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0))
+        .unwrap_or(0);
+
+    if current_version == 0 {
+        // Fresh database — record initial version
         conn.execute(
             "INSERT INTO schema_version (version) VALUES (?1)",
             params![SCHEMA_VERSION],
         )
         .map_err(|e| format!("Schema-Version eintragen fehlgeschlagen: {e}"))?;
+    } else if current_version < SCHEMA_VERSION {
+        // Schema upgrade required — create backup before migration
+        backup_database(&conn, &backup_path)?;
+        info!(
+            "DB-Backup vor Schema-Migration v{} → v{}: {}",
+            current_version, SCHEMA_VERSION, backup_path.display()
+        );
+
+        match apply_schema_migrations(&conn, current_version) {
+            Ok(()) => {
+                conn.execute(
+                    "UPDATE schema_version SET version = ?1, applied_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')",
+                    params![SCHEMA_VERSION],
+                )
+                .map_err(|e| format!("Schema-Version aktualisieren fehlgeschlagen: {e}"))?;
+                info!("Schema-Migration v{current_version} → v{SCHEMA_VERSION} erfolgreich");
+            }
+            Err(e) => {
+                drop(conn);
+                if let Err(re) = restore_from_backup(&backup_path, &db_path) {
+                    return Err(format!(
+                        "Schema-Migration UND Wiederherstellung fehlgeschlagen — Migration: {e}, Restore: {re}"
+                    ));
+                }
+                return Err(format!(
+                    "Schema-Migration fehlgeschlagen, DB aus Backup wiederhergestellt: {e}"
+                ));
+            }
+        }
     }
 
     Ok(conn)
+}
+
+/// Create a backup using SQLite's online backup API.
+///
+/// Safe with an open connection, WAL mode, and on Windows (no file-lock issues).
+fn backup_database(conn: &Connection, backup_path: &Path) -> Result<(), String> {
+    let mut dst = Connection::open(backup_path)
+        .map_err(|e| format!("Backup-Ziel öffnen fehlgeschlagen '{}': {e}", backup_path.display()))?;
+    let backup = rusqlite::backup::Backup::new(conn, &mut dst)
+        .map_err(|e| format!("DB-Backup initialisieren fehlgeschlagen: {e}"))?;
+    backup
+        .run_to_completion(100, std::time::Duration::ZERO, None)
+        .map_err(|e| format!("DB-Backup fehlgeschlagen: {e}"))?;
+    Ok(())
+}
+
+/// Restore the database from a pre-migration backup.
+///
+/// Removes stale WAL/SHM files from the failed migration before copying.
+fn restore_from_backup(backup_path: &Path, db_path: &Path) -> Result<(), String> {
+    let wal_path = db_path.with_extension("db-wal");
+    let shm_path = db_path.with_extension("db-shm");
+    let _ = std::fs::remove_file(wal_path);
+    let _ = std::fs::remove_file(shm_path);
+
+    std::fs::copy(backup_path, db_path)
+        .map_err(|e| format!("DB-Wiederherstellung aus Backup fehlgeschlagen: {e}"))?;
+    info!("DB aus Backup wiederhergestellt: {}", backup_path.display());
+    Ok(())
+}
+
+/// Apply incremental schema migrations from `from_version` to `SCHEMA_VERSION`.
+fn apply_schema_migrations(conn: &Connection, from_version: i64) -> Result<(), String> {
+    // Future migrations go here, guarded by version checks:
+    // if from_version < 2 {
+    //     conn.execute_batch("ALTER TABLE tickets ADD COLUMN ...;")
+    //         .map_err(|e| format!("Migration v1→v2: {e}"))?;
+    // }
+    let _ = (conn, from_version);
+    Ok(())
 }
 
 // ── Board R/W ─────────────────────────────────────────────────────────────────
