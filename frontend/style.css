@@ -495,14 +495,15 @@ code, pre, .commit-hash, .card-ticket-id, .system-status-bar, .git-current-name 
 .ticket-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 6px;
+  border-left: 4px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
   cursor: grab;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, opacity 0.2s, padding 0.2s;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, opacity 0.2s;
   user-select: none;
   position: relative;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 /* Type-colored left border */
 .ticket-card[data-ticket-type="feature"]  { border-left-color: #3B82F6; }
@@ -738,7 +739,7 @@ code, pre, .commit-hash, .card-ticket-id, .system-status-bar, .git-current-name 
   background: var(--surface);
   border-radius: 8px;
   padding: 4px;
-  margin: 0 20px 24px;
+  margin: 0 32px 24px;
   width: fit-content;
 }
 .settings-tab {
@@ -2366,6 +2367,16 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   color: var(--diff-hdr-text);
 }
 
+.activity-group-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  padding: 16px 0 8px;
+}
+
 .activity-body {
   flex: 1;
   min-width: 0;
@@ -2811,12 +2822,21 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 .health-seg-empty     { background: var(--border); }
 
 /* ── Column Icons ── */
-.col-icon         { font-size: 14px; margin-right: 6px; }
-.col-icon-backlog { color: #e04f5e; }
-.col-icon-progress{ color: #44a955; }
-.col-icon-review  { color: #f4a460; }
-.col-icon-done    { color: #808080; }
-.column-title-row { display: flex; align-items: center; }
+.col-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  font-size: 0;
+  display: inline-block;
+}
+.col-icon-backlog  { background: var(--text-muted); }
+.col-icon-progress { background: var(--accent); }
+.col-icon-review   { background: var(--info); }
+.col-icon-done     { background: var(--success); }
+.column-title-row  { display: flex; align-items: center; }
+.column-title      { font-size: 12px; }
+.column-count      { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
 
 /* ── System Status Bar ── */
 .system-status-bar {
@@ -3600,11 +3620,28 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 }
 .view-header-left { display: flex; flex-direction: column; gap: 2px; }
 .dash-commit-timeline { position: relative; padding-left: 16px; }
-.dash-timeline-entry { position: relative; padding: 8px 0; }
+.dash-timeline-entry {
+  position: relative;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dash-timeline-entry:last-child { border-bottom: none; }
+.dash-timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.dash-timeline-header .hash {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+}
+.dash-timeline-header .date { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+.dash-timeline-content .msg { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.dash-timeline-content .author { font-size: 11px; color: var(--text-muted); }
 .dash-timeline-dot {
   position: absolute;
   left: -20px;
-  top: 12px;
+  top: 14px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -3641,6 +3678,8 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   color: var(--text);
 }
 .stats-kpi-success { color: var(--success); }
+.stats-kpi-card:nth-child(1) .stats-kpi-value { color: var(--accent); }
+.stats-kpi-card:nth-child(4) .stats-kpi-value { color: var(--info); }
 .stats-row-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;

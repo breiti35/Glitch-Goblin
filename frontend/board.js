@@ -39,7 +39,7 @@ function renderBoardImpl() {
     const body = document.querySelector(`[data-drop="${col}"]`);
     const countEl = document.querySelector(`[data-count="${col}"]`);
     const colTickets = tickets.filter(t => t.column === col);
-    countEl.textContent = colTickets.length;
+    countEl.textContent = "(" + colTickets.length + ")";
     body.innerHTML = "";
 
     if (colTickets.length === 0) {
