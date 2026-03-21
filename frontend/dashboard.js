@@ -9,6 +9,7 @@ import { t } from './i18n.js';
 
 // ── Dashboard ──
 
+/** Lädt und rendert die Dashboard-Ansicht mit Tech-Stack, Ticket-Statistiken, Commits und Aktivitäten. */
 export async function loadDashboard() {
   if (!state.project) {
     document.getElementById("dashboard-project-name").textContent = t('dashboard.noProject');
@@ -113,6 +114,7 @@ export async function loadDashboard() {
 
 // ── Templates ──
 
+/** Befüllt das Template-Dropdown im "Neues Ticket"-Modal mit den verfügbaren Templates. */
 export async function loadTemplatesForModal() {
   const select = document.getElementById("new-task-template");
   if (!select) return;
@@ -125,6 +127,7 @@ export async function loadTemplatesForModal() {
   }
 }
 
+/** Registriert den Change-Handler für das Template-Dropdown, der Formularfelder automatisch befüllt. */
 export function setupTemplateListener() {
   document.getElementById("new-task-template")?.addEventListener("change", async (e) => {
     const name = e.target.value;
@@ -149,6 +152,7 @@ export function setupTemplateListener() {
 
 // ── Import/Export ──
 
+/** Registriert die Event-Handler für Import-/Export-Schaltflächen und den "Zum Board"-Link. */
 export function setupImportExportListeners() {
   document.getElementById("btn-export-tickets")?.addEventListener("click", async () => {
     const format = await pickExportFormat();

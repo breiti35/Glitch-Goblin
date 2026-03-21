@@ -29,6 +29,7 @@ const SOUNDS = {
 };
 
 // ── Local State (shared with all modules) ──
+/** Globales State-Objekt, das von allen Frontend-Modulen geteilt wird. */
 export const state = {
   board: { project_name: "", tickets: [] },
   project: null,
@@ -392,6 +393,9 @@ async function setupListeners() {
 }
 
 // ── View Routing ──
+/** Wechselt die aktive Ansicht und lädt ggf. Inhalte der Ziel-View nach (Lazy Loading).
+ * @param {string} name - Name der Ziel-Ansicht (z.B. "board", "git", "settings").
+ */
 export function switchView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   const el = document.getElementById(`view-${name}`);
@@ -415,6 +419,9 @@ export function switchView(name) {
 }
 
 // ── Execution ──
+/** Zeigt den Bestätigungsdialog zum Ausführen eines Tickets mit Modell-Empfehlung und Auswahl.
+ * @param {object} ticket - Das auszuführende Ticket-Objekt.
+ */
 export function confirmExecute(ticket) {
   const isCodeChanging = ticket.ticket_type === "feature" || ticket.ticket_type === "bugfix";
   const warning = isCodeChanging ? " \u26A0 Dieses Ticket \u00E4ndert Code." : "";
@@ -454,6 +461,10 @@ function getModelRecommendation(ticketType) {
   }
 }
 
+/** Normalisiert einen Modell-Kurznamen (z.B. "sonnet") oder Legacy-ID zu einer vollständigen Modell-ID.
+ * @param {string} model - Kurzname oder vollständige Modell-ID.
+ * @returns {string} Vollständige Modell-ID.
+ */
 export function modelToFlag(model) {
   const compat = { sonnet: "claude-sonnet-4-6", opus: "claude-opus-4-6", haiku: "claude-haiku-4-5-20251001" };
   return compat[model] || model || "claude-sonnet-4-6";
@@ -490,6 +501,9 @@ const executeTicket = withGuard(async function(ticketId, model) {
   }
 });
 
+/** Öffnet den Review-Diff-Dialog zum Abschließen eines Tickets (Ticket wechselt nach Bestätigung zu Done).
+ * @param {string} ticketId - ID des abzuschließenden Tickets.
+ */
 export async function finishTicket(ticketId) {
   // Open review modal instead of immediately finishing
   await openReviewModal(ticketId);
@@ -592,6 +606,9 @@ function renderDiffLines(diff) {
   }).join("\n");
 }
 
+/** Führt einen Ticket-Branch nach Benutzerbestätigung in den Hauptbranch zusammen (gegen Doppelklick gesichert).
+ * @param {string} ticketId - ID des zu mergenden Tickets.
+ */
 export const mergeTicket = withGuard(async function(ticketId) {
   if (!confirm(`Ticket ${ticketId} \u00FCbernehmen?\nDie \u00C4nderungen werden in den Hauptbranch \u00FCbernommen.`)) return;
   try {
@@ -632,6 +649,7 @@ function playSound(name) {
 }
 
 // ── Board Refresh ──
+/** Holt den aktuellen Board-State vom Backend und rendert das Board neu. Beendet den Focus-Modus wenn kein Ticket läuft. */
 export async function refreshBoard() {
   try {
     state.board = await invoke("get_board");
@@ -647,6 +665,10 @@ export async function refreshBoard() {
 // ── Log Panel ──
 const LOG_MAX_LINES = 500;
 
+/** Fügt eine Zeile zum Log-Panel hinzu (max. 500 Zeilen). Fehler werden zusätzlich als Toast angezeigt.
+ * @param {string} text - Der anzuzeigende Text.
+ * @param {boolean} [isError=false] - Wenn true, wird die Zeile als Fehler hervorgehoben.
+ */
 export function appendLog(text, isError = false) {
   const body = document.getElementById("log-body");
   const line = document.createElement("div");
@@ -665,6 +687,11 @@ export function appendLog(text, isError = false) {
 }
 
 // ── Toast System ──
+/** Zeigt eine kurze Toast-Benachrichtigung an und fügt sie dem Notification-Center hinzu.
+ * @param {string} message - Der anzuzeigende Text.
+ * @param {"info"|"success"|"error"} [type="info"] - Typ der Benachrichtigung.
+ * @param {number} [duration=3000] - Anzeigedauer in Millisekunden.
+ */
 export function showToast(message, type = "info", duration = 3000) {
   // Also add to notification center
   addNotification(message, type);
@@ -719,12 +746,16 @@ function toggleTheme() {
   invoke("save_settings", { settings: state.settings }).catch(e => logError("save_settings", e));
 }
 
+/** Aktualisiert das Theme-Icon im Header passend zum aktiven Theme (dark/light). */
 export function updateThemeUI() {
   const theme = document.body.dataset.theme;
   const matIcon = document.getElementById("theme-icon-mat");
   if (matIcon) matIcon.textContent = theme === "dark" ? "dark_mode" : "light_mode";
 }
 
+/** Setzt die Akzentfarbe als CSS-Custom-Properties (--accent, --accent-hover, --accent-glow) am body-Element.
+ * @param {string} color - Hex-Farbwert, z.B. "#F97316".
+ */
 export function applyAccentColor(color) {
   if (!color) return;
   // Must set on body (which has data-theme) to override theme defaults
@@ -856,10 +887,16 @@ async function createTask() {
 }
 
 // ── Modal Helpers ──
+/** Entfernt die "hidden"-Klasse von einem Modal-Element, um es anzuzeigen.
+ * @param {string} id - Die Element-ID des Modals.
+ */
 export function openModal(id) {
   document.getElementById(id).classList.remove("hidden");
 }
 
+/** Fügt die "hidden"-Klasse zu einem Modal-Element hinzu, um es auszublenden.
+ * @param {string} id - Die Element-ID des Modals.
+ */
 export function closeModal(id) {
   document.getElementById(id).classList.add("hidden");
 }
@@ -912,6 +949,10 @@ function usageColor(pct) {
 const notifications = [];
 const NOTIF_MAX = 50;
 
+/** Fügt eine Benachrichtigung in das Notification-Center ein (max. 50 Einträge).
+ * @param {string} message - Der Benachrichtigungstext.
+ * @param {"info"|"success"|"error"} [type="info"] - Typ der Benachrichtigung.
+ */
 export function addNotification(message, type = "info") {
   notifications.unshift({ message, type, time: new Date() });
   if (notifications.length > NOTIF_MAX) notifications.pop();
@@ -1314,6 +1355,7 @@ function globalSearch() {
 }
 
 // ── Git Warning Banner ──
+/** Prüft den Git-Status und zeigt ggf. ein Warning-Banner an (kein Git-Repo, laufende Operation). */
 export async function updateGitWarnings() {
   try {
     const status = await invoke("get_git_status");

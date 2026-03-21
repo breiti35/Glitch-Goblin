@@ -9,6 +9,7 @@ import { t } from './i18n.js';
 
 // ── Git Status ──
 
+/** Prüft auf nicht committete Änderungen und aktualisiert das Git-Status-Badge im Header. */
 export async function checkGitStatus() {
   try {
     const dirty = await invoke("check_uncommitted");
@@ -29,6 +30,7 @@ export async function checkGitStatus() {
 
 // ── Git View (Card-based) ──
 
+/** Lädt und rendert die Git-Branch-Ansicht mit gruppierten Branches, Commit-Historie und Diff-Details. */
 export async function loadGitView() {
   const container = document.getElementById("git-branch-cards");
   container.innerHTML = `<div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div>`;
@@ -424,6 +426,7 @@ async function pushBranch(branch) {
 
 // ── Git Event Listeners ──
 
+/** Registriert Event-Listener für die Schaltflächen der Git-Ansicht (Refresh, Close Diff). */
 export function setupGitListeners() {
   document.getElementById("btn-refresh-branches")?.addEventListener("click", loadGitView);
 
