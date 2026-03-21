@@ -73,6 +73,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderBoard();
   updateSidebar();
   checkGitStatus();
+  updateGitWarnings();
   loadClaudeUsage();
   setInterval(loadClaudeUsage, 120000);
 
@@ -379,6 +380,9 @@ export function switchView(name) {
   if (name === "git") loadGitView();
   if (name === "activity") loadActivityView();
   if (name === "dashboard") loadDashboard();
+
+  // Update git warnings when switching views
+  updateGitWarnings();
 }
 
 // ── Execution ──
@@ -734,6 +738,7 @@ async function switchProject(name) {
     renderBoard();
     updateSidebar();
     checkGitStatus();
+    updateGitWarnings();
     loadDeployConfig();
     loadClaudeUsage();
 
@@ -999,8 +1004,8 @@ function enterFocusMode(ticket, branch, model) {
   document.getElementById("focus-ticket-id").textContent = ticket.id;
   document.getElementById("focus-ticket-title").textContent = ticket.title;
   document.getElementById("focus-ticket-desc").textContent = ticket.description || "";
-  document.getElementById("focus-branch").textContent = branch || "—";
-  document.getElementById("focus-model").textContent = model || "—";
+  document.getElementById("focus-branch").textContent = branch || "\u2014";
+  document.getElementById("focus-model").textContent = model || "\u2014";
 
   // Elapsed timer (shared between focus mode and terminal status bar)
   const startTime = Date.now();
@@ -1255,4 +1260,41 @@ function globalSearch() {
   }
 
   dropdown.classList.remove("hidden");
+}
+
+// ── Git Warning Banner ──
+export async function updateGitWarnings() {
+  try {
+    const status = await invoke("get_git_status");
+    const banner = document.getElementById("git-warning-banner");
+    if (!banner) return;
+
+    if (!status.isGitRepo) {
+      banner.textContent = t('git.noGitRepo');
+      banner.className = "git-warning-banner warn visible";
+    } else if (status.operationInProgress) {
+      banner.innerHTML = `${esc(t('git.operationInProgress', {op: status.operationInProgress}))}
+        ${status.operationInProgress === 'merge' ? `<button id="btn-abort-merge" class="btn-danger" style="margin-left:8px;padding:2px 8px;font-size:11px">${esc(t('git.abortMerge'))}</button>` : ''}`;
+      banner.className = "git-warning-banner error visible";
+      document.getElementById("btn-abort-merge")?.addEventListener("click", async () => {
+        try {
+          await invoke("abort_git_merge");
+          showToast(t('git.mergeAborted'), "success");
+          updateGitWarnings();
+          checkGitStatus();
+        } catch (e) {
+          showToast(String(e), "error");
+        }
+      });
+    } else if (status.isDetached) {
+      banner.textContent = t('git.detachedHead');
+      banner.className = "git-warning-banner warn visible";
+    } else {
+      banner.className = "git-warning-banner hidden";
+    }
+  } catch {
+    // No project selected or other issue — hide banner
+    const banner = document.getElementById("git-warning-banner");
+    if (banner) banner.className = "git-warning-banner hidden";
+  }
 }

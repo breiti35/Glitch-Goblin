@@ -103,7 +103,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             auto_execute_types: vec!["docs".into(), "security".into()],
-            commit_prefix: "kanban:".into(),
+            commit_prefix: "gg:".into(),
             claude_cli_path: "claude".into(),
             accent_color: "#F97316".into(),
             theme: "dark".into(),
@@ -240,7 +240,7 @@ mod tests {
         let s = Settings::default();
         assert_eq!(s.language, "de");
         assert!(!s.auto_push_after_merge);
-        assert_eq!(s.commit_prefix, "kanban:");
+        assert_eq!(s.commit_prefix, "gg:");
         assert_eq!(s.max_backups, 10);
         assert_eq!(s.terminal_font_size, 14);
         assert!(s.notifications_enabled);

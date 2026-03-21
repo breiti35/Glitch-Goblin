@@ -3514,3 +3514,15 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 /* ── Hide old sidebar header elements ── */
 .sidebar-header .app-title,
 .sidebar-header #btn-app-settings { display: none; }
+
+/* ── Git Warning Banner ── */
+.git-warning-banner {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  margin: 0 16px 8px;
+  display: none;
+}
+.git-warning-banner.visible { display: block; }
+.git-warning-banner.warn { background: var(--warning, #f59e0b); color: #000; }
+.git-warning-banner.error { background: var(--danger, #ef4444); color: #fff; }

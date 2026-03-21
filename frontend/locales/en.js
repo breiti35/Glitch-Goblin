@@ -132,6 +132,11 @@ export default {
     push: "Push",
     noRemote: "No remote configured",
     remoteUrl: "Remote: {url}",
+    detachedHead: "Detached HEAD \u2014 no active branch",
+    noGitRepo: "No git repository found",
+    operationInProgress: "{op} in progress \u2014 please complete or abort first",
+    abortMerge: "Abort merge",
+    mergeAborted: "Merge aborted",
   },
 
   // Settings

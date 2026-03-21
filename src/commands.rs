@@ -639,6 +639,19 @@ pub async fn get_settings(state: State<'_>) -> Result<Settings, String> {
 
 #[tauri::command]
 pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(), String> {
+    // Validate settings ranges
+    settings.terminal_font_size = settings.terminal_font_size.clamp(8, 24);
+    settings.max_backups = settings.max_backups.clamp(1, 50);
+    if settings.cost_per_input_mtok < 0.0 {
+        settings.cost_per_input_mtok = 0.0;
+    }
+    if settings.cost_per_output_mtok < 0.0 {
+        settings.cost_per_output_mtok = 0.0;
+    }
+    if settings.bug_sync.interval_secs < 60 {
+        settings.bug_sync.interval_secs = 60;
+    }
+
     // Preserve existing API token if the frontend sends an empty one
     {
         let s = state.lock().await;

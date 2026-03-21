@@ -754,3 +754,419 @@ fn parse_column(s: &str) -> Column {
         _ => Column::Backlog,
     }
 }
+
+// ── DB Persistence Integration Tests ──
+//
+// These tests exercise the full SQLite round-trip: open, save, load, update.
+// Each test creates its own temp directory with a fresh database.
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+
+    /// Build a test board with two tickets covering various field combinations.
+    fn create_test_board() -> KanbanBoard {
+        KanbanBoard {
+            project_name: "Test Project".to_string(),
+            tickets: vec![
+                Ticket {
+                    id: "GG-001".to_string(),
+                    title: "First Ticket".to_string(),
+                    slug: "first-ticket".to_string(),
+                    ticket_type: TicketType::Feature,
+                    column: Column::Backlog,
+                    description: "Test description".to_string(),
+                    prio: Some("high".to_string()),
+                    created_at: Some("2026-03-20T12:00:00Z".to_string()),
+                    started_at: None,
+                    review_at: None,
+                    done_at: None,
+                    has_changes: None,
+                    branch: None,
+                    tokens_used: None,
+                    cost_usd: None,
+                    model_used: None,
+                    comments: None,
+                    portal_bug_id: None,
+                    portal_bug_url: None,
+                },
+                Ticket {
+                    id: "GG-002".to_string(),
+                    title: "Second Ticket".to_string(),
+                    slug: "second-ticket".to_string(),
+                    ticket_type: TicketType::Bugfix,
+                    column: Column::Done,
+                    description: String::new(),
+                    prio: None,
+                    created_at: None,
+                    started_at: Some("2026-03-19T10:00:00Z".to_string()),
+                    review_at: None,
+                    done_at: Some("2026-03-20T10:00:00Z".to_string()),
+                    has_changes: None,
+                    branch: Some("gg/GG-002-second-ticket".to_string()),
+                    tokens_used: Some(5000),
+                    cost_usd: Some(0.15),
+                    model_used: Some("claude-sonnet-4-6".to_string()),
+                    comments: None,
+                    portal_bug_id: None,
+                    portal_bug_url: None,
+                },
+            ],
+            next_ticket_id: 3,
+        }
+    }
+
+    /// Create a temporary directory for a test database.
+    fn temp_db_dir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("gg-db-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn save_and_load_board() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+        let board = create_test_board();
+
+        save_board(&conn, &board).unwrap();
+
+        let loaded = load_board(&conn).unwrap();
+        assert_eq!(loaded.project_name, "Test Project");
+        assert_eq!(loaded.tickets.len(), 2);
+        assert_eq!(loaded.next_ticket_id, 3);
+
+        let t1 = &loaded.tickets[0];
+        assert_eq!(t1.id, "GG-001");
+        assert_eq!(t1.title, "First Ticket");
+        assert_eq!(t1.description, "Test description");
+        assert_eq!(t1.prio, Some("high".to_string()));
+
+        let t2 = &loaded.tickets[1];
+        assert_eq!(t2.id, "GG-002");
+        assert_eq!(t2.branch, Some("gg/GG-002-second-ticket".to_string()));
+        assert_eq!(t2.cost_usd, Some(0.15));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn update_ticket_in_db() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+        let mut board = create_test_board();
+        save_board(&conn, &board).unwrap();
+
+        // Modify a ticket
+        board.tickets[0].column = Column::Progress;
+        board.tickets[0].started_at = Some("2026-03-20T14:00:00Z".to_string());
+        save_board(&conn, &board).unwrap();
+
+        let loaded = load_board(&conn).unwrap();
+        assert_eq!(loaded.tickets[0].column, Column::Progress);
+        assert_eq!(
+            loaded.tickets[0].started_at,
+            Some("2026-03-20T14:00:00Z".to_string())
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn empty_board_roundtrip() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+        let board = KanbanBoard {
+            project_name: "Empty".to_string(),
+            tickets: vec![],
+            next_ticket_id: 1,
+        };
+
+        save_board(&conn, &board).unwrap();
+        let loaded = load_board(&conn).unwrap();
+        assert_eq!(loaded.project_name, "Empty");
+        assert!(loaded.tickets.is_empty());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn activity_logging() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+
+        log_activity(
+            &conn,
+            "ticket_created",
+            Some("GG-001"),
+            Some("Test"),
+            None,
+        );
+        log_activity(
+            &conn,
+            "ticket_started",
+            Some("GG-001"),
+            Some("Test"),
+            Some("model: sonnet"),
+        );
+
+        let activities = get_activity(&conn, 10);
+        assert_eq!(activities.len(), 2);
+
+        // Most recent first (DESC order)
+        assert_eq!(activities[0].action, "ticket_started");
+        assert_eq!(activities[1].action, "ticket_created");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_ticket_from_board() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+        let mut board = create_test_board();
+        save_board(&conn, &board).unwrap();
+
+        // Remove second ticket
+        board.tickets.retain(|t| t.id == "GG-001");
+        save_board(&conn, &board).unwrap();
+
+        let loaded = load_board(&conn).unwrap();
+        assert_eq!(loaded.tickets.len(), 1);
+        assert_eq!(loaded.tickets[0].id, "GG-001");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn comments_roundtrip() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+        let mut board = create_test_board();
+
+        // Add comments to first ticket
+        board.tickets[0].comments = Some(vec![
+            TicketComment {
+                timestamp: "2026-03-20T12:00:00Z".to_string(),
+                text: "First comment".to_string(),
+            },
+            TicketComment {
+                timestamp: "2026-03-20T13:00:00Z".to_string(),
+                text: "Second comment".to_string(),
+            },
+        ]);
+        save_board(&conn, &board).unwrap();
+
+        let loaded = load_board(&conn).unwrap();
+        let comments = loaded.tickets[0].comments.as_ref().unwrap();
+        assert_eq!(comments.len(), 2);
+        assert_eq!(comments[0].text, "First comment");
+        assert_eq!(comments[1].text, "Second comment");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn open_twice_is_idempotent() {
+        let dir = temp_db_dir();
+
+        let conn1 = open(&dir).unwrap();
+        let board = create_test_board();
+        save_board(&conn1, &board).unwrap();
+        drop(conn1);
+
+        // Re-open same DB -- schema creation should be IF NOT EXISTS
+        let conn2 = open(&dir).unwrap();
+        let loaded = load_board(&conn2).unwrap();
+        assert_eq!(loaded.tickets.len(), 2);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn ticket_type_roundtrip_all_variants() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+        let board = KanbanBoard {
+            project_name: "Types".to_string(),
+            tickets: vec![
+                Ticket {
+                    id: "GG-001".into(),
+                    title: "Feature".into(),
+                    slug: "feature".into(),
+                    ticket_type: TicketType::Feature,
+                    column: Column::Backlog,
+                    description: String::new(),
+                    prio: None,
+                    created_at: None,
+                    started_at: None,
+                    review_at: None,
+                    done_at: None,
+                    has_changes: None,
+                    branch: None,
+                    tokens_used: None,
+                    cost_usd: None,
+                    model_used: None,
+                    comments: None,
+                    portal_bug_id: None,
+                    portal_bug_url: None,
+                },
+                Ticket {
+                    id: "GG-002".into(),
+                    title: "Bugfix".into(),
+                    slug: "bugfix".into(),
+                    ticket_type: TicketType::Bugfix,
+                    column: Column::Progress,
+                    description: String::new(),
+                    prio: None,
+                    created_at: None,
+                    started_at: None,
+                    review_at: None,
+                    done_at: None,
+                    has_changes: None,
+                    branch: None,
+                    tokens_used: None,
+                    cost_usd: None,
+                    model_used: None,
+                    comments: None,
+                    portal_bug_id: None,
+                    portal_bug_url: None,
+                },
+                Ticket {
+                    id: "GG-003".into(),
+                    title: "Security".into(),
+                    slug: "security".into(),
+                    ticket_type: TicketType::Security,
+                    column: Column::Review,
+                    description: String::new(),
+                    prio: None,
+                    created_at: None,
+                    started_at: None,
+                    review_at: None,
+                    done_at: None,
+                    has_changes: None,
+                    branch: None,
+                    tokens_used: None,
+                    cost_usd: None,
+                    model_used: None,
+                    comments: None,
+                    portal_bug_id: None,
+                    portal_bug_url: None,
+                },
+                Ticket {
+                    id: "GG-004".into(),
+                    title: "Docs".into(),
+                    slug: "docs".into(),
+                    ticket_type: TicketType::Docs,
+                    column: Column::Done,
+                    description: String::new(),
+                    prio: None,
+                    created_at: None,
+                    started_at: None,
+                    review_at: None,
+                    done_at: None,
+                    has_changes: None,
+                    branch: None,
+                    tokens_used: None,
+                    cost_usd: None,
+                    model_used: None,
+                    comments: None,
+                    portal_bug_id: None,
+                    portal_bug_url: None,
+                },
+            ],
+            next_ticket_id: 5,
+        };
+
+        save_board(&conn, &board).unwrap();
+        let loaded = load_board(&conn).unwrap();
+
+        assert_eq!(loaded.tickets[0].ticket_type, TicketType::Feature);
+        assert_eq!(loaded.tickets[0].column, Column::Backlog);
+        assert_eq!(loaded.tickets[1].ticket_type, TicketType::Bugfix);
+        assert_eq!(loaded.tickets[1].column, Column::Progress);
+        assert_eq!(loaded.tickets[2].ticket_type, TicketType::Security);
+        assert_eq!(loaded.tickets[2].column, Column::Review);
+        assert_eq!(loaded.tickets[3].ticket_type, TicketType::Docs);
+        assert_eq!(loaded.tickets[3].column, Column::Done);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn portal_bug_fields_roundtrip() {
+        let dir = temp_db_dir();
+
+        let conn = open(&dir).unwrap();
+        let board = KanbanBoard {
+            project_name: "Portal".to_string(),
+            tickets: vec![Ticket {
+                id: "GG-001".into(),
+                title: "Bug".into(),
+                slug: "bug".into(),
+                ticket_type: TicketType::Bugfix,
+                column: Column::Backlog,
+                description: String::new(),
+                prio: None,
+                created_at: None,
+                started_at: None,
+                review_at: None,
+                done_at: None,
+                has_changes: None,
+                branch: None,
+                tokens_used: None,
+                cost_usd: None,
+                model_used: None,
+                comments: None,
+                portal_bug_id: Some(42),
+                portal_bug_url: Some("https://portal.example.com/bugs/42".to_string()),
+            }],
+            next_ticket_id: 2,
+        };
+
+        save_board(&conn, &board).unwrap();
+        let loaded = load_board(&conn).unwrap();
+
+        assert_eq!(loaded.tickets[0].portal_bug_id, Some(42));
+        assert_eq!(
+            loaded.tickets[0].portal_bug_url,
+            Some("https://portal.example.com/bugs/42".to_string())
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn activity_prune_at_limit() {
+        let dir = temp_db_dir();
+        let conn = open(&dir).unwrap();
+
+        // Insert more than MAX_ACTIVITY (500) entries
+        for i in 0..510 {
+            log_activity(
+                &conn,
+                &format!("action_{i}"),
+                Some("GG-001"),
+                Some("Test"),
+                None,
+            );
+        }
+
+        // Should be pruned to 500
+        let all = get_activity(&conn, 1000);
+        assert!(
+            all.len() <= 500,
+            "Expected at most 500 entries, got {}",
+            all.len()
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

@@ -207,9 +207,11 @@ pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), Strin
 
     if !result.status.success() {
         let stderr = String::from_utf8_lossy(&result.stderr).to_string();
+        let stdout = String::from_utf8_lossy(&result.stdout).to_string();
+        let combined = format!("{stderr} {stdout}");
 
-        // Check if it's a merge conflict
-        if stderr.contains("CONFLICT") || stderr.contains("Automatic merge failed") {
+        // Check if it's a merge conflict (git may report on stdout or stderr)
+        if combined.contains("CONFLICT") || combined.contains("Automatic merge failed") {
             // Abort the merge to leave repo in clean state
             let _ = Command::new("git")
                 .args(["merge", "--abort"])
@@ -962,5 +964,290 @@ mod tests {
         assert!(json.contains("\"filePath\""));
         assert!(json.contains("\"totalAdditions\""));
         assert!(json.contains("\"totalDeletions\""));
+    }
+}
+
+// ── Git Lifecycle Integration Tests ──
+//
+// These tests exercise the real git binary against temporary repositories.
+// They are grouped in a separate module to keep unit tests fast and isolated.
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use crate::kanban::{Column, TicketType};
+
+    /// Create a temporary directory with an initialized git repo.
+    fn create_test_repo() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("gg-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).expect("create temp dir");
+
+        let run = |args: &[&str]| {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(&dir)
+                .output()
+                .expect("git command");
+            assert!(
+                output.status.success(),
+                "git {} failed: {}",
+                args.join(" "),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        };
+
+        run(&["init"]);
+        run(&["config", "user.email", "test@glitch-goblin.dev"]);
+        run(&["config", "user.name", "Test"]);
+
+        std::fs::write(dir.join("README.md"), "# Test\n").expect("write readme");
+        run(&["add", "."]);
+        run(&["commit", "-m", "Initial commit"]);
+
+        dir
+    }
+
+    /// Clean up a test repo directory.
+    fn cleanup(path: &Path) {
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    /// Get the current branch name in a repo (sync helper).
+    fn sync_current_branch(repo: &Path) -> String {
+        let output = std::process::Command::new("git")
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
+            .current_dir(repo)
+            .output()
+            .expect("git rev-parse");
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    }
+
+    /// Create a file and commit it (sync helper).
+    fn commit_file(repo: &Path, filename: &str, content: &str, message: &str) {
+        std::fs::write(repo.join(filename), content).expect("write file");
+        let run = |args: &[&str]| {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(repo)
+                .output()
+                .expect("git command");
+            assert!(
+                output.status.success(),
+                "git {} failed: {}",
+                args.join(" "),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        };
+        run(&["add", filename]);
+        run(&["commit", "-m", message]);
+    }
+
+    /// Build a minimal test ticket.
+    fn test_ticket(id: &str, title: &str, slug: &str, tt: TicketType, col: Column) -> Ticket {
+        Ticket {
+            id: id.to_string(),
+            title: title.to_string(),
+            slug: slug.to_string(),
+            ticket_type: tt,
+            column: col,
+            description: String::new(),
+            prio: None,
+            created_at: None,
+            started_at: None,
+            review_at: None,
+            done_at: None,
+            has_changes: None,
+            branch: None,
+            tokens_used: None,
+            cost_usd: None,
+            model_used: None,
+            comments: None,
+            portal_bug_id: None,
+            portal_bug_url: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn checkout_branch_creates_and_switches() {
+        let repo = create_test_repo();
+
+        let ticket = test_ticket(
+            "GG-001",
+            "Test Feature",
+            "test-feature",
+            TicketType::Feature,
+            Column::Backlog,
+        );
+
+        let branch = checkout_branch(&repo, &ticket).await.unwrap();
+        assert_eq!(branch, "gg/GG-001-test-feature");
+        assert_eq!(sync_current_branch(&repo), "gg/GG-001-test-feature");
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn checkout_branch_existing_branch() {
+        let repo = create_test_repo();
+
+        let ticket = test_ticket(
+            "GG-002",
+            "Existing",
+            "existing",
+            TicketType::Bugfix,
+            Column::Backlog,
+        );
+
+        // Create branch first time
+        checkout_branch(&repo, &ticket).await.unwrap();
+        // Go back to main
+        checkout_main(&repo).await.unwrap();
+        // Checkout same branch again (should not fail)
+        let branch = checkout_branch(&repo, &ticket).await.unwrap();
+        assert_eq!(branch, "gg/GG-002-existing");
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn merge_clean_branch() {
+        let repo = create_test_repo();
+
+        let ticket = test_ticket(
+            "GG-003",
+            "Clean Merge",
+            "clean-merge",
+            TicketType::Feature,
+            Column::Progress,
+        );
+
+        // Create branch and add a file
+        checkout_branch(&repo, &ticket).await.unwrap();
+        commit_file(&repo, "feature.txt", "new feature", "Add feature");
+
+        // Go back to main and merge
+        checkout_main(&repo).await.unwrap();
+        merge_branch(&repo, "gg/GG-003-clean-merge").await.unwrap();
+
+        // Verify file exists on main
+        assert!(repo.join("feature.txt").exists());
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn merge_conflict_detected_and_aborted() {
+        let repo = create_test_repo();
+
+        let ticket = test_ticket(
+            "GG-004",
+            "Conflict",
+            "conflict",
+            TicketType::Bugfix,
+            Column::Progress,
+        );
+
+        // Create branch
+        checkout_branch(&repo, &ticket).await.unwrap();
+        commit_file(&repo, "conflict.txt", "branch version", "Branch change");
+
+        // Go to main and make conflicting change
+        checkout_main(&repo).await.unwrap();
+        commit_file(&repo, "conflict.txt", "main version", "Main change");
+
+        // Merge should detect conflict and auto-abort
+        let result = merge_branch(&repo, "gg/GG-004-conflict").await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("Konflikt") || err.contains("CONFLICT"),
+            "Expected conflict error, got: {err}"
+        );
+
+        // Verify we're still on main and repo is clean (merge was aborted)
+        let branch = sync_current_branch(&repo);
+        assert!(
+            branch == "main" || branch == "master",
+            "Expected main/master, got: {branch}"
+        );
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn auto_commit_with_changes() {
+        let repo = create_test_repo();
+
+        // Create a file without committing
+        std::fs::write(repo.join("uncommitted.txt"), "test").unwrap();
+
+        let committed = auto_commit(&repo, "Test commit").await.unwrap();
+        assert!(committed);
+
+        // Verify no uncommitted changes
+        let dirty = check_uncommitted(&repo).await.unwrap();
+        assert!(!dirty);
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn auto_commit_no_changes() {
+        let repo = create_test_repo();
+
+        let committed = auto_commit(&repo, "Empty commit").await.unwrap();
+        assert!(!committed);
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn is_git_repo_true() {
+        let repo = create_test_repo();
+        assert!(is_git_repo(&repo).await);
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn is_git_repo_false() {
+        let dir = std::env::temp_dir().join(format!("gg-no-git-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // Use GIT_CEILING_DIRECTORIES to prevent git from traversing upward
+        // into any parent git repo (e.g. if temp is inside a worktree).
+        let parent = dir.parent().unwrap_or(&dir).to_string_lossy().to_string();
+        let output = tokio::process::Command::new("git")
+            .args(["rev-parse", "--git-dir"])
+            .current_dir(&dir)
+            .env("GIT_CEILING_DIRECTORIES", &parent)
+            .output()
+            .await
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        assert!(!output, "Directory should not be detected as a git repo");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn has_no_remote() {
+        let repo = create_test_repo();
+        assert!(!has_remote(&repo).await);
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn push_without_remote_fails() {
+        let repo = create_test_repo();
+        let result = push_branch(&repo, "master").await;
+        assert!(result.is_err());
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn in_progress_operation_none() {
+        let repo = create_test_repo();
+        assert!(has_in_progress_operation(&repo).await.is_none());
+        cleanup(&repo);
     }
 }

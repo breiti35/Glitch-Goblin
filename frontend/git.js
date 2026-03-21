@@ -3,7 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, timeAgo } from './utils.js';
-import { state, appendLog, showToast } from './app.js';
+import { state, appendLog, showToast, updateGitWarnings } from './app.js';
 import { openBoardTerminal } from './terminal.js';
 import { t } from './i18n.js';
 
@@ -87,6 +87,15 @@ export async function loadGitView() {
           ${commitsHtml}
         </div>
       `;
+
+      // Show remote info
+      try {
+        const status = await invoke("get_git_status");
+        if (status.hasRemote && status.remoteUrl) {
+          document.getElementById("git-current-branch").insertAdjacentHTML('beforeend',
+            `<div class="git-remote-info" style="font-size:11px;color:var(--text-muted);margin-top:4px">\u{1F517} ${esc(status.remoteUrl)}</div>`);
+        }
+      } catch {}
     }
 
     let html = "";
@@ -162,6 +171,7 @@ function renderBranchCard(branch, compact) {
         <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}">\u25BC ${esc(t('git.details'))}</button>
         ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u2714 ${esc(t('git.merge'))}</button>` : ""}
         <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}">\u{1F5D1} ${esc(t('git.deleteBranch'))}</button>
+        <button class="git-card-btn push" data-action="push" data-branch="${esc(branch.name)}">\u2B06 ${esc(t('git.push'))}</button>
       </div>
       <div class="git-card-details hidden" data-details-for="${esc(branch.name)}"></div>
     </div>
@@ -202,6 +212,8 @@ async function handleCardClick(e) {
     await mergeBranch(branch);
   } else if (action === "delete") {
     await deleteBranch(branch);
+  } else if (action === "push") {
+    await pushBranch(branch);
   }
 }
 
@@ -383,6 +395,18 @@ async function deleteBranch(branch) {
     loadGitView();
   } catch (e) {
     appendLog("Delete failed: " + e, true);
+  }
+}
+
+async function pushBranch(branch) {
+  try {
+    showToast(t('git.pushing', {branch}), "info");
+    await invoke("push_branch", { branch });
+    showToast(t('git.pushSuccess', {branch}), "success");
+    loadGitView();
+  } catch (e) {
+    appendLog("Push failed: " + e, true);
+    showToast(t('git.pushFailed'), "error");
   }
 }
 
