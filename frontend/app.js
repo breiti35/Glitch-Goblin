@@ -1,6 +1,7 @@
 // ── Tauri IPC ──
 import { invoke, Channel } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // ── Modules ──
 import { debounce, esc, withGuard, timeAgo } from './utils.js';
@@ -13,7 +14,7 @@ import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetLi
 import { loadStatistics } from './statistics.js';
 import { loadDashboard, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
 import { loadActivityView, setupActivityListeners } from './activity.js';
-import { loadAgents, loadCommands, newAgentFlow, saveAgentEditor, deleteAgentEditor, newCommandFlow, saveCommandEditor, deleteCommandEditor } from './editors.js';
+import { loadAgents, loadCommands, newAgentFlow, saveAgentEditor, deleteAgentEditor, setupAgentEditorClose, newCommandFlow, saveCommandEditor, deleteCommandEditor, setupCommandEditorClose } from './editors.js';
 import { setupDeployListeners, loadDeployConfig } from './deploy.js';
 import { setupBugSyncListeners, updateBugSyncBadge } from './bugsync.js';
 import { t, setLocale, onLocaleChange, translateDOM } from './i18n.js';
@@ -147,7 +148,7 @@ async function loadInitialState() {
 
 // ── Event Bindings ──
 function bindEvents() {
-  // Navigation
+  // Navigation — sidebar
   document.querySelectorAll(".nav-item[data-view]").forEach(btn => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
@@ -156,14 +157,16 @@ function bindEvents() {
   document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
   document.getElementById("btn-app-settings").addEventListener("click", () => switchView("settings"));
 
-  // Global search with dropdown results
+  // Search Spotlight
+  document.getElementById("btn-open-search")?.addEventListener("click", openSearchSpotlight);
   const debouncedGlobalSearch = debounce(globalSearch, 200);
   const searchInput = document.getElementById("global-search-input");
   searchInput?.addEventListener("input", debouncedGlobalSearch);
-  searchInput?.addEventListener("focus", globalSearch);
+  // Close overlay on backdrop click or Escape
+  document.querySelector(".search-overlay-backdrop")?.addEventListener("click", closeSearchSpotlight);
   document.addEventListener("click", (e) => {
-    if (!e.target.closest(".global-search")) {
-      document.getElementById("global-search-results")?.classList.add("hidden");
+    if (!e.target.closest(".search-spotlight") && !e.target.closest("#btn-open-search")) {
+      closeSearchSpotlight();
     }
   });
 
@@ -227,6 +230,10 @@ function bindEvents() {
   document.getElementById("set-max-backups").addEventListener("input", (e) => {
     document.getElementById("max-backups-label").textContent = e.target.value;
   });
+  document.getElementById("set-bugsync-interval")?.addEventListener("input", (e) => {
+    const v = parseInt(e.target.value);
+    document.getElementById("bugsync-interval-label").textContent = v >= 60 ? Math.round(v / 60) + " min" : v + " s";
+  });
   document.getElementById("btn-open-backups").addEventListener("click", openBackupModal);
 
   // Filter bar (debounced)
@@ -256,27 +263,44 @@ function bindEvents() {
   document.getElementById("btn-new-agent").addEventListener("click", newAgentFlow);
   document.getElementById("btn-save-agent").addEventListener("click", saveAgentEditor);
   document.getElementById("btn-delete-agent").addEventListener("click", deleteAgentEditor);
+  setupAgentEditorClose();
 
   // Command editor
   document.getElementById("btn-new-command").addEventListener("click", newCommandFlow);
   document.getElementById("btn-save-command").addEventListener("click", saveCommandEditor);
   document.getElementById("btn-delete-command").addEventListener("click", deleteCommandEditor);
+  setupCommandEditorClose();
+
+  // Window controls (custom titlebar)
+  document.getElementById("win-minimize")?.addEventListener("click", () => getCurrentWindow().minimize());
+  document.getElementById("win-maximize")?.addEventListener("click", async () => {
+    const win = getCurrentWindow();
+    if (await win.isMaximized()) win.unmaximize(); else win.maximize();
+  });
+  document.getElementById("win-close")?.addEventListener("click", () => getCurrentWindow().close());
 }
 
 // ── Keyboard Shortcuts ──
 function bindKeyboardShortcuts() {
   document.addEventListener("keydown", (e) => {
     const tag = e.target.tagName;
+    if (e.key === "Escape") {
+      closeSearchSpotlight();
+      closeAllModals();
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") e.target.blur();
+      return;
+    }
+
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
-      if (e.key === "Escape") {
-        e.target.blur();
-        closeAllModals();
-      }
       return;
     }
 
     if (e.ctrlKey || e.metaKey) {
       switch (e.key.toLowerCase()) {
+        case "k":
+          e.preventDefault();
+          openSearchSpotlight();
+          break;
         case "n":
           e.preventDefault();
           openNewTaskModal();
@@ -374,7 +398,7 @@ export function switchView(name) {
   if (el) el.classList.add("active");
 
   document.querySelectorAll(".nav-item[data-view]").forEach(b => b.classList.remove("active"));
-  const nav = document.querySelector(`[data-view="${name}"]`);
+  const nav = document.querySelector(`.nav-item[data-view="${name}"]`);
   if (nav) nav.classList.add("active");
 
   // Lazy-load view content
@@ -675,7 +699,10 @@ function updateSidebar() {
 
   if (state.project) {
     nameEl.textContent = state.project.name;
-    pathEl.textContent = state.project.path;
+    // Clean Windows UNC prefix (\\?\) from path display
+    let cleanPath = state.project.path || "";
+    cleanPath = cleanPath.replace(/^\\\\\?\\/, "");
+    pathEl.textContent = cleanPath;
   } else {
     nameEl.textContent = t('header.noProject');
     pathEl.textContent = "\u2014";
@@ -694,18 +721,22 @@ function toggleTheme() {
 
 export function updateThemeUI() {
   const theme = document.body.dataset.theme;
-  document.getElementById("theme-icon").textContent = theme === "dark" ? "\u263E" : "\u2600";
-  document.getElementById("theme-label").textContent = theme === "dark" ? "Dark Mode" : "Light Mode";
+  const matIcon = document.getElementById("theme-icon-mat");
+  if (matIcon) matIcon.textContent = theme === "dark" ? "dark_mode" : "light_mode";
 }
 
 export function applyAccentColor(color) {
   if (!color) return;
-  document.documentElement.style.setProperty("--user-accent", color);
+  // Must set on body (which has data-theme) to override theme defaults
+  const el = document.body;
+  el.style.setProperty("--accent", color);
   const r = parseInt(color.slice(1, 3), 16);
   const g = parseInt(color.slice(3, 5), 16);
   const b = parseInt(color.slice(5, 7), 16);
   const hover = `rgb(${Math.min(r + 20, 255)}, ${Math.min(g + 20, 255)}, ${Math.min(b + 20, 255)})`;
-  document.documentElement.style.setProperty("--user-accent-hover", hover);
+  el.style.setProperty("--accent-hover", hover);
+  el.style.setProperty("--accent-glow", `rgba(${r}, ${g}, ${b}, 0.15)`);
+  el.style.setProperty("--primary-container", hover);
 }
 
 // ── Project Picker ──
@@ -927,6 +958,7 @@ function setupNotifCenter() {
     notifications.length = 0;
     updateNotifBadge();
     renderNotifList();
+    document.getElementById("notif-panel")?.classList.add("hidden");
   });
   // Close on outside click
   document.addEventListener("click", (e) => {
@@ -1209,7 +1241,22 @@ function updateTaskHelper() {
   `;
 }
 
-// ── Global Search ──
+// ── Search Spotlight ──
+function openSearchSpotlight() {
+  const overlay = document.getElementById("search-overlay");
+  if (overlay) {
+    overlay.classList.remove("hidden");
+    const input = document.getElementById("global-search-input");
+    if (input) { input.value = ""; input.focus(); }
+    document.getElementById("global-search-results")?.classList.add("hidden");
+  }
+}
+
+function closeSearchSpotlight() {
+  document.getElementById("search-overlay")?.classList.add("hidden");
+  document.getElementById("global-search-results")?.classList.add("hidden");
+}
+
 function globalSearch() {
   const input = document.getElementById("global-search-input");
   const query = (input?.value || "").toLowerCase().trim();
@@ -1258,8 +1305,7 @@ function globalSearch() {
     dropdown.querySelectorAll(".search-result-item").forEach((el, i) => {
       el.addEventListener("click", () => {
         results[i].action();
-        dropdown.classList.add("hidden");
-        input.value = "";
+        closeSearchSpotlight();
       });
     });
   }

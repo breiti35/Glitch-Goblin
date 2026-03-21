@@ -1,22 +1,35 @@
-// ── Activity Module ──
-// Activity timeline view.
+// ── Activity Module ── Stitch Redesign
+// Activity timeline view with Material Icons, source links, badges.
 
 import { invoke } from '@tauri-apps/api/core';
-import { esc, timeAgo } from './utils.js';
+import { esc } from './utils.js';
+import { state } from './app.js';
 import { t } from './i18n.js';
 
 let activityFilter = "all";
+let activityEntries = [];
 
 export async function loadActivityView() {
   const list = document.getElementById("activity-list");
   list.innerHTML = `<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div>`;
 
+  // Set subtitle
+  const subtitle = document.getElementById("activity-subtitle");
+  if (subtitle && state.project) {
+    subtitle.textContent = `Real-time event stream for ${state.project.name}`;
+  }
+
   try {
-    const entries = await invoke("get_activity", { limit: 200 });
-    renderActivityList(entries);
+    activityEntries = await invoke("get_activity", { limit: 200 });
+    renderActivityList(activityEntries);
   } catch (e) {
     list.innerHTML = `<p class="empty-state">Error: ${esc(String(e))}</p>`;
   }
+}
+
+function formatTime(timestamp) {
+  const d = new Date(timestamp);
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
 function renderActivityList(entries) {
@@ -34,47 +47,78 @@ function renderActivityList(entries) {
   const groups = {};
   const now = new Date();
   const today = now.toDateString();
+  const yesterday = new Date(now - 86400000).toDateString();
   const weekAgo = new Date(now - 7 * 86400000);
 
   for (const entry of filtered) {
     const d = new Date(entry.timestamp);
     let label;
-    if (d.toDateString() === today) label = "Today";
-    else if (d > weekAgo) label = "This Week";
-    else label = "Older";
+    if (d.toDateString() === today) label = "TODAY";
+    else if (d.toDateString() === yesterday) label = "YESTERDAY";
+    else if (d > weekAgo) label = "THIS WEEK";
+    else label = "OLDER";
 
     if (!groups[label]) groups[label] = [];
     groups[label].push(entry);
   }
 
+  // Material Symbol icon map
   const iconMap = {
-    ticket_created: "+", ticket_started: "&#9655;", ticket_completed: "&#10003;",
-    ticket_merged: "&#8644;", ticket_failed: "&#10007;", ticket_deleted: "&#128465;",
-    ticket_moved: "&#8596;", backup_restored: "&#8635;", settings_changed: "&#9881;",
+    ticket_created: "add", ticket_started: "play_arrow", ticket_completed: "check_circle",
+    ticket_merged: "merge", ticket_failed: "warning", ticket_deleted: "delete",
+    ticket_moved: "swap_horiz", backup_restored: "restore", settings_changed: "settings",
   };
   const classMap = {
     ticket_created: "created", ticket_started: "started", ticket_completed: "completed",
     ticket_merged: "merged", ticket_failed: "failed", ticket_deleted: "deleted",
     ticket_moved: "moved", backup_restored: "backup_restored", settings_changed: "moved",
   };
+  // Source labels
+  const sourceMap = {
+    ticket_created: "Terminal", ticket_started: "Terminal", ticket_completed: "Kanban Board",
+    ticket_merged: "Git", ticket_failed: "Terminal", ticket_deleted: "Bug-Sync",
+    ticket_moved: "Kanban Board", backup_restored: "System", settings_changed: "Settings",
+  };
 
   let html = "";
   for (const [label, items] of Object.entries(groups)) {
     html += `<div class="activity-group-label">${label}</div>`;
     for (const e of items) {
-      const icon = iconMap[e.action] || "&#9679;";
+      const icon = iconMap[e.action] || "info";
       const cls = classMap[e.action] || "";
+      const source = sourceMap[e.action] || "";
+      const actionLabel = e.action.replace(/ticket_/g, "").replace(/_/g, " ");
       const title = e.ticket_title ? ` \u2014 ${esc(e.ticket_title)}` : "";
       const detail = e.details ? esc(e.details) : "";
       const ticketId = e.ticket_id ? esc(e.ticket_id) : "";
+
+      // Build description line
+      let descParts = [];
+      if (detail) descParts.push(detail);
+      if (ticketId && !detail) descParts.push(ticketId);
+      const descHtml = descParts.join(" \u00B7 ");
+
+      // Badges (ticket ID + prio if available)
+      let badgesHtml = "";
+      if (e.ticket_id) {
+        let badges = `<span class="activity-badge">#${esc(e.ticket_id)}</span>`;
+        if (e.ticket_prio) {
+          badges += `<span class="activity-badge activity-badge-prio">PRIO:${e.ticket_prio.toUpperCase()}</span>`;
+        }
+        badgesHtml = `<div class="activity-badges">${badges}</div>`;
+      }
+
       html += `
         <div class="activity-item">
-          <span class="activity-icon ${cls}">${icon}</span>
-          <div class="activity-body">
-            <span class="activity-action">${esc(e.action.replace(/_/g, " "))}${title}</span>
-            <div class="activity-detail">${ticketId}${detail ? " \u00B7 " + detail : ""}</div>
+          <div class="activity-icon ${cls}">
+            <span class="material-symbols-outlined">${icon}</span>
           </div>
-          <span class="activity-time">${timeAgo(e.timestamp)}</span>
+          <div class="activity-body">
+            <div class="activity-action">${actionLabel}${title}${source ? ' &mdash; <span class="activity-source">' + source + '</span>' : ''}</div>
+            ${descHtml ? `<div class="activity-detail">${descHtml}</div>` : ''}
+            ${badgesHtml}
+          </div>
+          <span class="activity-time">${formatTime(e.timestamp)}</span>
         </div>`;
     }
   }
@@ -88,7 +132,11 @@ export function setupActivityListeners() {
       document.querySelectorAll(".activity-filter").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       activityFilter = btn.dataset.activityFilter;
-      loadActivityView();
+      if (activityEntries.length > 0) {
+        renderActivityList(activityEntries);
+      } else {
+        loadActivityView();
+      }
     });
   });
 }

@@ -53,47 +53,57 @@ export async function loadGitView() {
     const activeBranches = branches.filter(b => !b.isCurrent && !b.isMerged);
     const mergedBranches = branches.filter(b => !b.isCurrent && b.isMerged);
 
-    // Current branch info with recent commits
+    // Current branch — Stitch: branch badge + commit table
     if (current) {
-      const dirty = await invoke("check_uncommitted").catch(() => false);
+      // Set branch badge and project ID in header
+      const branchBadge = document.getElementById("git-active-branch");
+      if (branchBadge) branchBadge.textContent = current.name;
+      const projIdEl = document.getElementById("git-project-id");
+      if (projIdEl) {
+        const projId = state.project?.id || state.project?.name || '';
+        projIdEl.textContent = projId ? `Project ID: ${projId}` : '';
+      }
+
       const recentCommits = await invoke("get_commit_log", { branch: current.name, limit: 5 }).catch(() => []);
 
-      let commitsHtml = "";
+      let commitsTableHtml = "";
       if (recentCommits.length > 0) {
-        commitsHtml = `
-          <div class="git-current-commits">
-            <div class="git-current-commits-title">${esc(t('git.recentCommits'))}</div>
-            ${recentCommits.map(c => `
-              <div class="git-current-commit-row">
-                <span class="commit-hash">${esc(c.hash)}</span>
-                <span class="commit-msg">${esc(c.message)}</span>
-                <span class="commit-date">${timeAgo(c.date)}</span>
+        commitsTableHtml = `
+          <div class="git-commits-section">
+            <div class="git-section-header">
+              <div class="git-section-title">
+                <span class="material-symbols-outlined" style="font-size:20px">history</span>
+                LETZTE COMMITS
               </div>
-            `).join("")}
+              <span class="dash-view-all">VIEW ALL HISTORY</span>
+            </div>
+            <div class="git-commits-table">
+              <div class="git-commits-thead">
+                <span>HASH</span><span>MESSAGE</span><span>TIME</span>
+              </div>
+              ${recentCommits.map(c => `
+                <div class="git-commit-table-row">
+                  <span class="git-commit-hash-badge">${esc(c.hash)}</span>
+                  <div class="git-commit-msg-col">
+                    <div class="git-commit-msg-text">${esc(c.message)}</div>
+                    ${c.author ? `<div class="git-commit-author">Author: @${esc(c.author)}</div>` : ''}
+                  </div>
+                  <span class="git-commit-time">${timeAgo(c.date)}</span>
+                </div>
+              `).join('')}
+            </div>
           </div>
         `;
       }
 
-      document.getElementById("git-current-branch").innerHTML = `
-        <div class="git-current-card">
-          <div class="git-current-header">
-            <span class="git-current-dot ${dirty ? 'dirty' : 'clean'}"></span>
-            <div class="git-current-info">
-              <span class="git-current-name">${esc(current.name)}</span>
-              <span class="git-current-label">${esc(t('git.currentBranch'))}</span>
-            </div>
-            <span class="git-current-status">${dirty ? '\u26A0 ' + esc(t('git.uncommittedChanges')) : '\u2713 ' + esc(t('git.allCommitted'))}</span>
-          </div>
-          ${commitsHtml}
-        </div>
-      `;
+      document.getElementById("git-current-branch").innerHTML = commitsTableHtml;
 
       // Show remote info
       try {
         const status = await invoke("get_git_status");
         if (status.hasRemote && status.remoteUrl) {
           document.getElementById("git-current-branch").insertAdjacentHTML('beforeend',
-            `<div class="git-remote-info" style="font-size:11px;color:var(--text-muted);margin-top:4px">\u{1F517} ${esc(status.remoteUrl)}</div>`);
+            `<div style="font-size:11px;color:var(--text-muted);margin-top:8px"><span class="material-symbols-outlined" style="font-size:14px">link</span> ${esc(status.remoteUrl)}</div>`);
         }
       } catch {}
     }
@@ -115,18 +125,16 @@ export async function loadGitView() {
       }
     }
 
-    // Merged branches (compact, collapsible -- open by default if no active branches)
+    // Merged branches — Stitch: open grid with merge icons
     if (mergedBranches.length > 0) {
-      const autoOpen = activeBranches.length === 0 ? " open" : "";
       html += `
-        <details class="git-merged-group"${autoOpen}>
-          <summary class="git-group-title git-group-collapsible">
-            ${esc(t('git.mergedBranches', {branch: current?.name || 'main'}))} <span class="git-group-count">${mergedBranches.length}</span>
-          </summary>
-          <div class="git-merged-list">
-            ${mergedBranches.map(b => renderMergedBranchRow(b)).join("")}
-          </div>
-        </details>
+        <div class="git-merged-section-title">
+          <span class="material-symbols-outlined">verified</span>
+          ERLEDIGTE BRANCHES (BEREITS IN MASTER EINGEBAUT)
+        </div>
+        <div class="git-merged-list">
+          ${mergedBranches.map(b => renderMergedBranchRow(b)).join("")}
+        </div>
       `;
     }
 
@@ -168,33 +176,37 @@ function renderBranchCard(branch, compact) {
         ${metaParts ? `<span class="git-card-meta">${metaParts}</span>` : ""}
       </div>
       <div class="git-card-actions">
-        <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}">\u25BC ${esc(t('git.details'))}</button>
-        ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}">\u2714 ${esc(t('git.merge'))}</button>` : ""}
-        <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}">\u{1F5D1} ${esc(t('git.deleteBranch'))}</button>
-        <button class="git-card-btn push" data-action="push" data-branch="${esc(branch.name)}">\u2B06 ${esc(t('git.push'))}</button>
+        <button class="git-card-btn details" data-action="details" data-branch="${esc(branch.name)}"><span class="material-symbols-outlined" style="font-size:14px">expand_more</span> ${esc(t('git.details'))}</button>
+        ${branch.isKanban ? `<button class="git-card-btn merge" data-action="merge" data-branch="${esc(branch.name)}"><span class="material-symbols-outlined" style="font-size:14px">merge</span> ${esc(t('git.merge'))}</button>` : ""}
+        <button class="git-card-btn delete" data-action="delete" data-branch="${esc(branch.name)}"><span class="material-symbols-outlined" style="font-size:14px">delete</span> ${esc(t('git.deleteBranch'))}</button>
+        <button class="git-card-btn push" data-action="push" data-branch="${esc(branch.name)}"><span class="material-symbols-outlined" style="font-size:14px">cloud_upload</span> ${esc(t('git.push'))}</button>
       </div>
       <div class="git-card-details hidden" data-details-for="${esc(branch.name)}"></div>
     </div>
   `;
 }
 
-// Compact row for merged branches
+// Stitch merged branch card
 function renderMergedBranchRow(branch) {
   let ticketTitle = "";
   if (branch.ticketId) {
     const ticket = (state.board.tickets || []).find(tk => tk.id === branch.ticketId);
     if (ticket) ticketTitle = ticket.title;
   }
-  // Fallback: use last commit message if no ticket title
   const description = ticketTitle || branch.lastCommitMsg || "";
 
   return `
-    <div class="git-merged-row" data-branch="${esc(branch.name)}">
-      <span class="status-dot merged"></span>
-      <span class="git-merged-name">${esc(branch.name)}</span>
-      ${description ? `<span class="git-merged-ticket">${esc(description)}</span>` : ""}
-      <span class="git-card-merged">\u2713</span>
-      <button class="git-card-btn delete git-merged-delete" data-action="delete" data-branch="${esc(branch.name)}" title="${esc(t('git.deleteBranchTitle'))}">\u{1F5D1}</button>
+    <div class="git-merged-card" data-branch="${esc(branch.name)}">
+      <div class="git-merged-icon">
+        <span class="material-symbols-outlined">merge</span>
+      </div>
+      <div class="git-merged-info">
+        <div class="git-merged-name">${esc(branch.name)}</div>
+        ${description ? `<div class="git-merged-meta">${esc(description)}</div>` : ''}
+      </div>
+      <button class="git-card-btn delete git-merged-delete" data-action="delete" data-branch="${esc(branch.name)}" title="${esc(t('git.deleteBranchTitle'))}">
+        <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+      </button>
     </div>
   `;
 }

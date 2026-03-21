@@ -16,10 +16,12 @@ export async function loadDashboard() {
   }
   document.getElementById("dashboard-project-name").textContent = state.project.name;
 
-  // Breadcrumb
+  // Breadcrumb — preserve material icon, update text
   const breadcrumb = document.getElementById("dash-breadcrumb");
   if (breadcrumb && state.project) {
-    breadcrumb.textContent = `${state.project.name} / main`;
+    const icon = breadcrumb.querySelector('.material-symbols-outlined');
+    const iconHtml = icon ? icon.outerHTML + ' ' : '';
+    breadcrumb.innerHTML = iconHtml + `${esc(state.project.name)} / <span style="font-weight:700">main</span>`;
   }
 
   // Render action cards
@@ -28,23 +30,25 @@ export async function loadDashboard() {
   try {
     const info = await invoke("get_project_info");
 
-    // Tech stack
-    document.getElementById("dash-tech-badges").innerHTML =
-      info.techStack.length > 0
+    // Tech stack (optional element)
+    const techEl = document.getElementById("dash-tech-badges");
+    if (techEl) {
+      techEl.innerHTML = info.techStack.length > 0
         ? info.techStack.map(t => `<span class="tech-badge">${esc(t)}</span>`).join("")
-        : '<span style="color:var(--muted)">' + esc(t('dashboard.unknown')) + '</span>';
+        : '';
+    }
 
-    // Quick stats
-    const tc = info.ticketCounts || {};
-    document.getElementById("dash-stats-body").innerHTML = `
-      <div class="dash-stat-row"><span>Backlog</span><span class="dash-stat-val">${tc.backlog || 0}</span></div>
-      <div class="dash-stat-row"><span>${esc(t('dashboard.inProgress'))}</span><span class="dash-stat-val">${tc.progress || 0}</span></div>
-      <div class="dash-stat-row"><span>Review</span><span class="dash-stat-val">${tc.review || 0}</span></div>
-      <div class="dash-stat-row"><span>Done</span><span class="dash-stat-val">${tc.done || 0}</span></div>
-      <div class="dash-stat-row"><span>Branches</span><span class="dash-stat-val">${info.branchCount}</span></div>
-      <div class="dash-stat-row"><span>Agents</span><span class="dash-stat-val">${info.agentCount}</span></div>
-      <div class="dash-stat-row"><span>Commands</span><span class="dash-stat-val">${info.commandCount}</span></div>
-    `;
+    // Quick stats (optional element)
+    const statsEl = document.getElementById("dash-stats-body");
+    if (statsEl) {
+      const tc = info.ticketCounts || {};
+      statsEl.innerHTML = `
+        <div class="dash-stat-row"><span>Backlog</span><span class="dash-stat-val">${tc.backlog || 0}</span></div>
+        <div class="dash-stat-row"><span>${esc(t('dashboard.inProgress'))}</span><span class="dash-stat-val">${tc.progress || 0}</span></div>
+        <div class="dash-stat-row"><span>Review</span><span class="dash-stat-val">${tc.review || 0}</span></div>
+        <div class="dash-stat-row"><span>Done</span><span class="dash-stat-val">${tc.done || 0}</span></div>
+      `;
+    }
 
     // README
     document.getElementById("dash-readme-body").textContent =
@@ -71,15 +75,36 @@ export async function loadDashboard() {
           }).join("") + '</div>'
         : '<span style="color:var(--muted)">' + esc(t('dashboard.noCommits')) + '</span>';
 
-    // Recent activity
+    // Recent activity — Stitch style with colored icons
+    const activityIconMap = {
+      created: { icon: 'add_circle', color: 'var(--accent)' },
+      completed: { icon: 'check_circle', color: 'var(--success)' },
+      merged: { icon: 'merge', color: 'var(--tertiary)' },
+      started: { icon: 'play_circle', color: 'var(--accent)' },
+      moved: { icon: 'swap_horiz', color: 'var(--warning)' },
+      failed: { icon: 'error', color: 'var(--danger)' },
+      deleted: { icon: 'delete', color: 'var(--danger)' },
+      backup_restored: { icon: 'restore', color: 'var(--info)' },
+    };
     document.getElementById("dash-activity-body").innerHTML =
       info.recentActivity.length > 0
-        ? info.recentActivity.map(a => `
-            <div class="dash-activity-item">
-              <span class="act-label">${esc(a.action.replace(/_/g, " "))}${a.ticket_title ? " \u2014 " + esc(a.ticket_title) : ""}</span>
-              <span class="act-time">${timeAgo(a.timestamp)}</span>
-            </div>`).join("")
-        : '<span style="color:var(--muted)">' + esc(t('dashboard.noActivity')) + '</span>';
+        ? info.recentActivity.map(a => {
+            const actionKey = a.action.toLowerCase().replace(/ /g, '_');
+            const iconInfo = activityIconMap[actionKey] || { icon: 'info', color: 'var(--text-muted)' };
+            const actionLabel = a.action.replace(/_/g, " ");
+            const ticketRef = a.ticket_id ? `<span class="mono" style="color:var(--accent)">${esc(a.ticket_id)}</span>` : '';
+            return `
+            <div class="dash-activity-item-stitch">
+              <div class="dash-act-icon" style="background:${iconInfo.color}20;color:${iconInfo.color}">
+                <span class="material-symbols-outlined" style="font-size:18px">${iconInfo.icon}</span>
+              </div>
+              <div class="dash-act-body">
+                <div class="dash-act-text"><strong>${esc(actionLabel)}</strong>${a.ticket_title ? ' \u2014 ' + esc(a.ticket_title) : ''} ${ticketRef}</div>
+                <div class="dash-act-time">${timeAgo(a.timestamp)}</div>
+              </div>
+            </div>`;
+          }).join("")
+        : '<span style="color:var(--text-muted)">' + esc(t('dashboard.noActivity')) + '</span>';
 
   } catch (e) {
     console.error("Dashboard error:", e);

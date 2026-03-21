@@ -151,8 +151,13 @@ export function setupSettingsTabs() {
 
 export function setupModelPresetListener() {
   document.getElementById("set-claude-model")?.addEventListener("change", (e) => {
-    const presets = { sonnet: [3, 15], opus: [15, 75] };
-    const p = presets[e.target.value];
+    const val = e.target.value;
+    const presets = {
+      "claude-sonnet-4-6": [3, 15],
+      "claude-opus-4-6": [15, 75],
+      "claude-haiku-4-5-20251001": [0.8, 4],
+    };
+    const p = presets[val];
     if (p) {
       document.getElementById("set-cost-input").value = p[0];
       document.getElementById("set-cost-output").value = p[1];

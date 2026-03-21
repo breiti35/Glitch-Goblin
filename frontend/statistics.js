@@ -21,11 +21,13 @@ export function loadStatistics() {
   document.getElementById("stat-cycle").textContent =
     cycleTimes.length > 0 ? formatDuration(cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length) : "-";
 
-  // Cost stats
-  const ticketsWithCost = tickets.filter(t => t.cost_usd);
-  const totalCost = ticketsWithCost.reduce((sum, t) => sum + (t.cost_usd || 0), 0);
+  // Efficiency score (done / total %)
   const costEl = document.getElementById("stat-total-cost");
-  if (costEl) costEl.textContent = totalCost > 0 ? "$" + totalCost.toFixed(2) : "-";
+  if (costEl) {
+    costEl.textContent = tickets.length > 0
+      ? (done.length / tickets.length * 100).toFixed(1) + "%"
+      : "\u2014";
+  }
 
   // Stats badge
   document.getElementById("stats-badge").textContent = done.length + "/" + tickets.length;
@@ -52,12 +54,14 @@ function renderTypePieChart(tickets) {
   }
 
   const pie = document.getElementById("pie-chart");
+  const typeCount = Object.values(counts).filter(c => c > 0).length;
   if (segments.length === 0) {
-    pie.style.background = "var(--border)";
+    pie.style.background = "var(--surface-hover)";
+    pie.innerHTML = '';
   } else {
     pie.style.background = `conic-gradient(${segments.join(", ")})`;
+    pie.innerHTML = `<div class="pie-center-text"><span class="pie-center-num">${typeCount}</span><span class="pie-center-label">KATEGORIEN</span></div>`;
   }
-  // Center hole for donut effect
   pie.style.position = "relative";
 
   const legend = document.getElementById("pie-legend");
@@ -75,7 +79,7 @@ function renderColumnBarChart(tickets) {
   const counts = {};
   cols.forEach(c => counts[c] = tickets.filter(t => t.column === c).length);
   const max = Math.max(...Object.values(counts), 1);
-  const colors = { backlog: "var(--text-muted)", progress: "var(--accent)", review: "var(--info)", done: "var(--success)" };
+  const colors = { backlog: "var(--accent)", progress: "var(--accent)", review: "var(--tertiary)", done: "var(--tertiary)" };
 
   const chart = document.getElementById("bar-chart");
   chart.innerHTML = cols.map(col => `
@@ -109,11 +113,12 @@ function renderRecentCompleted(doneTickets) {
       : "-";
     const color = typeColors[ticket.ticket_type] || "var(--text-muted)";
     return `<div class="recent-item">
-      <span class="recent-check">\u2713</span>
+      <span class="recent-check"><span class="material-symbols-outlined">check_circle</span></span>
       <div class="recent-body">
-        <div class="recent-title">${esc(ticket.id)} ${esc(ticket.title)}</div>
+        <div class="card-ticket-id" style="margin-bottom:2px">${esc(ticket.id)}</div>
+        <div class="recent-title">${esc(ticket.title)}</div>
         <div class="recent-meta">
-          <span class="recent-type-badge" style="background:${color}">${esc(ticket.ticket_type)}</span>
+          <span class="recent-type-badge" style="background:${color}">${ticket.ticket_type.toUpperCase()}</span>
           <span class="recent-dur">${dur}</span>
         </div>
       </div>
@@ -140,7 +145,13 @@ function renderWeeklyVelocity(doneTickets) {
       return d >= weekStart && d < weekEnd;
     }).length;
 
-    const label = weekStart.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+    // ISO week number
+    const temp = new Date(weekStart);
+    temp.setHours(0, 0, 0, 0);
+    temp.setDate(temp.getDate() + 3 - (temp.getDay() + 6) % 7);
+    const week1 = new Date(temp.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((temp - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    const label = `KW ${weekNum}`;
     weeks.push({ label, count });
   }
 

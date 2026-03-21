@@ -185,9 +185,10 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
 }
 
 pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
+    let clean_project = strip_unc_prefix(project_path);
     let output = Command::new("git")
         .args(["status", "--porcelain"])
-        .current_dir(project_path)
+        .current_dir(&clean_project)
         .output()
         .await
         .map_err(|e| AppError::GitCommand(format!("status: {e}")))?;
@@ -579,6 +580,7 @@ pub async fn get_commit_log(
     limit: u32,
 ) -> Result<Vec<CommitInfo>, String> {
     validate_git_ref(branch)?;
+    let clean_project = strip_unc_prefix(project_path);
     let output = Command::new("git")
         .args([
             "log",
@@ -587,7 +589,7 @@ pub async fn get_commit_log(
             "-n",
             &limit.to_string(),
         ])
-        .current_dir(project_path)
+        .current_dir(&clean_project)
         .output()
         .await
         .map_err(|e| AppError::GitCommand(format!("log: {e}")))?;

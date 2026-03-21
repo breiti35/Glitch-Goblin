@@ -10,29 +10,35 @@
 </head>
 <body data-theme="dark">
   <div id="toast-container" class="toast-container"></div>
-  <header class="app-header">
-    <div class="app-header-left">
-      <span class="app-logo">&#10022;</span>
+  <header class="app-header" data-tauri-drag-region>
+    <div class="app-header-left" data-tauri-drag-region>
       <span class="app-name">Glitch Goblin</span>
-      <span class="app-version" id="app-version"></span>
     </div>
-    <div class="app-header-center">
-      <div class="global-search">
-        <span class="search-icon">&#9173;</span>
-        <input type="text" id="global-search-input" placeholder="Search..." data-i18n-placeholder="header.search">
-      </div>
-    </div>
+    <div class="app-header-center" data-tauri-drag-region></div>
     <div class="app-header-right">
-      <div class="header-user">
-        <div class="header-avatar" id="header-avatar">U</div>
-        <div class="header-user-info">
-          <div class="header-username" id="header-username">User</div>
-          <div class="header-status">&#9679; <span data-i18n="header.online">online</span></div>
+      <button class="header-icon-btn" id="btn-open-search" title="Suchen (Ctrl+K)">
+        <span class="material-symbols-outlined">search</span>
+      </button>
+      <button id="btn-local-deploy" class="deploy-btn local-deploy-btn hidden" title="Lokal testen (Docker)" data-i18n-title="board.localDeploy"><span class="material-symbols-outlined" style="font-size:16px">terminal</span> <span data-i18n="board.localDeploy">Lokal testen</span></button>
+      <button id="btn-live-deploy" class="deploy-btn live-deploy-btn hidden" title="Live deployen" data-i18n-title="board.liveDeploy"><span class="material-symbols-outlined" style="font-size:16px">rocket_launch</span> <span data-i18n="board.liveDeploy">Live deployen</span></button>
+      <!-- btn-header-add-project: hidden, function moved to project-selector -->
+      <button class="hidden" id="btn-header-add-project"></button>
+      <!-- Usage Widget -->
+      <div class="header-usage" id="header-usage">
+        <div class="header-usage-bar">
+          <span class="header-usage-label">5h</span>
+          <div class="header-usage-track"><div class="header-usage-fill" id="usage-5h-fill"></div></div>
+          <span class="header-usage-pct" id="usage-5h-pct">&ndash;</span>
+        </div>
+        <div class="header-usage-bar">
+          <span class="header-usage-label">7d</span>
+          <div class="header-usage-track"><div class="header-usage-fill" id="usage-7d-fill"></div></div>
+          <span class="header-usage-pct" id="usage-7d-pct">&ndash;</span>
         </div>
       </div>
       <div class="notif-wrapper">
-        <button class="header-notif-btn" id="header-notif-btn" title="Notifications" data-i18n-title="header.notifications">
-          &#128276;
+        <button class="header-icon-btn" id="header-notif-btn" title="Notifications" data-i18n-title="header.notifications">
+          <span class="material-symbols-outlined">notifications</span>
           <span class="header-notif-badge hidden" id="header-notif-badge">0</span>
         </button>
         <div class="notif-panel hidden" id="notif-panel">
@@ -45,82 +51,77 @@
           </div>
         </div>
       </div>
-      <button class="btn-create-project" id="btn-header-add-project" data-i18n="header.createProject">+ Create Project</button>
+      <button class="header-icon-btn" id="theme-toggle" title="Toggle Theme">
+        <span class="material-symbols-outlined" id="theme-icon-mat">dark_mode</span>
+      </button>
+      <button class="header-icon-btn" id="btn-app-settings" title="Settings" data-i18n-title="nav.settings">
+        <span class="material-symbols-outlined">settings</span>
+      </button>
+      <div class="header-avatar" id="header-avatar">U</div>
+      <!-- Window Controls -->
+      <div class="window-controls">
+        <button class="win-btn win-minimize" id="win-minimize"><span class="material-symbols-outlined">minimize</span></button>
+        <button class="win-btn win-maximize" id="win-maximize"><span class="material-symbols-outlined">crop_square</span></button>
+        <button class="win-btn win-close" id="win-close"><span class="material-symbols-outlined">close</span></button>
+      </div>
     </div>
   </header>
   <div id="app">
     <!-- Sidebar -->
     <aside id="sidebar">
-      <div class="sidebar-header">
-        <span class="app-title">Glitch Goblin</span>
-        <button id="btn-app-settings" class="icon-btn" title="App Settings" data-i18n-title="nav.settings">&#9881;</button>
-      </div>
-
       <!-- Project Selector -->
       <button id="project-selector" class="sidebar-project">
-        <span class="project-icon">&#9660;</span>
-        <div>
-          <div id="sidebar-project-name" class="project-name" data-i18n="header.noProject">No project</div>
+        <span class="project-icon"><span class="material-symbols-outlined">terminal</span></span>
+        <div class="project-info">
+          <div id="sidebar-project-name" class="project-name" data-i18n="header.noProject">Kein Projekt</div>
           <div id="sidebar-project-path" class="project-path">&mdash;</div>
         </div>
+        <span class="material-symbols-outlined project-chevron">unfold_more</span>
       </button>
 
       <!-- Navigation -->
       <nav class="sidebar-nav">
-        <div class="nav-section-label" data-i18n="nav.sectionProject">PROJECT</div>
         <button data-view="dashboard" class="nav-item">
-          <span class="nav-icon">&#9632;</span> <span data-i18n="nav.dashboard">Dashboard</span>
+          <span class="material-symbols-outlined nav-icon">dashboard</span> <span data-i18n="nav.dashboard">Dashboard</span>
         </button>
         <button data-view="board" class="nav-item active">
-          <span class="nav-icon">&#9632;</span> <span data-i18n="nav.board">Kanban Board</span> <span class="nav-badge" id="ticket-count">0</span>
+          <span class="material-symbols-outlined nav-icon">view_kanban</span> <span data-i18n="nav.board">Kanban Board</span>
+          <span class="nav-badge hidden" id="ticket-count">0</span>
         </button>
         <button data-view="statistics" class="nav-item">
-          <span class="nav-icon">&#9636;</span> <span data-i18n="nav.statistics">Statistics</span> <span class="nav-badge" id="stats-badge">-</span>
+          <span class="material-symbols-outlined nav-icon">analytics</span> <span data-i18n="nav.statistics">Statistiken</span>
+          <span class="nav-badge hidden" id="stats-badge">-</span>
         </button>
         <button id="nav-terminal" class="nav-item">
-          <span class="nav-icon">&#9002;</span> <span data-i18n="nav.terminal">Terminal</span>
+          <span class="material-symbols-outlined nav-icon">terminal</span> <span data-i18n="nav.terminal">Terminal</span>
         </button>
         <button data-view="git" class="nav-item">
-          <span class="nav-icon">&#8644;</span> <span data-i18n="nav.git">Git</span> <span class="nav-badge" id="branch-count">0</span>
+          <span class="material-symbols-outlined nav-icon">developer_board</span> <span data-i18n="nav.git">Git</span>
+          <span class="nav-badge hidden" id="branch-count">0</span>
         </button>
         <button data-view="activity" class="nav-item">
-          <span class="nav-icon">&#9776;</span> <span data-i18n="nav.activity">Activity</span>
+          <span class="material-symbols-outlined nav-icon">pulse_alert</span> <span data-i18n="nav.activity">Aktivit&auml;t</span>
         </button>
         <button class="nav-item hidden" id="nav-bug-sync">
-          <span class="nav-icon">&#128027;</span> <span data-i18n="nav.bugSync">Bug-Sync</span> <span class="nav-badge" id="bug-sync-count">0</span>
+          <span class="material-symbols-outlined nav-icon">bug_report</span> <span data-i18n="nav.bugSync">Bug-Sync</span>
+          <span class="nav-badge hidden" id="bug-sync-count">0</span>
         </button>
         <button data-view="agents" class="nav-item">
-          <span class="nav-icon">&#9655;</span> <span data-i18n="nav.agents">Agents</span> <span class="nav-badge" id="agent-count">0</span>
+          <span class="material-symbols-outlined nav-icon">smart_toy</span> <span data-i18n="nav.agents">Agenten</span>
+          <span class="nav-badge hidden" id="agent-count">0</span>
         </button>
         <button data-view="commands" class="nav-item">
-          <span class="nav-icon">&#8984;</span> <span data-i18n="nav.commands">Commands</span> <span class="nav-badge" id="command-count">0</span>
+          <span class="material-symbols-outlined nav-icon">code</span> <span data-i18n="nav.commands">Befehle</span>
+          <span class="nav-badge hidden" id="command-count">0</span>
         </button>
       </nav>
 
-      <!-- Claude Usage -->
-      <div class="sidebar-usage" id="sidebar-usage">
-        <div class="usage-title" data-i18n="usage.title">Claude Kontingent</div>
-        <div class="usage-row">
-          <span class="usage-label">5h</span>
-          <div class="usage-bar-track"><div class="usage-bar-fill" id="usage-5h-fill"></div></div>
-          <span class="usage-pct" id="usage-5h-pct">&ndash;</span>
-        </div>
-        <div class="usage-row">
-          <span class="usage-label">7d</span>
-          <div class="usage-bar-track"><div class="usage-bar-fill" id="usage-7d-fill"></div></div>
-          <span class="usage-pct" id="usage-7d-pct">&ndash;</span>
-        </div>
-      </div>
+      <!-- Claude Usage (moved to header) -->
+      <div class="sidebar-usage hidden" id="sidebar-usage"></div>
 
       <!-- Footer -->
       <div class="sidebar-footer">
-        <button data-view="settings" class="nav-item">
-          <span class="nav-icon">&#9881;</span> <span data-i18n="nav.settings">Settings</span>
-        </button>
-        <button id="theme-toggle" class="nav-item" title="Toggle Theme">
-          <span class="nav-icon" id="theme-icon">&#9790;</span> <span id="theme-label" data-i18n="nav.darkMode">Dark Mode</span>
-        </button>
-        <button id="btn-new-task" class="btn-new-task" data-i18n="nav.newTask">+ New Task</button>
+        <button id="btn-new-task" class="btn-new-task" data-i18n="nav.newTicket">+ Ticket</button>
       </div>
     </aside>
 
@@ -130,10 +131,19 @@
       <section id="view-dashboard" class="view">
         <div class="view-header">
           <div class="view-header-left">
-            <span class="view-breadcrumb" id="dash-breadcrumb"></span>
+            <span class="view-breadcrumb" id="dash-breadcrumb">
+              <span class="material-symbols-outlined" style="font-size:16px">account_tree</span>
+            </span>
             <h1 id="dashboard-project-name">Dashboard</h1>
           </div>
-          <button id="dash-goto-board" class="btn-secondary" style="font-size:12px" data-i18n="dashboard.goToBoard">Zum Board &rarr;</button>
+          <div class="view-header-right">
+            <button class="btn-outline-stitch" id="dash-star-btn">
+              <span class="material-symbols-outlined" style="font-size:18px">star</span> Star
+            </button>
+            <button class="btn-primary" id="dash-goto-board">
+              <span class="material-symbols-outlined" style="font-size:18px">download</span> Code
+            </button>
+          </div>
         </div>
 
         <!-- Action Cards -->
@@ -142,40 +152,68 @@
         <div class="dash-grid">
           <!-- Left Column -->
           <div class="dash-col-main">
-            <div class="dash-card">
-              <div class="dash-card-title" data-i18n="dashboard.readme">README</div>
+            <div class="dash-card dash-card-readme">
+              <div class="dash-card-title-row">
+                <span class="dash-card-title"><span class="material-symbols-outlined" style="font-size:18px">description</span> README.md</span>
+                <span class="dash-readme-edit material-symbols-outlined">edit</span>
+              </div>
               <div class="dash-card-body dash-readme-content" id="dash-readme-body"></div>
             </div>
-            <div class="dash-card">
-              <div class="dash-card-title" data-i18n="dashboard.project">Projekt</div>
-              <div class="dash-card-body">
-                <div id="dash-tech-badges" style="margin-bottom:8px"></div>
-                <div id="dash-stats-body"></div>
-              </div>
-            </div>
+            <!-- Activity Section (Stitch: below README in main column) -->
+            <section class="dash-activity-section">
+              <h3 class="dash-section-title">
+                <span class="material-symbols-outlined" style="color:var(--accent)">history</span> Aktivit&auml;t
+              </h3>
+              <div id="dash-activity-body" class="dash-activity-feed"></div>
+            </section>
           </div>
           <!-- Right Column -->
           <div class="dash-col-side">
+            <!-- Commits Card -->
             <div class="dash-card">
               <div class="dash-card-header">
-                <span class="dash-card-title" data-i18n="dashboard.recentCommits">Letzte Commits</span>
+                <span class="dash-card-title">
+                  <span class="material-symbols-outlined" style="font-size:18px">commit</span>
+                  <span data-i18n="dashboard.recentCommits">Letzte Commits</span>
+                </span>
+                <span class="dash-view-all" id="dash-commits-viewall" data-i18n="dashboard.viewAll">View All</span>
               </div>
               <div class="dash-card-body" id="dash-commits-body"></div>
             </div>
-            <div class="dash-card dash-card-row">
-              <div class="dash-kpi">
+            <!-- KPI Row: Build Status + Coverage -->
+            <div class="dash-kpi-row">
+              <div class="dash-kpi dash-kpi-primary">
                 <div class="dash-kpi-label">BUILD STATUS</div>
-                <div class="dash-kpi-value dash-kpi-success">Passing</div>
+                <div class="dash-kpi-value">
+                  <span class="material-symbols-outlined">check_circle</span> Passing
+                </div>
               </div>
-              <div class="dash-kpi">
+              <div class="dash-kpi dash-kpi-tertiary">
                 <div class="dash-kpi-label">COVERAGE</div>
-                <div class="dash-kpi-value">&mdash;</div>
+                <div class="dash-kpi-value">
+                  <span class="material-symbols-outlined">analytics</span> &mdash;
+                </div>
               </div>
             </div>
-            <div class="dash-card">
-              <div class="dash-card-title" data-i18n="dashboard.recentActivity">Letzte Aktivit&auml;t</div>
-              <div class="dash-card-body" id="dash-activity-body"></div>
+            <!-- Uptime -->
+            <div class="dash-kpi dash-kpi-surface">
+              <div class="dash-kpi-row-inner">
+                <div>
+                  <div class="dash-kpi-label">UPTIME</div>
+                  <div class="dash-kpi-value" style="font-size:22px">&mdash;</div>
+                </div>
+                <div class="dash-mini-bars" id="dash-uptime-bars">
+                  <div class="mini-bar" style="height:40%"></div>
+                  <div class="mini-bar" style="height:60%"></div>
+                  <div class="mini-bar" style="height:30%"></div>
+                  <div class="mini-bar" style="height:80%"></div>
+                  <div class="mini-bar" style="height:50%"></div>
+                  <div class="mini-bar" style="height:70%"></div>
+                </div>
+              </div>
             </div>
+            <!-- Languages -->
+            <div class="dash-languages" id="dash-languages"></div>
           </div>
         </div>
       </section>
@@ -183,29 +221,29 @@
       <!-- View: Kanban Board -->
       <section id="view-board" class="view active">
         <div class="view-header">
-          <h1 id="board-title" data-i18n="board.title">Kanban Board</h1>
-          <div class="board-header-meta">
-            <div class="health-bar-wrap">
-              <span class="health-label" data-i18n="board.healthStatus">Project health status</span>
-              <div class="health-bar-track" id="health-bar">
-                <div class="health-seg health-seg-teal"  id="health-teal"  style="width:60%"></div>
-                <div class="health-seg health-seg-yellow" id="health-yellow" style="width:25%"></div>
-                <div class="health-seg health-seg-empty" id="health-empty"  style="width:15%"></div>
-              </div>
-            </div>
-          <div class="header-actions">
-            <button id="btn-export-tickets" class="icon-btn" title="Export" data-i18n-title="board.export">&#128190;</button>
-            <button id="btn-import-tickets" class="icon-btn" title="Import" data-i18n-title="board.import">&#128194;</button>
-            <button id="btn-filter-toggle" class="icon-btn" title="Filter (Ctrl+F)" data-i18n-title="board.filter">&#128269;</button>
-            <button id="btn-local-deploy" class="deploy-btn local-deploy-btn hidden" title="Lokal testen (Docker)" data-i18n-title="board.localDeploy"><span>&#129514;</span> <span data-i18n="board.localDeploy">Lokal testen</span></button>
-            <button id="btn-live-deploy" class="deploy-btn live-deploy-btn hidden" title="Live deployen" data-i18n-title="board.liveDeploy"><span>&#128640;</span> <span data-i18n="board.liveDeploy">Live deployen</span></button>
+          <div class="view-header-left">
+            <h1 id="board-title" data-i18n="board.title">Kanban Board</h1>
+            <p class="board-subtitle" id="board-subtitle"></p>
+          </div>
+          <div class="view-header-right">
             <span id="deploy-status-badge" class="deploy-badge hidden"></span>
-            <button id="btn-bug-sync" class="deploy-btn bug-sync-btn hidden" title="Portal Bugs synchronisieren" data-i18n-title="board.bugSync"><span>&#128027;</span> <span data-i18n="board.bugSync">Bugs synchen</span></button>
-            <span id="bug-sync-badge" class="bug-sync-badge hidden">0</span>
-            <span id="git-status" class="git-badge clean">&#9679; <span data-i18n="board.clean">clean</span></span>
-            <span id="running-badge" class="running-badge hidden">&#9881; <span data-i18n="board.running">Running...</span></span>
+            <span id="git-status" class="git-badge clean hidden"></span>
+            <span id="running-badge" class="running-badge hidden">&#9881; Running...</span>
+            <button id="btn-filter-toggle" class="header-icon-btn" title="Filter (Ctrl+F)" data-i18n-title="board.filter">
+              <span class="material-symbols-outlined">filter_list</span>
+            </button>
+            <button class="header-icon-btn" title="Search">
+              <span class="material-symbols-outlined">search</span>
+            </button>
           </div>
-          </div>
+        </div>
+        <!-- Hidden elements for JS compat -->
+        <div style="display:none">
+          <div class="health-bar-track" id="health-bar"><div id="health-teal"></div><div id="health-yellow"></div><div id="health-empty"></div></div>
+          <button id="btn-export-tickets"></button>
+          <button id="btn-import-tickets"></button>
+          <button id="btn-bug-sync"></button>
+          <span id="bug-sync-badge">0</span>
         </div>
         <div id="git-warning-banner" class="git-warning-banner hidden"></div>
         <!-- Filter Bar (Block B2) -->
@@ -229,51 +267,50 @@
           <div class="column" data-column="backlog">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-backlog">&#9776;</span>
-                <span class="column-title" data-i18n="board.backlog">Backlog</span>
+                <span class="col-icon col-icon-backlog"></span>
+                <span class="column-title" data-i18n="board.backlog">BACKLOG</span>
+                <span class="column-count" data-count="backlog">(0)</span>
               </div>
-              <span class="column-count" data-count="backlog">0</span>
-              <button id="btn-backlog-add" class="column-add-btn" title="Neues Ticket" data-i18n-title="board.newTicket">+</button>
+              <button id="btn-backlog-add" class="column-add-btn" title="Neues Ticket" data-i18n-title="board.newTicket"><span class="material-symbols-outlined" style="font-size:18px">add</span></button>
             </div>
-            <div class="column-wip-bar" data-wip="backlog"></div>
+            <div class="column-wip-bar hidden" data-wip="backlog"></div>
             <div class="column-stat" data-stat="backlog"></div>
             <div class="column-body" data-drop="backlog"></div>
           </div>
           <div class="column" data-column="progress" data-wip-limit="3">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-progress">&#9654;</span>
-                <span class="column-title" data-i18n="board.progress">Progress</span>
+                <span class="col-icon col-icon-progress"></span>
+                <span class="column-title" data-i18n="board.progress">IN ARBEIT</span>
+                <span class="column-count" data-count="progress">(0)</span>
               </div>
-              <span class="column-count" data-count="progress">0</span>
-              <span class="wip-limit-label">max 3</span>
+              <span class="material-symbols-outlined column-action-icon" style="color:var(--accent);cursor:pointer">play_arrow</span>
             </div>
-            <div class="column-wip-bar" data-wip="progress"></div>
+            <div class="column-wip-bar hidden" data-wip="progress"></div>
             <div class="column-stat" data-stat="progress"></div>
             <div class="column-body" data-drop="progress"></div>
           </div>
           <div class="column" data-column="review" data-wip-limit="5">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-review">&#9678;</span>
-                <span class="column-title" data-i18n="board.review">Review</span>
+                <span class="col-icon col-icon-review"></span>
+                <span class="column-title" data-i18n="board.review">REVIEW</span>
+                <span class="column-count" data-count="review">(0)</span>
               </div>
-              <span class="column-count" data-count="review">0</span>
-              <span class="wip-limit-label">max 5</span>
             </div>
-            <div class="column-wip-bar" data-wip="review"></div>
+            <div class="column-wip-bar hidden" data-wip="review"></div>
             <div class="column-stat" data-stat="review"></div>
             <div class="column-body" data-drop="review"></div>
           </div>
           <div class="column" data-column="done">
             <div class="column-header">
               <div class="column-title-row">
-                <span class="col-icon col-icon-done">&#10003;</span>
-                <span class="column-title" data-i18n="board.done">Done</span>
+                <span class="col-icon col-icon-done"></span>
+                <span class="column-title" data-i18n="board.done">ERLEDIGT</span>
+                <span class="column-count" data-count="done">(0)</span>
               </div>
-              <span class="column-count" data-count="done">0</span>
             </div>
-            <div class="column-wip-bar" data-wip="done"></div>
+            <div class="column-wip-bar hidden" data-wip="done"></div>
             <div class="column-stat" data-stat="done"></div>
             <div class="column-body" data-drop="done"></div>
           </div>
@@ -292,265 +329,199 @@
 
       <!-- View: Settings -->
       <section id="view-settings" class="view">
-        <div class="view-header"><h1 data-i18n="settings.title">Settings</h1></div>
+        <div class="view-header">
+          <div class="view-header-left">
+            <h1>Systemeinstellungen</h1>
+            <p class="view-subtitle">Konfiguriere deine Arbeitsumgebung, Terminal-Integrationen und KI-Modelle.</p>
+          </div>
+        </div>
         <div class="settings-tabs">
           <button class="settings-tab active" data-settings-tab="general" data-i18n="settings.general">Allgemein</button>
           <button class="settings-tab" data-settings-tab="terminal" data-i18n="settings.terminal">Terminal</button>
           <button class="settings-tab" data-settings-tab="deploy" data-i18n="settings.deploy">Deploy</button>
           <button class="settings-tab" data-settings-tab="bugsync" data-i18n="settings.bugSync">Bug-Sync</button>
         </div>
-        <div class="settings-form">
+        <div class="settings-bento">
+          <!-- ═══ GENERAL TAB ═══ -->
           <div class="settings-tab-content active" data-tab-content="general">
-          <label class="settings-label">
-            <span data-i18n="settings.claudeCliPath">Claude CLI Path</span>
-            <input type="text" id="set-claude-path" class="settings-input" placeholder="claude">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.commitPrefix">Commit Prefix</span>
-            <input type="text" id="set-commit-prefix" class="settings-input" placeholder="kanban:">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.autoExecuteTypes">Auto-Execute Types (comma-separated)</span>
-            <input type="text" id="set-auto-execute" class="settings-input" placeholder="docs, security">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.accentColor">Accent Color</span>
-            <div class="color-row">
-              <input type="color" id="set-accent-color" value="#F97316">
-              <span id="accent-color-label">#F97316</span>
+            <!-- Row 1: Basis Konfiguration + Git Integration -->
+            <div class="settings-bento-row">
+              <div class="settings-card settings-card-accent">
+                <div class="settings-card-title"><span class="material-symbols-outlined">settings</span> Basis Konfiguration</div>
+                <label class="settings-label"><span>CLI PATH</span>
+                  <input type="text" id="set-claude-path" class="settings-input" placeholder="claude">
+                </label>
+                <div class="settings-inline-row">
+                  <label class="settings-label" style="flex:1"><span>SPRACHE</span>
+                    <select id="set-language" class="settings-input"><option value="de">Deutsch (DE)</option><option value="en">English</option></select>
+                  </label>
+                  <label class="settings-label"><span>AKZENTFARBE</span>
+                    <div class="color-row"><input type="color" id="set-accent-color" value="#F97316"><span id="accent-color-label">#F97316</span></div>
+                  </label>
+                </div>
+              </div>
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">commit</span> Git Integration</div>
+                <label class="settings-label"><span>COMMIT-PREFIX</span>
+                  <input type="text" id="set-commit-prefix" class="settings-input" placeholder="kanban:">
+                </label>
+                <label class="settings-label" style="margin-top:16px">
+                  <span class="toggle-row"><span>Auto-Sign Commits</span>
+                    <label class="toggle-switch"><input type="checkbox" id="set-auto-push"><span class="toggle-slider"></span></label>
+                  </span>
+                </label>
+              </div>
             </div>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.theme">Theme</span>
-            <select id="set-theme" class="settings-input">
-              <option value="dark" data-i18n="settings.themeDark">Dark</option>
-              <option value="light" data-i18n="settings.themeLight">Light (Cream)</option>
-            </select>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.cardMode">Ticket-Karten Modus</span>
-            <select id="set-card-mode" class="settings-input">
-              <option value="click" data-i18n="settings.cardModeClick">Klick-Toggle</option>
-              <option value="always" data-i18n="settings.cardModeAlways">Immer offen</option>
-              <option value="hover" data-i18n="settings.cardModeHover">Hover (automatisch)</option>
-            </select>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.language">Sprache</span>
-            <select id="set-language" class="settings-input">
-              <option value="de">Deutsch</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-          <hr class="settings-divider">
-          <label class="settings-label">
-            <span class="toggle-row">
-              <span data-i18n="settings.notifications">Desktop Notifications</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-notifications" checked>
-                <span class="toggle-slider"></span>
-              </label>
-            </span>
-          </label>
-          <label class="settings-label">
-            <span class="toggle-row">
-              <span data-i18n="settings.sounds">Sound Effects</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-sounds" checked>
-                <span class="toggle-slider"></span>
-              </label>
-            </span>
-          </label>
-          <label class="settings-label">
-            <span class="toggle-row">
-              <span data-i18n="settings.autoBackup">Auto-Backup</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-backups" checked>
-                <span class="toggle-slider"></span>
-              </label>
-            </span>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.maxBackups">Max Backups</span>
-            <div class="settings-range-row">
-              <input type="range" id="set-max-backups" class="settings-range" min="1" max="20" value="10">
-              <span id="max-backups-label">10</span>
+            <!-- Row 2: Claude-Modell & Kosten -->
+            <div class="settings-card">
+              <div class="settings-card-title"><span class="material-symbols-outlined">psychology</span> Claude-Modell &amp; Kosten</div>
+              <div class="settings-bento-row">
+                <div>
+                  <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Verwalte deine KI-Ressourcen und behalte die API-Kosten im Blick.</p>
+                  <label class="settings-label"><span>AKTIVES MODELL</span>
+                    <select id="set-claude-model" class="settings-input">
+                      <option value="claude-sonnet-4-6">Claude 3.5 Sonnet (empfohlen)</option>
+                      <option value="claude-opus-4-6">Claude 4 Opus</option>
+                      <option value="claude-haiku-4-5-20251001">Claude 3.5 Haiku</option>
+                    </select>
+                  </label>
+                  <label class="settings-label"><span>MAX. TOKEN BUDGET</span>
+                    <input type="number" id="set-cost-input" class="settings-input" step="0.1" min="0" value="3" placeholder="500.000">
+                  </label>
+                  <!-- Hidden: output cost (kept for JS compat) -->
+                  <input type="hidden" id="set-cost-output" value="15">
+                </div>
+                <div class="settings-card" style="background:var(--surface-high)">
+                  <div class="settings-label">AKTUELLE KOSTEN</div>
+                  <div style="font-family:'Space Grotesk';font-size:28px;font-weight:700;color:var(--accent);margin-bottom:12px">$0.00</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Input Token <span style="float:right">$0.00</span></div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Output Token <span style="float:right">$0.00</span></div>
+                  <button class="btn-primary" style="width:100%;font-size:12px;padding:8px">USAGE REPORT</button>
+                </div>
+              </div>
             </div>
-          </label>
-          <hr class="settings-divider">
-          <label class="settings-label">
-            <span class="toggle-row">
-              <span data-i18n="settings.autoGitPush">Auto-Push nach Merge</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-auto-push">
-                <span class="toggle-slider"></span>
-              </label>
-            </span>
-          </label>
-          <hr class="settings-divider">
-          <div class="settings-section-title" data-i18n="settings.claudeModelCosts">Claude Model &amp; Costs</div>
-          <label class="settings-label">
-            <span data-i18n="settings.claudeModel">Claude Model</span>
-            <select id="set-claude-model" class="settings-input">
-              <option value="claude-sonnet-4-6">Sonnet 4.6 ($3/$15 per MTok)</option>
-              <option value="claude-opus-4-6">Opus 4.6 ($15/$75 per MTok)</option>
-              <option value="claude-haiku-4-5-20251001">Haiku 4.5 ($0.80/$4 per MTok)</option>
-            </select>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.inputCost">Input Cost ($/MTok)</span>
-            <input type="number" id="set-cost-input" class="settings-input" step="0.1" min="0" value="3">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.outputCost">Output Cost ($/MTok)</span>
-            <input type="number" id="set-cost-output" class="settings-input" step="0.1" min="0" value="15">
-          </label>
-          </div><!-- /general -->
-          <div class="settings-tab-content" data-tab-content="terminal">
-          <div class="settings-section-title" data-i18n="settings.terminal">Terminal</div>
-          <label class="settings-label">
-            <span data-i18n="settings.defaultShell">Default Shell</span>
-            <select id="set-default-shell" class="settings-input"></select>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.terminalFontSize">Terminal Font Size</span>
-            <div class="settings-range-row">
-              <input type="range" id="set-terminal-fontsize" class="settings-range" min="10" max="20" value="14">
-              <span id="terminal-fontsize-label">14px</span>
+            <!-- Row 3: Auto-Execute + Benachrichtigungen -->
+            <div class="settings-bento-row">
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">play_circle</span> Auto-Execute Schema</div>
+                <label class="settings-label"><span>AUTO-EXECUTE TYPES</span>
+                  <input type="text" id="set-auto-execute" class="settings-input" placeholder="docs, security">
+                </label>
+                <label class="settings-label"><span>KARTEN-MODUS</span>
+                  <select id="set-card-mode" class="settings-input">
+                    <option value="click">Klick-Toggle</option><option value="always">Immer offen</option><option value="hover">Hover</option>
+                  </select>
+                </label>
+                <label class="settings-label"><span>THEME</span>
+                  <select id="set-theme" class="settings-input">
+                    <option value="dark">Dark</option><option value="light">Light (Cream)</option>
+                  </select>
+                </label>
+              </div>
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">notifications</span> Benachrichtigungen</div>
+                <label class="settings-label"><span class="toggle-row"><span>Desktop Notifications</span><label class="toggle-switch"><input type="checkbox" id="set-notifications" checked><span class="toggle-slider"></span></label></span></label>
+                <label class="settings-label"><span class="toggle-row"><span>Sound Effects</span><label class="toggle-switch"><input type="checkbox" id="set-sounds" checked><span class="toggle-slider"></span></label></span></label>
+                <label class="settings-label"><span class="toggle-row"><span>Auto-Backup</span><label class="toggle-switch"><input type="checkbox" id="set-backups" checked><span class="toggle-slider"></span></label></span></label>
+                <label class="settings-label"><span>Max Backups</span>
+                  <div class="settings-range-row"><input type="range" id="set-max-backups" class="settings-range" min="1" max="20" value="10"><span id="max-backups-label">10</span></div>
+                </label>
+              </div>
             </div>
-          </label>
-          </div><!-- /terminal -->
-          <div class="settings-tab-content" data-tab-content="bugsync">
-          <div class="settings-section-title" data-i18n="settings.bugSyncPortal">Bug-Sync (Portal)</div>
-          <label class="settings-label">
-            <span class="toggle-row">
-              <span data-i18n="settings.bugSyncEnable">Bug-Sync aktivieren</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-bugsync-enabled">
-                <span class="toggle-slider"></span>
-              </label>
-            </span>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.apiUrl">API URL</span>
-            <input type="text" id="set-bugsync-url" class="settings-input" placeholder="https://example.com/api/internal/bugs">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.apiToken">API Token</span>
-            <input type="password" id="set-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token" data-i18n-placeholder="settings.apiTokenPlaceholder">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.syncInterval">Sync-Intervall (Sekunden)</span>
-            <div class="settings-range-row">
-              <input type="range" id="set-bugsync-interval" class="settings-range" min="60" max="1800" step="60" value="300">
-              <span id="bugsync-interval-label">5 min</span>
-            </div>
-          </label>
-          <button id="btn-bugsync-test" class="btn-secondary" style="margin-bottom:8px" data-i18n="settings.syncNow">Jetzt synchronisieren</button>
-          <div id="bugsync-status" class="deploy-detection-info hidden"></div>
-          </div><!-- /bugsync -->
-          <div class="settings-tab-content" data-tab-content="deploy">
-          <div class="settings-section-title" data-i18n="settings.dockerDeploy">Docker Deploy</div>
-          <label class="settings-label">
-            <span data-i18n="settings.deployType">Deploy-Typ</span>
-            <select id="set-deploy-type" class="settings-input">
-              <option value="compose">Docker Compose</option>
-              <option value="dockerfile">Dockerfile</option>
-            </select>
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.composeFiles">Compose Files (comma-separated)</span>
-            <input type="text" id="set-compose-files" class="settings-input" placeholder="docker-compose.yml">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.envFile">Env File</span>
-            <input type="text" id="set-env-file" class="settings-input" placeholder=".env">
-          </label>
-          <label class="settings-label">
-            <span data-i18n="settings.localUrl">Local URL (nach Deploy)</span>
-            <input type="text" id="set-local-url" class="settings-input" placeholder="http://localhost:3000">
-          </label>
-          <button id="btn-detect-env" class="btn-secondary" style="margin-bottom:8px" data-i18n="settings.detectEnv">Umgebung erkennen</button>
-          <div id="deploy-detection-info" class="deploy-detection-info hidden"></div>
-          <hr class="settings-divider">
-          <div class="settings-section-title" data-i18n="settings.liveServer">Live Server (SSH)</div>
-          <label class="settings-label">
-            <span class="toggle-row">
-              <span data-i18n="settings.liveDeployEnable">Live Deploy aktivieren</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-live-enabled">
-                <span class="toggle-slider"></span>
-              </label>
-            </span>
-          </label>
-          <div id="live-settings-panel">
-            <label class="settings-label">
-              <span data-i18n="settings.sshHost">SSH Host (user@host)</span>
-              <input type="text" id="set-ssh-host" class="settings-input" placeholder="user@example.com">
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.sshKey">SSH Key</span>
-              <input type="text" id="set-ssh-key" class="settings-input" placeholder="~/.ssh/id_rsa">
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.sshPort">SSH Port</span>
-              <input type="number" id="set-ssh-port" class="settings-input" value="22" min="1" max="65535">
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.serverPath">Server-Pfad</span>
-              <input type="text" id="set-server-path" class="settings-input" placeholder="/var/www/myapp">
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.branch">Branch</span>
-              <input type="text" id="set-server-branch" class="settings-input" placeholder="main">
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.preCommands">Pre-Commands (one per line)</span>
-              <textarea id="set-pre-commands" class="settings-input settings-textarea" rows="2" placeholder="git pull origin main"></textarea>
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.deployCommands">Deploy-Commands (one per line)</span>
-              <textarea id="set-deploy-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose up --build -d"></textarea>
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.postCommands">Post-Commands (one per line)</span>
-              <textarea id="set-post-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose logs -f --tail=50"></textarea>
-            </label>
-            <label class="settings-label">
-              <span data-i18n="settings.liveUrl">Live URL</span>
-              <input type="text" id="set-live-url" class="settings-input" placeholder="https://example.com">
-            </label>
           </div>
-          </div><!-- /deploy -->
-          <button id="btn-open-backups" class="btn-secondary" style="margin-bottom:16px" data-i18n="settings.restoreBackup">Backup wiederherstellen...</button>
-          <button id="btn-save-settings" class="btn-primary" data-i18n="settings.saveSettings">Save Settings</button>
-          <div class="settings-version" id="settings-version"></div>
+          <!-- ═══ TERMINAL TAB ═══ -->
+          <div class="settings-tab-content" data-tab-content="terminal">
+            <div class="settings-card">
+              <div class="settings-card-title"><span class="material-symbols-outlined">terminal</span> Terminal</div>
+              <label class="settings-label"><span>DEFAULT SHELL</span><select id="set-default-shell" class="settings-input"></select></label>
+              <label class="settings-label"><span>TERMINAL FONT SIZE</span>
+                <div class="settings-range-row"><input type="range" id="set-terminal-fontsize" class="settings-range" min="10" max="20" value="14"><span id="terminal-fontsize-label">14px</span></div>
+              </label>
+            </div>
+          </div>
+          <!-- ═══ BUG-SYNC TAB ═══ -->
+          <div class="settings-tab-content" data-tab-content="bugsync">
+            <div class="settings-card">
+              <div class="settings-card-title"><span class="material-symbols-outlined">bug_report</span> Bug-Sync (Portal)</div>
+              <label class="settings-label"><span class="toggle-row"><span>Bug-Sync aktivieren</span><label class="toggle-switch"><input type="checkbox" id="set-bugsync-enabled"><span class="toggle-slider"></span></label></span></label>
+              <label class="settings-label"><span>API URL</span><input type="text" id="set-bugsync-url" class="settings-input" placeholder="https://example.com/api/internal/bugs"></label>
+              <label class="settings-label"><span>API TOKEN</span><input type="password" id="set-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token"></label>
+              <label class="settings-label"><span>SYNC-INTERVALL</span>
+                <div class="settings-range-row"><input type="range" id="set-bugsync-interval" class="settings-range" min="60" max="1800" step="60" value="300"><span id="bugsync-interval-label">5 min</span></div>
+              </label>
+              <button id="btn-bugsync-test" class="btn-secondary" style="margin-top:8px">Jetzt synchronisieren</button>
+              <div id="bugsync-status" class="deploy-detection-info hidden"></div>
+            </div>
+          </div>
+          <!-- ═══ DEPLOY TAB ═══ -->
+          <div class="settings-tab-content" data-tab-content="deploy">
+            <div class="settings-bento-row">
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">deployed_code</span> Docker Deploy</div>
+                <label class="settings-label"><span>DEPLOY-TYP</span><select id="set-deploy-type" class="settings-input"><option value="compose">Docker Compose</option><option value="dockerfile">Dockerfile</option></select></label>
+                <label class="settings-label"><span>COMPOSE FILES</span><input type="text" id="set-compose-files" class="settings-input" placeholder="docker-compose.yml"></label>
+                <label class="settings-label"><span>ENV FILE</span><input type="text" id="set-env-file" class="settings-input" placeholder=".env"></label>
+                <label class="settings-label"><span>LOCAL URL</span><input type="text" id="set-local-url" class="settings-input" placeholder="http://localhost:3000"></label>
+                <button id="btn-detect-env" class="btn-secondary" style="margin-top:8px">Umgebung erkennen</button>
+                <div id="deploy-detection-info" class="deploy-detection-info hidden"></div>
+              </div>
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">cloud_upload</span> Live Server (SSH)</div>
+                <label class="settings-label"><span class="toggle-row"><span>Live Deploy aktivieren</span><label class="toggle-switch"><input type="checkbox" id="set-live-enabled"><span class="toggle-slider"></span></label></span></label>
+                <div id="live-settings-panel">
+                  <label class="settings-label"><span>SSH HOST</span><input type="text" id="set-ssh-host" class="settings-input" placeholder="user@example.com"></label>
+                  <label class="settings-label"><span>SSH KEY</span><input type="text" id="set-ssh-key" class="settings-input" placeholder="~/.ssh/id_rsa"></label>
+                  <label class="settings-label"><span>SSH PORT</span><input type="number" id="set-ssh-port" class="settings-input" value="22" min="1" max="65535"></label>
+                  <label class="settings-label"><span>SERVER-PFAD</span><input type="text" id="set-server-path" class="settings-input" placeholder="/var/www/myapp"></label>
+                  <label class="settings-label"><span>BRANCH</span><input type="text" id="set-server-branch" class="settings-input" placeholder="main"></label>
+                  <label class="settings-label"><span>PRE-COMMANDS</span><textarea id="set-pre-commands" class="settings-input settings-textarea" rows="2" placeholder="git pull origin main"></textarea></label>
+                  <label class="settings-label"><span>DEPLOY-COMMANDS</span><textarea id="set-deploy-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose up --build -d"></textarea></label>
+                  <label class="settings-label"><span>POST-COMMANDS</span><textarea id="set-post-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose logs -f --tail=50"></textarea></label>
+                  <label class="settings-label"><span>LIVE URL</span><input type="text" id="set-live-url" class="settings-input" placeholder="https://example.com"></label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Actions -->
+          <div style="padding:0 32px 24px;display:flex;gap:12px;align-items:center">
+            <button id="btn-open-backups" class="btn-secondary">Backup wiederherstellen...</button>
+            <button id="btn-save-settings" class="btn-primary">Save Settings</button>
+            <span class="settings-version" id="settings-version"></span>
+          </div>
         </div>
       </section>
 
       <!-- View: Statistics -->
       <section id="view-statistics" class="view">
-        <div class="view-header"><h1 data-i18n="stats.title">Statistiken</h1></div>
+        <div class="view-header">
+          <h1><span class="material-symbols-outlined" style="font-size:28px;color:var(--accent);vertical-align:middle">analytics</span> Statistiken Dashboard</h1>
+        </div>
         <div class="stats-dashboard">
+          <!-- KPI Grid -->
           <div class="stats-kpi-grid">
             <div class="stats-kpi-card">
-              <div class="stats-kpi-label" data-i18n="stats.totalTickets">TICKETS GESAMT</div>
+              <div class="stats-kpi-label">TOTAL CAPACITY</div>
               <div class="stats-kpi-value" id="stat-total">0</div>
+              <div class="stats-kpi-sub">Tickets <span class="stats-kpi-badge stats-kpi-badge-accent">Gesamt</span></div>
             </div>
             <div class="stats-kpi-card">
-              <div class="stats-kpi-label" data-i18n="stats.completed">ABGESCHLOSSEN</div>
+              <div class="stats-kpi-label">SUCCESS RATE</div>
               <div class="stats-kpi-value stats-kpi-success" id="stat-done">0</div>
+              <div class="stats-kpi-sub">Complete <span class="stats-kpi-badge stats-kpi-badge-teal">Abgeschlossen</span></div>
             </div>
             <div class="stats-kpi-card">
-              <div class="stats-kpi-label" data-i18n="stats.avgCycleTime">&Oslash; ZYKLUSZEIT</div>
+              <div class="stats-kpi-label">AVG. CYCLE TIME</div>
               <div class="stats-kpi-value" id="stat-cycle">-</div>
+              <div class="stats-kpi-sub"><span class="stats-kpi-badge stats-kpi-badge-muted">&Oslash; Zykluszeit</span></div>
             </div>
             <div class="stats-kpi-card">
-              <div class="stats-kpi-label" data-i18n="stats.totalCost">GESAMTKOSTEN</div>
-              <div class="stats-kpi-value" id="stat-total-cost">-</div>
+              <div class="stats-kpi-label">EFFICIENCY SCORE</div>
+              <div class="stats-kpi-value" id="stat-total-cost" style="color:var(--tertiary)">-</div>
+              <div class="stats-kpi-sub"><span class="stats-kpi-badge stats-kpi-badge-teal">Optimiert</span></div>
             </div>
           </div>
-          <div class="stats-row-2col">
+          <!-- Velocity + Recent Completed -->
+          <div class="stats-row-2col stats-row-velocity">
             <div class="stats-card">
               <div class="stats-card-title" data-i18n="stats.velocity">VELOCITY</div>
               <div class="stats-card-subtitle">TICKETS / WOCHE</div>
@@ -561,6 +532,7 @@
               <div id="recent-completed" class="recent-list"></div>
             </div>
           </div>
+          <!-- Pie + Bar Chart -->
           <div class="stats-row-2col">
             <div class="stats-card">
               <div class="stats-card-title" data-i18n="stats.byType">NACH TYP</div>
@@ -569,26 +541,37 @@
             </div>
             <div class="stats-card">
               <div class="stats-card-title" data-i18n="stats.byColumn">NACH SPALTE</div>
-              <div id="bar-chart" class="bar-chart"></div>
+              <div id="bar-chart"></div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- View: Git (Phase 3 - Block B) -->
+      <!-- View: Git (Stitch) -->
       <section id="view-git" class="view">
         <div class="view-header">
-          <h1 data-i18n="git.title">Git</h1>
-          <span id="git-branch-count" class="badge-count">0</span>
-          <button id="btn-refresh-branches" class="icon-btn" title="Refresh" data-i18n-title="git.refresh">&#8635;</button>
+          <div class="view-header-left">
+            <div class="git-branch-badge-row" id="git-branch-badge-row">
+              <span class="material-symbols-outlined" style="font-size:16px">commit</span>
+              <span id="git-active-branch">master</span>
+            </div>
+            <h1>Git Repository</h1>
+            <p class="git-project-id" id="git-project-id"></p>
+          </div>
+          <div class="view-header-right">
+            <span id="git-branch-count" class="badge-count hidden">0</span>
+            <button id="btn-refresh-branches" class="header-icon-btn" title="Refresh" data-i18n-title="git.refresh">
+              <span class="material-symbols-outlined">refresh</span>
+            </button>
+          </div>
         </div>
         <div class="git-card-view">
-          <div id="git-current-branch" class="git-current-info"></div>
+          <div id="git-current-branch"></div>
           <div id="git-branch-cards" class="git-branch-cards">
             <p class="empty-state" data-i18n="common.loading">Loading...</p>
           </div>
         </div>
-        <!-- Diff overlay (shared) -->
+        <!-- Diff overlay -->
         <div id="git-diff-content" class="git-diff-content hidden">
           <div class="git-diff-content-header">
             <span id="git-diff-filename"></span>
@@ -598,11 +581,21 @@
         </div>
       </section>
 
-      <!-- View: Activity (Phase 3 - Block C) -->
+      <!-- View: Activity (Stitch) -->
       <section id="view-activity" class="view">
         <div class="view-header">
-          <h1 data-i18n="nav.activity">Activity</h1>
-          <div class="activity-filters">
+          <h1 style="color:var(--accent)">Aktivit&auml;t</h1>
+          <div class="activity-search">
+            <span class="material-symbols-outlined" style="font-size:16px">search</span>
+            <input type="text" id="activity-search-input" placeholder="Search activity...">
+          </div>
+        </div>
+        <div class="activity-subheader">
+          <div class="activity-subheader-left">
+            <h2 class="activity-week-title">THIS WEEK</h2>
+            <p class="activity-subtitle" id="activity-subtitle">Real-time event stream</p>
+          </div>
+          <div class="activity-filters" id="activity-filters">
             <button class="activity-filter active" data-activity-filter="all">All</button>
             <button class="activity-filter" data-activity-filter="ticket_created">Created</button>
             <button class="activity-filter" data-activity-filter="ticket_completed">Completed</button>
@@ -613,22 +606,31 @@
         <div id="activity-list" class="activity-timeline"></div>
       </section>
 
-      <!-- View: Agents (Block E - Editor Layout) -->
+      <!-- View: Agents (Stitch Card-Grid) -->
       <section id="view-agents" class="view">
         <div class="view-header">
-          <h1 data-i18n="editors.agents">Agents</h1>
-          <button id="btn-new-agent" class="btn-primary" data-i18n="editors.newAgent">+ New Agent</button>
-        </div>
-        <div class="editor-layout">
-          <div id="agents-list" class="editor-list">
-            <p class="empty-state" data-i18n="editors.noAgents">No agents found in .claude/agents/</p>
+          <div class="view-header-left">
+            <h1>Agenten</h1>
+            <p class="view-subtitle">Orchestrate your automated workforce</p>
           </div>
-          <div id="agent-editor" class="editor-pane hidden">
+          <button id="btn-new-agent" class="btn-primary" data-i18n="editors.newAgent">
+            <span class="material-symbols-outlined" style="font-size:16px">add</span> Neuer Agent
+          </button>
+        </div>
+        <div class="agent-grid" id="agents-list">
+          <p class="empty-state" data-i18n="editors.noAgents">No agents found</p>
+        </div>
+        <!-- Editor Overlay -->
+        <div id="agent-editor-overlay" class="agent-editor-overlay hidden">
+          <div class="agent-editor-panel">
             <div class="editor-toolbar">
               <span class="editor-filename" id="agent-editor-name"></span>
               <div class="editor-toolbar-actions">
                 <button id="btn-save-agent" class="btn-primary" data-i18n="editors.save">Save</button>
                 <button id="btn-delete-agent" class="btn-danger" data-i18n="editors.delete">Delete</button>
+                <button id="btn-close-agent-editor" class="header-icon-btn">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
               </div>
             </div>
             <textarea id="agent-editor-content" class="editor-textarea" spellcheck="false"></textarea>
@@ -636,22 +638,31 @@
         </div>
       </section>
 
-      <!-- View: Commands (Block E - Editor Layout) -->
+      <!-- View: Commands (Stitch Card-Grid) -->
       <section id="view-commands" class="view">
         <div class="view-header">
-          <h1 data-i18n="editors.commands">Commands</h1>
-          <button id="btn-new-command" class="btn-primary" data-i18n="editors.newCommand">+ New Command</button>
-        </div>
-        <div class="editor-layout">
-          <div id="commands-list" class="editor-list">
-            <p class="empty-state" data-i18n="editors.noCommands">No commands found in .claude/commands/</p>
+          <div class="view-header-left">
+            <h1>Befehle</h1>
+            <p class="view-subtitle">Automate workflows with custom scripts</p>
           </div>
-          <div id="command-editor" class="editor-pane hidden">
+          <button id="btn-new-command" class="btn-primary" data-i18n="editors.newCommand">
+            <span class="material-symbols-outlined" style="font-size:16px">add</span> Neuer Befehl
+          </button>
+        </div>
+        <div class="agent-grid" id="commands-list">
+          <p class="empty-state" data-i18n="editors.noCommands">No commands found</p>
+        </div>
+        <!-- Editor Overlay -->
+        <div id="command-editor-overlay" class="agent-editor-overlay hidden">
+          <div class="agent-editor-panel">
             <div class="editor-toolbar">
               <span class="editor-filename" id="command-editor-name"></span>
               <div class="editor-toolbar-actions">
                 <button id="btn-save-command" class="btn-primary" data-i18n="editors.save">Save</button>
                 <button id="btn-delete-command" class="btn-danger" data-i18n="editors.delete">Delete</button>
+                <button id="btn-close-command-editor" class="header-icon-btn">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
               </div>
             </div>
             <textarea id="command-editor-content" class="editor-textarea" spellcheck="false"></textarea>
@@ -984,22 +995,39 @@
     </div>
   </div>
 
+  <!-- Search Spotlight Overlay -->
+  <div id="search-overlay" class="search-overlay hidden">
+    <div class="search-overlay-backdrop"></div>
+    <div class="search-spotlight">
+      <div class="search-spotlight-input-row">
+        <span class="material-symbols-outlined" style="font-size:20px;color:var(--text-muted)">search</span>
+        <input type="text" id="global-search-input" placeholder="Suchen... (Tickets, Branches, Views)" autofocus>
+        <kbd>ESC</kbd>
+      </div>
+      <div id="global-search-results" class="search-spotlight-results hidden"></div>
+    </div>
+  </div>
+
   <!-- Global Status Bar -->
   <div class="system-status-bar">
     <div class="status-bar-left">
       <span class="status-bar-item" id="status-terminal">
-        <span class="sys-dot online" id="sys-status-dot"></span>
+        <span class="material-symbols-outlined">code</span>
         <span data-i18n="nav.terminal">Terminal</span>: <span id="status-terminal-state">IDLE</span>
       </span>
       <span class="status-bar-item" id="status-sync">
-        <span>SYNC</span>: <span id="status-sync-state">OK</span>
+        <span class="material-symbols-outlined">sync</span>
+        Sync: <span id="status-sync-state">OK</span>
       </span>
     </div>
     <div class="status-bar-right">
       <span class="status-bar-item" id="status-git-info">
-        GIT: <span id="status-git-branch">&mdash;</span>
+        <span class="material-symbols-outlined">cloud_done</span>
+        Git: <span id="status-git-branch">&mdash;</span>
       </span>
-      <span class="status-bar-item" id="status-version"></span>
+      <span class="status-bar-item" id="status-version">
+        <span class="material-symbols-outlined">label</span>
+      </span>
     </div>
   </div>
 

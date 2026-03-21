@@ -192,25 +192,31 @@ function createCard(ticket, col) {
   if (ticket.portal_bug_id) extraParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
   if (extraParts.length > 0) extraBadgesHTML = `<div class="card-badges">${extraParts.join("")}</div>`;
 
-  // New compact card structure
-  // Type is conveyed via left border color (CSS), no more round type icon
+  // Stitch card layout: ID+Prio top, title, bottom row, expandable
+  const showProgress = col === "progress" || col === "review";
   card.innerHTML = `
     <div class="card-header-row">
-      <span class="card-title">${esc(ticket.title)}</span>
-    </div>
-    <div class="card-meta-row">
       <span class="card-ticket-id">${esc(ticket.id)}</span>
-      ${ticket.prio ? `<span class="badge badge-${ticket.prio}">${ticket.prio}</span>` : ""}
-      <span class="card-date">${dateStr}</span>
+      ${ticket.prio ? `<span class="badge badge-${ticket.prio}">${ticket.prio.toUpperCase()}</span>` : ""}
     </div>
-    ${ticket.branch ? `<div class="card-meta-row"><span class="card-branch-badge">\u2387 ${esc(ticket.branch)}</span></div>` : ""}
-    <div class="card-compact-row">
-      <div class="card-progress-mini">
-        <div class="card-progress-fill" style="width:${colProgress[col] || 10}%"></div>
+    <div class="card-title">${esc(ticket.title)}</div>
+    <div class="card-bottom-row">
+      <div class="card-meta-left">
+        ${ticket.comments && ticket.comments.length > 0
+          ? `<span class="card-comment-count"><span class="material-symbols-outlined" style="font-size:14px">chat_bubble</span> ${ticket.comments.length}</span>`
+          : ''}
+        ${ticket.cost_usd ? `<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>` : ''}
       </div>
+      ${showProgress
+        ? `<div class="card-progress-inline">
+            <span class="card-progress-pct">${colProgress[col]}%</span>
+            <div class="card-progress-mini"><div class="card-progress-fill" style="width:${colProgress[col]}%"></div></div>
+          </div>`
+        : ''}
     </div>
     <div class="card-expand">
       ${ticket.description ? `<div class="card-desc">${esc(ticket.description)}</div>` : ""}
+      ${ticket.branch ? `<div class="card-meta-row"><span class="card-branch-badge">${esc(ticket.branch)}</span></div>` : ""}
       ${extraBadgesHTML}
       ${actionHTML ? `<div class="card-action-row">${actionHTML}</div>` : ""}
     </div>

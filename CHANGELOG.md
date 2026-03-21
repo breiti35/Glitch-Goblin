@@ -5,6 +5,59 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## v0.2.0 — Stitch Design System (2026-03-21)
+
+### Design-System: "Goblin Gloss" (Stitch)
+
+Komplettes visuelles Redesign aller Views basierend auf dem Stitch Design System "Goblin Gloss".
+Dual-Typeface-System (Space Grotesk + Inter + JetBrains Mono), No-Line Rule, Ambient Shadows,
+Glassmorphism, Tonal Layering. Material Symbols Outlined als selbst gehostete Icon-Font.
+
+### Added
+- **Material Symbols Icons:** Selbst gehostete WOFF2-Font (`material-symbols-outlined.woff2`) fuer alle UI-Icons — Dashboard, Sidebar, Status-Bar, Git, Activity, Settings
+- **Eigene Titelleiste:** Windows-Titelleiste deaktiviert (`decorations: false`), eigene Window-Controls (Minimize/Maximize/Close) im App-Header mit `data-tauri-drag-region`
+- **Spotlight-Suche (Ctrl+K):** Command-Palette-Style Suche als zentriertes Overlay mit Blur-Backdrop, ersetzt die alte inline Suchleiste im Header
+- **Usage-Widget im Header:** Claude-Kontingent (5h/7d) als kompakte Balken neben den Header-Icons
+- **Stitch KPI-Cards (Statistiken):** BUILD STATUS (orange), COVERAGE (teal), UPTIME mit Mini-Balken, EFFICIENCY SCORE als Prozent
+- **Velocity KW-Labels:** Woechentliche Velocity mit ISO-Kalenderwochen (KW 10, KW 11...) statt Datumsformat
+- **Pie-Chart Center-Text:** Donut-Chart zeigt Anzahl Kategorien in der Mitte
+- **Activity Spotlight-Style:** Grosse 40px Circle-Icons mit Material Symbols, Source-Links (Terminal, Git, Kanban Board), Ticket-Badges, Uhrzeit statt relative Zeit
+- **Agent/Command Card-Grid:** Von 2-Pane-Editor zu Card-Grid mit Content-Preview. Editor oeffnet als Modal-Overlay
+- **Git Commit-Tabelle:** Tabellarische Commit-Anzeige mit HASH/MESSAGE/TIME Spalten, Hash als oranges Badge
+- **Git Merged-Branches Grid:** 2-Spalten-Grid mit Merge-Icons und teal Akzent-Linie
+
+### Changed
+- **App-Header:** "Glitch Goblin" in Orange (Space Grotesk), Deploy-Buttons mit Material Icons, Notification/Settings/Theme als runde Icon-Buttons, Avatar mit Primary-Fixed Border
+- **Sidebar:** Projekt-Name in Orange (Space Grotesk), alle Nav-Items mit Material Symbols Icons, "PROJECT"-Label entfernt, Nav-Badges versteckt, `unfold_more` Pfeil am Projekt-Selector
+- **Dashboard:** README-Card mit orangem Akzent-Balken + description/edit Icons. Commits als Timeline mit vertikaler Linie. Activity-Sektion mit farbigen Circle-Icons in linker Spalte. KPI-Cards mit farbigen Hintergruenden (Primary/Tertiary)
+- **Kanban Board:** Spalten ohne Hintergrund-Box (transparent), farbige Dots + Uppercase-Titel (Space Grotesk), Cards mit ID+Prio oben und Titel darunter, keine Profil-Avatare, Progress inline als Prozent+Bar
+- **Statistiken:** "Statistiken Dashboard" mit Analytics-Icon, KPI-Cards links-ausgerichtet mit farbigen Badges, Velocity-Chart breiter (5fr:3fr), Recent Completed mit check_circle Material Icons
+- **Git-View:** Branch-Badge in Teal oben, "Git Repository" H1 mit Project-ID, Commits als Tabelle, Merged-Branches als offenes 2-Spalten-Grid mit Merge-Icons
+- **Activity:** Pill-foermige Filter-Tabs, "THIS WEEK" Heading, Group-Labels als Badges, Items ohne Card-Background auf Timeline
+- **Einstellungen:** Bento-Grid-Layout mit Cards (Basis Konfiguration, Git Integration, Claude-Modell & Kosten, Auto-Execute, Benachrichtigungen), Deploy-Tab als 2-Spalten Docker+SSH
+- **Theme-Toggle:** Von Sidebar-Footer in den Header verschoben als `dark_mode`/`light_mode` Material Icon
+- **Buttons:** Primary-Buttons mit Gradient (accent → primary-container), Secondary als Ghost-Style, Active-States mit scale() Transforms
+- **Cards/Panels:** 16px Border-Radius, Ghost-Borders, Ambient Shadows, Glassmorphism fuer Overlays
+- **Inputs:** Minimalistisch mit nur Bottom-Border (2px), Focus-State mit Accent-Glow
+- **Status-Bar:** Material Icons (code, sync, cloud_done, label), Hover-Effekt auf Items
+- **Toasts:** Links-Akzent statt Umrandung, Blur-Backdrop
+
+### Fixed
+- **Dashboard leer:** `dash-tech-badges` und `dash-stats-body` Elemente fehlten nach Redesign — Null-Checks hinzugefuegt, damit README/Commits/Activity trotzdem laden
+- **Akzentfarbe unwirksam:** `applyAccentColor()` setzte `--user-accent` (existierte nicht in CSS) statt `--accent` auf `document.body` — jetzt werden `--accent`, `--accent-hover`, `--accent-glow`, `--primary-container` direkt auf body gesetzt
+- **Model-Preset matcht nie:** `setupModelPresetListener()` nutzte kurze Keys (`sonnet`/`opus`) statt volle Model-IDs (`claude-sonnet-4-6`) — Kosten werden jetzt korrekt vorausgefuellt
+- **Commit-Daten falsch:** `get_commit_log()` und `check_uncommitted()` in `src/git.rs` nutzten Pfad ohne `strip_unc_prefix()` — Windows UNC-Prefix (`\\?\`) fuehrte zu falschen Git-Ergebnissen
+- **Notification-Panel schliesst nicht:** X-Button loeschte nur Nachrichten, schloss aber das Panel nicht
+- **Window-Controls ohne Permissions:** Fehlende Tauri-Capabilities (`core:window:allow-minimize/maximize/close`) in `capabilities/default.json` hinzugefuegt
+- **Pfad-Anzeige:** `\\?\` Windows UNC-Prefix aus der Sidebar-Pfadanzeige entfernt
+
+### Removed
+- **Sidebar "Documentation" und "Support" Links** — waren Platzhalter, verdeckten den Theme-Toggle
+- **Inline-Suchleiste im Header** — ersetzt durch Spotlight-Overlay (Ctrl+K)
+- **"New Task" Text-Button im Header** — redundant mit "+ Ticket" in der Sidebar
+- **Health-Bar im Board-Header** — vereinfacht zu Filter/Search Icons
+- **2-Pane Editor-Layout (Agents/Commands)** — ersetzt durch Card-Grid + Modal-Overlay
+
 ## v0.1.0 — Glitch Goblin (2026-03-20)
 
 ### Rename
