@@ -1,3 +1,14 @@
+/* ── Fonts ── */
+@font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; font-display: swap; src: url('fonts/inter-regular.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 500; font-style: normal; font-display: swap; src: url('fonts/inter-medium.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; font-display: swap; src: url('fonts/inter-semibold.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 700; font-style: normal; font-display: swap; src: url('fonts/inter-bold.woff2') format('woff2'); }
+@font-face { font-family: 'Space Grotesk'; font-weight: 500; font-style: normal; font-display: swap; src: url('fonts/space-grotesk-medium.woff2') format('woff2'); }
+@font-face { font-family: 'Space Grotesk'; font-weight: 600; font-style: normal; font-display: swap; src: url('fonts/space-grotesk-semibold.woff2') format('woff2'); }
+@font-face { font-family: 'Space Grotesk'; font-weight: 700; font-style: normal; font-display: swap; src: url('fonts/space-grotesk-bold.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 400; font-style: normal; font-display: swap; src: url('fonts/jetbrains-mono-regular.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 500; font-style: normal; font-display: swap; src: url('fonts/jetbrains-mono-medium.woff2') format('woff2'); }
+
 /* ── Reset ── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 button { border: none; background: none; cursor: pointer; font: inherit; color: inherit; }
@@ -23,17 +34,18 @@ select option {
 
 /* ── Dark Theme (Default) ── */
 [data-theme="dark"] {
-  --bg:            #111111;
-  --sidebar-bg:    #1a2029;
-  --surface:       #222222;
-  --card-bg:       #2c2c2c;
+  --bg:            #0d0d0a;
+  --sidebar-bg:    #1b1c15;
+  --surface:       #1b1c15;
+  --card-bg:       #252620;
   --surface-hover: #333333;
-  --border:        #383838;
-  --text:          #ffffff;
-  --text-muted:    #bfbfbf;
+  --border:        #3a3b33;
+  --text:          #e4e2d6;
+  --text-muted:    #9c9a8e;
   --text-inactive: #808080;
-  --accent:        var(--user-accent, #38b5a0);
-  --accent-hover:  var(--user-accent-hover, #2da090);
+  --accent:        #ff6d00;
+  --accent-hover:  #ffb692;
+  --tertiary:      #14696d;
   --nav-active:    rgba(56, 181, 160, 0.15);
   --active-blue:   #66c2cd;
   --danger:        #e04f5e;
@@ -66,17 +78,18 @@ select option {
 
 /* ── Light Theme ── */
 [data-theme="light"] {
-  --bg:            #fdf6e3;
-  --sidebar-bg:    #e8e2d0;
-  --surface:       #eee8d5;
-  --card-bg:       #f5f0e0;
+  --bg:            #fbfaee;
+  --sidebar-bg:    #f0efe3;
+  --surface:       #f5f4e8;
+  --card-bg:       #ffffff;
   --surface-hover: #e0dac8;
-  --border:        #cdc7b4;
-  --text:          #3a3228;
-  --text-muted:    #7a7060;
+  --border:        #deddcf;
+  --text:          #1b1c15;
+  --text-muted:    #74736a;
   --text-inactive: #a09888;
-  --accent:        var(--user-accent, #2aa198);
-  --accent-hover:  var(--user-accent-hover, #238a82);
+  --accent:        #9f4200;
+  --accent-hover:  #ff6d00;
+  --tertiary:      #14696d;
   --nav-active:    rgba(42, 161, 152, 0.13);
   --active-blue:   #268bd2;
   --danger:        #dc322f;
@@ -116,13 +129,21 @@ body, #sidebar, .ticket-card, .column, #log-panel, .nav-item, .modal-content, .s
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.5;
   overflow: hidden;
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* ── Stitch Font Rules ── */
+h1, h2, h3, .view-header h1, .dash-card-title, .settings-section-title {
+  font-family: 'Space Grotesk', sans-serif;
+}
+code, pre, .commit-hash, .card-ticket-id, .system-status-bar, .git-current-name {
+  font-family: 'JetBrains Mono', monospace;
 }
 
 #app {
@@ -235,11 +256,11 @@ body {
   font-size: 13px;
 }
 .nav-item:hover {
-  background: var(--surface-hover);
-  color: var(--text);
+  background: var(--surface);
+  color: var(--accent);
 }
 .nav-item.active {
-  background: var(--nav-active);
+  background: var(--card-bg);
   color: var(--accent);
   font-weight: 600;
 }
@@ -280,6 +301,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-bottom: 40px;
 }
 
 .view {
@@ -2871,11 +2893,30 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 .column-title-row { display: flex; align-items: center; }
 
 /* ── System Status Bar ── */
-.system-status-bar { display: flex; align-items: center; justify-content: flex-end;
-                      gap: 6px; padding: 4px 12px;
-                      background: var(--surface); border-top: 1px solid var(--border);
-                      font-size: 11px; color: var(--text-muted); }
-.sys-dot           { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+.system-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 32px;
+  background: var(--tertiary);
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 100;
+  box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.1);
+}
+.sys-label { font-weight: 500; }
+.sys-dot { width: 8px; height: 8px; border-radius: 50%; }
+.sys-dot.online { background: #4ade80; }
+.status-bar-left, .status-bar-right { display: flex; align-items: center; gap: 16px; }
+.status-bar-item { display: flex; align-items: center; gap: 4px; }
 
 /* ── Card Layout (Compact + Hover-Expand) ── */
 .card-header-row  { display: flex; justify-content: space-between; align-items: flex-start;
@@ -3197,7 +3238,6 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
-
 .terminal-elapsed {
   font-family: 'Cascadia Code', 'Fira Code', monospace;
   font-size: 11px;

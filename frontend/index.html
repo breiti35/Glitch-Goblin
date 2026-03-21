@@ -272,10 +272,6 @@
           </div>
           <div id="log-body"></div>
         </div>
-        <div class="system-status-bar">
-          <span class="sys-label" data-i18n="board.systemStatus">System status</span>
-          <span class="sys-dot online" id="sys-status-dot"></span>
-        </div>
       </section>
 
       <!-- View: Settings -->
@@ -958,6 +954,25 @@
       </div>
       <div class="ctx-divider"></div>
       <div class="ctx-item ctx-danger" data-action="delete"><span>&#128465;</span> <span data-i18n="ctx.delete">L&ouml;schen</span></div>
+    </div>
+  </div>
+
+  <!-- Global Status Bar -->
+  <div class="system-status-bar">
+    <div class="status-bar-left">
+      <span class="status-bar-item" id="status-terminal">
+        <span class="sys-dot online" id="sys-status-dot"></span>
+        <span data-i18n="nav.terminal">Terminal</span>: <span id="status-terminal-state">IDLE</span>
+      </span>
+      <span class="status-bar-item" id="status-sync">
+        <span>SYNC</span>: <span id="status-sync-state">OK</span>
+      </span>
+    </div>
+    <div class="status-bar-right">
+      <span class="status-bar-item" id="status-git-info">
+        GIT: <span id="status-git-branch">&mdash;</span>
+      </span>
+      <span class="status-bar-item" id="status-version"></span>
     </div>
   </div>
 

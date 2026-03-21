@@ -127,7 +127,12 @@ async function loadInitialState() {
       if (vEl) vEl.textContent = "v" + version;
       const svEl = document.getElementById("settings-version");
       if (svEl) svEl.textContent = "Version " + version;
+      const sbEl = document.getElementById("status-version");
+      if (sbEl) sbEl.textContent = "v" + version;
     } catch (_) { /* non-critical */ }
+
+    // Update status bar git info
+    updateStatusBar();
 
     // Request notification permission
     if (state.settings.notifications_enabled !== false) {
@@ -1296,5 +1301,17 @@ export async function updateGitWarnings() {
     // No project selected or other issue — hide banner
     const banner = document.getElementById("git-warning-banner");
     if (banner) banner.className = "git-warning-banner hidden";
+  }
+}
+
+// ── Status Bar ──
+async function updateStatusBar() {
+  try {
+    const status = await invoke("get_git_status");
+    const branchEl = document.getElementById("status-git-branch");
+    if (branchEl) branchEl.textContent = status.currentBranch || "—";
+  } catch {
+    const branchEl = document.getElementById("status-git-branch");
+    if (branchEl) branchEl.textContent = "—";
   }
 }
