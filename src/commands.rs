@@ -60,24 +60,28 @@ type State<'a> = tauri::State<'a, Mutex<AppState>>;
 
 // ── Project Management ──
 
+/// Gibt das aktuelle Kanban-Board zurück.
 #[tauri::command]
 pub async fn get_board(state: State<'_>) -> Result<KanbanBoard, String> {
     let s = state.lock().await;
     Ok(s.board.clone())
 }
 
+/// Gibt alle konfigurierten Projekte zurück.
 #[tauri::command]
 pub async fn get_projects(state: State<'_>) -> Result<Vec<ProjectEntry>, String> {
     let s = state.lock().await;
     Ok(s.projects.clone())
 }
 
+/// Gibt das aktuell ausgewählte Projekt zurück.
 #[tauri::command]
 pub async fn get_current_project(state: State<'_>) -> Result<Option<ProjectEntry>, String> {
     let s = state.lock().await;
     Ok(s.project.clone())
 }
 
+/// Wechselt zu einem anderen Projekt und lädt dessen Board.
 #[tauri::command]
 pub async fn switch_project(
     name: String,
@@ -143,6 +147,7 @@ pub async fn switch_project(
     Ok(board)
 }
 
+/// Fügt ein neues Projekt zur Konfiguration hinzu.
 #[tauri::command]
 pub async fn add_project(
     name: String,
@@ -162,6 +167,7 @@ pub async fn add_project(
     Ok(entry)
 }
 
+/// Entfernt ein Projekt aus der Konfiguration.
 #[tauri::command]
 pub async fn remove_project(name: String, state: State<'_>) -> Result<(), String> {
     let mut cfg = config::load_projects()?;
@@ -177,6 +183,7 @@ pub async fn remove_project(name: String, state: State<'_>) -> Result<(), String
 
 // ── Ticket Operations ──
 
+/// Erstellt ein neues Ticket im Backlog.
 #[tauri::command]
 pub async fn create_ticket(
     title: String,
@@ -218,6 +225,7 @@ pub async fn create_ticket(
     Ok(ticket)
 }
 
+/// Aktualisiert alle Felder eines bestehenden Tickets.
 #[tauri::command]
 pub async fn update_ticket(ticket: Ticket, state: State<'_>) -> Result<(), String> {
     let mut s = state.lock().await;
@@ -232,6 +240,7 @@ pub async fn update_ticket(ticket: Ticket, state: State<'_>) -> Result<(), Strin
     Ok(())
 }
 
+/// Verschiebt ein Ticket in eine andere Spalte (mit Timestamp-Aktualisierung).
 #[tauri::command]
 pub async fn move_ticket(
     ticket_id: String,
@@ -287,6 +296,7 @@ pub async fn move_ticket(
     Ok(())
 }
 
+/// Löscht ein Ticket dauerhaft aus dem Board.
 #[tauri::command]
 pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), String> {
     let mut s = state.lock().await;
@@ -305,6 +315,7 @@ pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), St
 
 // ── Ticket Execution (interactive terminal mode) ──
 
+/// Startet ein Ticket: erstellt Branch, setzt Status auf Progress.
 #[tauri::command]
 pub async fn start_ticket(
     ticket_id: String,
@@ -409,6 +420,7 @@ pub async fn start_ticket(
     })
 }
 
+/// Schließt ein Ticket ab: auto-commit der Änderungen, verschiebt in Review.
 #[tauri::command]
 pub async fn finish_ticket(
     ticket_id: String,
@@ -474,6 +486,7 @@ pub async fn finish_ticket(
     Ok(())
 }
 
+/// Merged den Ticket-Branch in main, löscht den Branch und verschiebt das Ticket in Done.
 #[tauri::command]
 pub async fn merge_ticket(
     ticket_id: String,
@@ -556,6 +569,7 @@ pub async fn merge_ticket(
 
 // ── Git Push Commands ──
 
+/// Pusht einen benannten Branch zum Remote (origin).
 #[tauri::command]
 pub async fn push_branch(branch: String, state: State<'_>) -> Result<(), String> {
     let s = state.lock().await;
@@ -564,6 +578,7 @@ pub async fn push_branch(branch: String, state: State<'_>) -> Result<(), String>
     git::push_branch(&project_path, &branch).await
 }
 
+/// Pusht den aktuell ausgecheckten Branch zum Remote.
 #[tauri::command]
 pub async fn push_current_branch(state: State<'_>) -> Result<(), String> {
     let s = state.lock().await;
@@ -573,6 +588,7 @@ pub async fn push_current_branch(state: State<'_>) -> Result<(), String> {
     git::push_branch(&project_path, &branch).await
 }
 
+/// Bricht einen laufenden Git-Merge ab.
 #[tauri::command]
 pub async fn abort_git_merge(state: State<'_>) -> Result<(), String> {
     let s = state.lock().await;
@@ -581,6 +597,7 @@ pub async fn abort_git_merge(state: State<'_>) -> Result<(), String> {
     git::abort_merge(&project_path).await
 }
 
+/// Gibt die Remote-URL zurück, sofern ein Remote konfiguriert ist.
 #[tauri::command]
 pub async fn get_remote_info(state: State<'_>) -> Result<Option<String>, String> {
     let s = state.lock().await;
@@ -595,6 +612,7 @@ pub async fn get_remote_info(state: State<'_>) -> Result<Option<String>, String>
 
 // ── Utilities ──
 
+/// Prüft, ob uncommittete Änderungen im Projektverzeichnis vorhanden sind.
 #[tauri::command]
 pub async fn check_uncommitted(state: State<'_>) -> Result<bool, String> {
     let s = state.lock().await;
@@ -603,18 +621,21 @@ pub async fn check_uncommitted(state: State<'_>) -> Result<bool, String> {
     git::check_uncommitted(&project_path).await
 }
 
+/// Gibt die internen App-Log-Zeilen zurück.
 #[tauri::command]
 pub async fn get_log_lines(state: State<'_>) -> Result<Vec<String>, String> {
     let s = state.lock().await;
     Ok(s.log_lines.iter().cloned().collect())
 }
 
+/// Gibt die ID des aktuell laufenden Tickets zurück, falls vorhanden.
 #[tauri::command]
 pub async fn get_running_ticket(state: State<'_>) -> Result<Option<String>, String> {
     let s = state.lock().await;
     Ok(s.running_ticket.clone())
 }
 
+/// Listet verfügbare Claude-Agent-Dateien im Projekt auf.
 #[tauri::command]
 pub async fn list_agents(state: State<'_>) -> Result<Vec<String>, String> {
     let s = state.lock().await;
@@ -622,6 +643,7 @@ pub async fn list_agents(state: State<'_>) -> Result<Vec<String>, String> {
     Ok(config::list_agents(&project_path))
 }
 
+/// Listet verfügbare Claude-Command-Dateien im Projekt auf.
 #[tauri::command]
 pub async fn list_commands_available(state: State<'_>) -> Result<Vec<String>, String> {
     let s = state.lock().await;
@@ -631,12 +653,14 @@ pub async fn list_commands_available(state: State<'_>) -> Result<Vec<String>, St
 
 // ── Settings ──
 
+/// Gibt die aktuellen App-Einstellungen zurück.
 #[tauri::command]
 pub async fn get_settings(state: State<'_>) -> Result<Settings, String> {
     let s = state.lock().await;
     Ok(s.settings.clone())
 }
 
+/// Speichert die App-Einstellungen dauerhaft auf der Festplatte.
 #[tauri::command]
 pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(), String> {
     // Validate settings ranges
@@ -667,6 +691,7 @@ pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(
 
 // ── Dialog ──
 
+/// Öffnet einen nativen Ordner-Auswahl-Dialog und gibt den gewählten Pfad zurück.
 #[tauri::command]
 pub async fn pick_folder(app: AppHandle) -> Result<Option<String>, String> {
     let window = app.get_webview_window("main").ok_or("No main window")?;
@@ -679,6 +704,7 @@ pub async fn pick_folder(app: AppHandle) -> Result<Option<String>, String> {
 
 // ── Backup Commands (Block A2) ──
 
+/// Listet vorhandene Kanban-Board-Backups auf.
 #[tauri::command]
 pub async fn list_backups(state: State<'_>) -> Result<Vec<String>, String> {
     let s = state.lock().await;
@@ -712,6 +738,7 @@ pub async fn list_backups(state: State<'_>) -> Result<Vec<String>, String> {
     Ok(backups)
 }
 
+/// Stellt das Kanban-Board aus einer Backup-Datei wieder her.
 #[tauri::command]
 pub async fn restore_backup(
     filename: String,
@@ -743,6 +770,7 @@ pub async fn restore_backup(
 
 // ── Export (Block D1) ──
 
+/// Exportiert das Terminal-Log eines Tickets via Dateiauswahl-Dialog in eine Textdatei.
 #[tauri::command]
 pub async fn export_log(
     ticket_id: String,
@@ -774,6 +802,7 @@ pub async fn export_log(
 
 // ── Agent Editor (Block E) ──
 
+/// Liest den Inhalt einer Claude-Agent-Markdown-Datei anhand des Namens.
 #[tauri::command]
 pub async fn read_agent(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
@@ -788,6 +817,7 @@ pub async fn read_agent(name: String, state: State<'_>) -> Result<String, String
         .map_err(|e| format!("Failed to read agent '{}': {e}", name))
 }
 
+/// Speichert oder überschreibt eine Claude-Agent-Markdown-Datei.
 #[tauri::command]
 pub async fn save_agent(name: String, content: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
@@ -803,6 +833,7 @@ pub async fn save_agent(name: String, content: String, state: State<'_>) -> Resu
         .map_err(|e| format!("Failed to save agent '{}': {e}", name))
 }
 
+/// Erstellt eine neue Claude-Agent-Markdown-Datei aus einer Standardvorlage.
 #[tauri::command]
 pub async fn create_agent(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
@@ -826,6 +857,7 @@ pub async fn create_agent(name: String, state: State<'_>) -> Result<String, Stri
     Ok(template)
 }
 
+/// Löscht eine Claude-Agent-Markdown-Datei.
 #[tauri::command]
 pub async fn delete_agent(name: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
@@ -842,6 +874,7 @@ pub async fn delete_agent(name: String, state: State<'_>) -> Result<(), String> 
 
 // ── Command Editor (Block E) ──
 
+/// Liest den Inhalt einer Claude-Command-Markdown-Datei anhand des Namens.
 #[tauri::command]
 pub async fn read_command(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
@@ -856,6 +889,7 @@ pub async fn read_command(name: String, state: State<'_>) -> Result<String, Stri
         .map_err(|e| format!("Failed to read command '{}': {e}", name))
 }
 
+/// Speichert oder überschreibt eine Claude-Command-Markdown-Datei.
 #[tauri::command]
 pub async fn save_command(name: String, content: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
@@ -871,6 +905,7 @@ pub async fn save_command(name: String, content: String, state: State<'_>) -> Re
         .map_err(|e| format!("Failed to save command '{}': {e}", name))
 }
 
+/// Erstellt eine neue Claude-Command-Markdown-Datei aus einer Standardvorlage.
 #[tauri::command]
 pub async fn create_command(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
@@ -891,6 +926,7 @@ pub async fn create_command(name: String, state: State<'_>) -> Result<String, St
     Ok(template)
 }
 
+/// Löscht eine Claude-Command-Markdown-Datei.
 #[tauri::command]
 pub async fn delete_command(name: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
@@ -907,6 +943,7 @@ pub async fn delete_command(name: String, state: State<'_>) -> Result<(), String
 
 // ── Cross-Project (Block F) ──
 
+/// Verschiebt ein Ticket in ein anderes Projekt und vergibt eine neue ID.
 #[tauri::command]
 pub async fn move_ticket_to_project(
     ticket_id: String,
@@ -963,6 +1000,7 @@ pub async fn move_ticket_to_project(
 
 // ── Terminal Commands (Phase 3 - Block A) ──
 
+/// Startet eine neue PTY-Terminal-Session in einem angegebenen Verzeichnis.
 #[tauri::command]
 pub async fn spawn_terminal(
     shell: String,
@@ -984,6 +1022,7 @@ pub async fn spawn_terminal(
     Ok(terminal_id)
 }
 
+/// Schreibt Daten in eine laufende Terminal-Session.
 #[tauri::command]
 pub async fn write_terminal(
     terminal_id: String,
@@ -1001,6 +1040,7 @@ pub async fn write_terminal(
         .map_err(|_| "Terminal channel closed".to_string())
 }
 
+/// Ändert die Fenstergröße einer Terminal-Session (Spalten × Zeilen).
 #[tauri::command]
 pub async fn resize_terminal(
     terminal_id: String,
@@ -1019,6 +1059,7 @@ pub async fn resize_terminal(
         .map_err(|_| "Terminal channel closed".to_string())
 }
 
+/// Schließt und entfernt eine Terminal-Session.
 #[tauri::command]
 pub async fn close_terminal(
     terminal_id: String,
@@ -1032,6 +1073,7 @@ pub async fn close_terminal(
     Ok(())
 }
 
+/// Gibt alle auf dem System erkannten Shells zurück.
 #[tauri::command]
 pub async fn list_available_shells() -> Result<Vec<terminal::ShellInfo>, String> {
     Ok(terminal::detect_shells())
@@ -1039,6 +1081,7 @@ pub async fn list_available_shells() -> Result<Vec<terminal::ShellInfo>, String>
 
 // ── Git View Commands (Phase 3 - Block B) ──
 
+/// Gibt alle Git-Branches mit Metadaten zurück (aktuell, Kanban, Commits, etc.).
 #[tauri::command]
 pub async fn list_branches(state: State<'_>) -> Result<Vec<git::BranchInfo>, String> {
     let s = state.lock().await;
@@ -1047,6 +1090,7 @@ pub async fn list_branches(state: State<'_>) -> Result<Vec<git::BranchInfo>, Str
     git::list_branches(&project_path).await
 }
 
+/// Gibt die Diff-Statistik eines Branches gegenüber dem Haupt-Branch zurück.
 #[tauri::command]
 pub async fn get_branch_diff(
     branch: String,
@@ -1058,6 +1102,7 @@ pub async fn get_branch_diff(
     git::get_branch_diff(&project_path, &branch).await
 }
 
+/// Gibt den unified Diff einer einzelnen Datei in einem Branch zurück.
 #[tauri::command]
 pub async fn get_file_diff(
     branch: String,
@@ -1070,6 +1115,7 @@ pub async fn get_file_diff(
     git::get_file_diff(&project_path, &branch, &file_path).await
 }
 
+/// Gibt die Diff-Statistik eines einzelnen Commits zurück.
 #[tauri::command]
 pub async fn get_commit_diff(
     commit_hash: String,
@@ -1081,6 +1127,7 @@ pub async fn get_commit_diff(
     git::get_commit_diff(&project_path, &commit_hash).await
 }
 
+/// Gibt den unified Diff einer einzelnen Datei in einem Commit zurück.
 #[tauri::command]
 pub async fn get_commit_file_diff(
     commit_hash: String,
@@ -1093,6 +1140,7 @@ pub async fn get_commit_file_diff(
     git::get_commit_file_diff(&project_path, &commit_hash, &file_path).await
 }
 
+/// Löscht einen Git-Branch (optional mit Force-Flag).
 #[tauri::command]
 pub async fn delete_branch_cmd(
     branch: String,
@@ -1105,6 +1153,7 @@ pub async fn delete_branch_cmd(
     git::delete_branch(&project_path, &branch, force).await
 }
 
+/// Gibt die Commit-Historie eines Branches zurück (begrenzt auf `limit` Einträge).
 #[tauri::command]
 pub async fn get_commit_log(
     branch: String,
@@ -1119,6 +1168,7 @@ pub async fn get_commit_log(
 
 // ── Working Tree Diff (Review) ──
 
+/// Gibt uncommittete Änderungen im Working Tree zurück (staged + unstaged + untracked).
 #[tauri::command]
 pub async fn get_working_diff(state: State<'_>) -> Result<git::DiffInfo, String> {
     let s = state.lock().await;
@@ -1127,6 +1177,7 @@ pub async fn get_working_diff(state: State<'_>) -> Result<git::DiffInfo, String>
     git::get_working_diff(&project_path).await
 }
 
+/// Gibt den unified Diff einer einzelnen Datei im Working Tree zurück.
 #[tauri::command]
 pub async fn get_working_file_diff(
     file_path: String,
@@ -1152,6 +1203,7 @@ pub struct GitStatusInfo {
     pub remote_url: Option<String>,
 }
 
+/// Gibt den vollständigen Git-Status des Projekts zurück (Branch, Dirty-Flag, Remote etc.).
 #[tauri::command]
 pub async fn get_git_status(state: State<'_>) -> Result<GitStatusInfo, String> {
     let s = state.lock().await;
@@ -1207,6 +1259,7 @@ pub async fn get_git_status(state: State<'_>) -> Result<GitStatusInfo, String> {
 
 // ── Activity & Comments (Phase 3 - Block C) ──
 
+/// Gibt die letzten Aktivitäts-Einträge zurück (begrenzt auf `limit` Einträge).
 #[tauri::command]
 pub async fn get_activity(
     limit: u32,
@@ -1223,6 +1276,7 @@ pub async fn get_activity(
     Ok(activity::get_activity(&data_dir, limit as usize))
 }
 
+/// Fügt einen Kommentar zu einem Ticket hinzu.
 #[tauri::command]
 pub async fn add_comment(
     ticket_id: String,
@@ -1251,6 +1305,7 @@ pub async fn add_comment(
     Ok(())
 }
 
+/// Löscht einen Kommentar aus einem Ticket anhand des Index.
 #[tauri::command]
 pub async fn delete_comment(
     ticket_id: String,
@@ -1291,6 +1346,7 @@ pub struct ProjectInfo {
     pub recent_activity: Vec<activity::ActivityEntry>,
 }
 
+/// Gibt Dashboard-Infos zurück: README, Tech-Stack, Commits, Branches, Tickets etc.
 #[tauri::command]
 pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
     let s = state.lock().await;
@@ -1386,6 +1442,7 @@ pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
 
 // ── Templates (Phase 3 - Block D) ──
 
+/// Gibt alle Ticket-Vorlagen zurück (aus DB oder Datei, mit Seeding der Defaults).
 #[tauri::command]
 pub async fn list_templates(
     state: State<'_>,
@@ -1409,6 +1466,7 @@ pub async fn list_templates(
     Ok(config::load_templates(&data_dir))
 }
 
+/// Speichert die Liste der Ticket-Vorlagen dauerhaft (DB oder Datei).
 #[tauri::command]
 pub async fn save_templates(
     templates: Vec<config::TicketTemplate>,
@@ -1425,6 +1483,7 @@ pub async fn save_templates(
     config::save_templates(&data_dir, &templates)
 }
 
+/// Erstellt ein neues Ticket anhand einer benannten Vorlage.
 #[tauri::command]
 pub async fn create_ticket_from_template(
     template_name: String,
@@ -1491,6 +1550,7 @@ pub async fn create_ticket_from_template(
 
 // ── Import/Export (Phase 3 - Block D) ──
 
+/// Exportiert alle Tickets als CSV oder JSON via Dateiauswahl-Dialog.
 #[tauri::command]
 pub async fn export_tickets(
     format: String,
@@ -1557,6 +1617,7 @@ pub async fn export_tickets(
     }
 }
 
+/// Importiert Tickets aus einer CSV- oder JSON-Datei (append oder replace).
 #[tauri::command]
 pub async fn import_tickets(
     mode: String,
@@ -1653,6 +1714,7 @@ pub async fn import_tickets(
 
 // ── Deploy Commands (Phase 4) ──
 
+/// Gibt die aktuelle Deploy-Konfiguration zurück.
 #[tauri::command]
 pub async fn get_deploy_config(state: State<'_>) -> Result<deploy::DeployConfig, String> {
     let s = state.lock().await;
@@ -1666,6 +1728,7 @@ pub async fn get_deploy_config(state: State<'_>) -> Result<deploy::DeployConfig,
     Ok(deploy::load_deploy_config(&data_dir))
 }
 
+/// Speichert die Deploy-Konfiguration dauerhaft (DB oder Datei).
 #[tauri::command]
 pub async fn save_deploy_config(
     config: deploy::DeployConfig,
@@ -1682,6 +1745,7 @@ pub async fn save_deploy_config(
     deploy::save_deploy_config(&data_dir, &config)
 }
 
+/// Erkennt die Deploy-Umgebung des Projekts (Docker, Compose etc.).
 #[tauri::command]
 pub async fn detect_deploy_env(
     state: State<'_>,
@@ -1692,6 +1756,7 @@ pub async fn detect_deploy_env(
     Ok(deploy::detect_deploy_environment(&project_path).await)
 }
 
+/// Prüft, ob Docker im Projektverzeichnis verfügbar und aktiv ist.
 #[tauri::command]
 pub async fn check_docker_status(
     state: State<'_>,
@@ -1702,6 +1767,7 @@ pub async fn check_docker_status(
     Ok(deploy::check_docker(&project_path).await)
 }
 
+/// Startet einen lokalen Deploy via Docker Compose in einem integrierten Terminal.
 #[tauri::command]
 pub async fn local_deploy(
     state: State<'_>,
@@ -1736,6 +1802,7 @@ pub async fn local_deploy(
     Ok(terminal_id)
 }
 
+/// Stoppt den lokalen Docker-Compose-Deploy in einem integrierten Terminal.
 #[tauri::command]
 pub async fn local_deploy_stop(
     state: State<'_>,
@@ -1769,6 +1836,7 @@ pub async fn local_deploy_stop(
     Ok(terminal_id)
 }
 
+/// Startet einen Live-Deploy via SSH in einem integrierten Terminal.
 #[tauri::command]
 pub async fn live_deploy(
     state: State<'_>,
@@ -1840,6 +1908,7 @@ pub struct BugSyncResult {
     pub errors: Vec<String>,
 }
 
+/// Synchronisiert offene Bugs vom Portal-Bugtracker als neue Kanban-Tickets.
 #[tauri::command]
 pub async fn sync_portal_bugs(
     state: State<'_>,
@@ -1971,6 +2040,7 @@ pub struct BugSyncSettingsResponse {
     pub interval_secs: u64,
 }
 
+/// Gibt Bug-Sync-Einstellungen zurück (API-Token nur als gesetzt/nicht gesetzt).
 #[tauri::command]
 pub async fn get_bug_sync_settings(
     state: State<'_>,
@@ -1985,11 +2055,13 @@ pub async fn get_bug_sync_settings(
     })
 }
 
+/// Gibt die App-Versionsnummer zurück (aus CARGO_PKG_VERSION).
 #[tauri::command]
 pub fn get_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+/// Gibt den Pfad zur aktuellsten Log-Datei der App zurück.
 #[tauri::command]
 pub async fn get_log_file_path() -> Result<String, String> {
     let log_dir = dirs::config_dir()
@@ -2034,6 +2106,7 @@ pub struct ClaudeUsage {
 static USAGE_CACHE: std::sync::LazyLock<tokio::sync::Mutex<Option<(std::time::Instant, ClaudeUsage)>>> =
     std::sync::LazyLock::new(|| tokio::sync::Mutex::new(None));
 
+/// Ruft Claude-Nutzungsstatistiken via OAuth-API ab (gecacht für 60 Sekunden).
 #[tauri::command]
 pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
     // Check cache (60 seconds)

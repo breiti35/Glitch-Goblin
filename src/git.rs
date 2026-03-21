@@ -77,10 +77,12 @@ pub struct CommitInfo {
     pub date: String,
 }
 
+/// Erzeugt den Branch-Namen für ein Ticket (`gg/<id>-<slug>`).
 pub fn branch_name(ticket: &Ticket) -> String {
     format!("gg/{}-{}", ticket.id, ticket.slug)
 }
 
+/// Checkt den Branch eines Tickets aus oder erstellt ihn neu, falls er nicht existiert.
 pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<String, String> {
     let branch = branch_name(ticket);
     let clean_project = strip_unc_prefix(project_path);
@@ -125,6 +127,7 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
     Ok(branch)
 }
 
+/// Wechselt zum Haupt-Branch (main oder master) des Projekts.
 pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
     let branch = default_branch(project_path).await;
     let clean_project = strip_unc_prefix(project_path);
@@ -143,6 +146,7 @@ pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Staged alle Änderungen und erstellt einen Commit; gibt `false` zurück wenn nichts zu commiten ist.
 pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String> {
     // Stage all changes
     let add = Command::new("git")
@@ -184,6 +188,7 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
     Ok(true)
 }
 
+/// Prüft, ob uncommittete Änderungen im Arbeitsverzeichnis vorhanden sind.
 pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
     let clean_project = strip_unc_prefix(project_path);
     let output = Command::new("git")
@@ -196,6 +201,7 @@ pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
     Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
 }
 
+/// Merged einen Branch mit `--no-ff` in den aktuellen Branch; bricht bei Konflikten ab.
 pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), String> {
     validate_git_ref(branch)?;
     let clean_project = strip_unc_prefix(project_path);
@@ -269,6 +275,7 @@ async fn default_branch(project_path: &Path) -> String {
     "master".to_string()
 }
 
+/// Gibt alle lokalen Branches mit Metadaten zurück (Ahead-Count, Merge-Status, Ticket-ID etc.).
 pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, String> {
     let clean_project = strip_unc_prefix(project_path);
     let default = default_branch(project_path).await;
@@ -403,6 +410,7 @@ async fn get_branch_counts(project_path: &Path, base: &str, branch: &str) -> (u3
     (ahead, files)
 }
 
+/// Gibt die Diff-Statistik eines Branches gegenüber dem Haupt-Branch zurück.
 pub async fn get_branch_diff(
     project_path: &Path,
     branch: &str,
@@ -459,6 +467,7 @@ pub async fn get_branch_diff(
     })
 }
 
+/// Gibt den unified Diff einer einzelnen Datei zwischen Haupt-Branch und einem Branch zurück.
 pub async fn get_file_diff(
     project_path: &Path,
     branch: &str,
@@ -477,6 +486,7 @@ pub async fn get_file_diff(
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Gibt die Diff-Statistik eines einzelnen Commits zurück.
 pub async fn get_commit_diff(
     project_path: &Path,
     commit_hash: &str,
@@ -535,6 +545,7 @@ pub async fn get_commit_diff(
     })
 }
 
+/// Gibt den unified Diff einer einzelnen Datei in einem Commit zurück.
 pub async fn get_commit_file_diff(
     project_path: &Path,
     commit_hash: &str,
@@ -552,6 +563,7 @@ pub async fn get_commit_file_diff(
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Löscht einen lokalen Git-Branch; mit `force = true` auch wenn nicht gemergt.
 pub async fn delete_branch(
     project_path: &Path,
     branch: &str,
@@ -574,6 +586,7 @@ pub async fn delete_branch(
     Ok(())
 }
 
+/// Gibt die Commit-Historie eines Branches zurück (begrenzt auf `limit` Einträge).
 pub async fn get_commit_log(
     project_path: &Path,
     branch: &str,
