@@ -32,6 +32,9 @@ function renderBoardImpl() {
   const columns = ["backlog", "progress", "review", "done"];
   const tickets = state.board.tickets || [];
 
+  // Set card mode for CSS
+  document.body.dataset.cardMode = state.settings.card_expand_mode || "click";
+
   columns.forEach(col => {
     const body = document.querySelector(`[data-drop="${col}"]`);
     const countEl = document.querySelector(`[data-count="${col}"]`);
@@ -162,10 +165,6 @@ function createCard(ticket, col) {
   const isRunning = state.runningTicket === ticket.id;
   if (isRunning) card.classList.add("running");
 
-  // Type icon
-  const typeIcons  = { feature: "\u{1F537}", bugfix: "\u{1F41B}", security: "\u{1F512}", docs: "\u{1F4C4}" };
-  const typeColors = { feature: "#3B82F6", bugfix: "#f4a460", security: "#e04f5e", docs: "#a855f7" };
-
   // Progress per column
   const colProgress = { backlog: 10, progress: 50, review: 80, done: 100 };
 
@@ -193,68 +192,47 @@ function createCard(ticket, col) {
   if (ticket.portal_bug_id) extraParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
   if (extraParts.length > 0) extraBadgesHTML = `<div class="card-badges">${extraParts.join("")}</div>`;
 
-  // Compact: always visible
-  // Hover-expand: card-expand section appears on hover
+  // New compact card structure
+  // Type is conveyed via left border color (CSS), no more round type icon
   card.innerHTML = `
     <div class="card-header-row">
       <span class="card-title">${esc(ticket.title)}</span>
-      <span class="card-type-icon" style="background:${typeColors[ticket.ticket_type] || '#666'}"
-            title="${ticket.ticket_type}">${typeIcons[ticket.ticket_type] || "\u25CF"}</span>
     </div>
-    <div class="card-compact-row">
+    <div class="card-meta-row">
+      <span class="card-ticket-id">${esc(ticket.id)}</span>
       ${ticket.prio ? `<span class="badge badge-${ticket.prio}">${ticket.prio}</span>` : ""}
+      <span class="card-date">${dateStr}</span>
+    </div>
+    ${ticket.branch ? `<div class="card-meta-row"><span class="card-branch-badge">\u2387 ${esc(ticket.branch)}</span></div>` : ""}
+    <div class="card-compact-row">
       <div class="card-progress-mini">
         <div class="card-progress-fill" style="width:${colProgress[col] || 10}%"></div>
       </div>
     </div>
     <div class="card-expand">
       ${ticket.description ? `<div class="card-desc">${esc(ticket.description)}</div>` : ""}
-      <div class="card-info-row">
-        <span class="card-date">\u23F0 ${dateStr}</span>
-      </div>
-      <div class="card-quick-actions">
-        <select class="quick-select quick-prio" data-quick="prio" data-ticket-id="${ticket.id}" title="Priorit\u00E4t">
-          <option value=""${!ticket.prio ? " selected" : ""}>—</option>
-          <option value="high"${ticket.prio === "high" ? " selected" : ""}>high</option>
-          <option value="medium"${ticket.prio === "medium" ? " selected" : ""}>med</option>
-          <option value="low"${ticket.prio === "low" ? " selected" : ""}>low</option>
-        </select>
-        <select class="quick-select quick-type" data-quick="type" data-ticket-id="${ticket.id}" title="Typ">
-          <option value="feature"${ticket.ticket_type === "feature" ? " selected" : ""}>feature</option>
-          <option value="bugfix"${ticket.ticket_type === "bugfix" ? " selected" : ""}>bugfix</option>
-          <option value="security"${ticket.ticket_type === "security" ? " selected" : ""}>security</option>
-          <option value="docs"${ticket.ticket_type === "docs" ? " selected" : ""}>docs</option>
-        </select>
-      </div>
       ${extraBadgesHTML}
       ${actionHTML ? `<div class="card-action-row">${actionHTML}</div>` : ""}
     </div>
   `;
 
-  // Click to open detail (not on buttons or selects)
-  card.addEventListener("click", (e) => {
+  // Card expand mode
+  const cardMode = state.settings.card_expand_mode || "click";
+
+  if (cardMode === "always") {
+    card.classList.add("expanded");
+  } else if (cardMode === "click") {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("button") || e.target.closest("select") || e.target.closest("a")) return;
+      card.classList.toggle("expanded");
+    });
+  }
+  // "hover" mode: CSS handles it via [data-card-mode="hover"]
+
+  // Detail panel via double-click (all modes)
+  card.addEventListener("dblclick", (e) => {
     if (e.target.closest("button") || e.target.closest("select")) return;
     openDetailPanel(ticket);
-  });
-
-  // Quick-action selects
-  card.querySelectorAll(".quick-select").forEach(sel => {
-    sel.addEventListener("click", (e) => e.stopPropagation());
-    sel.addEventListener("change", async (e) => {
-      e.stopPropagation();
-      const field = sel.dataset.quick;
-      const updated = { ...ticket };
-      if (field === "prio") updated.prio = sel.value || null;
-      if (field === "type") updated.ticket_type = sel.value;
-      try {
-        await invoke("update_ticket", { ticket: updated });
-        state.board = await invoke("get_board");
-        renderBoard();
-        showToast(t('board.ticketUpdated'), "success");
-      } catch (err) {
-        appendLog("Quick-update error: " + err, true);
-      }
-    });
   });
 
   // Right-click context menu
@@ -483,6 +461,7 @@ export function setupDragDrop() {
     if (!card) return;
     e.dataTransfer.setData("text/plain", card.dataset.ticketId);
     card.classList.add("dragging");
+    card.classList.remove("expanded");
 
     const ghost = card.cloneNode(true);
     ghost.classList.add("drag-ghost");

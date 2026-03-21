@@ -197,6 +197,10 @@ export default {
     backupRestored: "Backup restored",
     noBackups: "No backups found",
     autoGitPush: "Auto-push after merge",
+    cardMode: "Ticket Card Mode",
+    cardModeClick: "Click Toggle",
+    cardModeAlways: "Always Open",
+    cardModeHover: "Hover (automatic)",
   },
 
   // Statistics

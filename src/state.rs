@@ -25,6 +25,10 @@ fn default_language() -> String {
     "de".to_string()
 }
 
+fn default_card_expand_mode() -> String {
+    "click".to_string()
+}
+
 fn default_model() -> String {
     "claude-sonnet-4-6".to_string()
 }
@@ -93,6 +97,8 @@ pub struct Settings {
     pub cost_per_output_mtok: f64,
     #[serde(default = "default_language")]
     pub language: String,
+    #[serde(default = "default_card_expand_mode")]
+    pub card_expand_mode: String,
     #[serde(default)]
     pub auto_push_after_merge: bool,
     #[serde(default)]
@@ -117,6 +123,7 @@ impl Default for Settings {
             cost_per_input_mtok: 3.0,
             cost_per_output_mtok: 15.0,
             language: "de".into(),
+            card_expand_mode: "click".into(),
             auto_push_after_merge: false,
             bug_sync: BugSyncSettings::default(),
         }

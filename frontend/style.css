@@ -458,6 +458,7 @@ body {
 .ticket-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 6px;
@@ -466,6 +467,12 @@ body {
   user-select: none;
   position: relative;
 }
+/* Type-colored left border */
+.ticket-card[data-ticket-type="feature"]  { border-left-color: #3B82F6; }
+.ticket-card[data-ticket-type="bugfix"]   { border-left-color: #f4a460; }
+.ticket-card[data-ticket-type="security"] { border-left-color: #e04f5e; }
+.ticket-card[data-ticket-type="docs"]     { border-left-color: #a855f7; }
+
 .ticket-card:hover {
   border-color: var(--accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -2885,15 +2892,44 @@ details.git-merged-group[open] > .git-group-collapsible::before {
                       border-radius: 0 2px 2px 0; transition: width 0.4s; }
 [data-column="done"] .card-progress-fill { background: var(--success); }
 
-/* Hover-expand section: hidden by default, slides in on hover */
+/* Expand section: hidden by default, slides in on toggle/hover */
 .card-expand { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; }
-.ticket-card:hover .card-expand { max-height: 200px; }
+/* Click-toggle: .expanded class controls visibility */
+.ticket-card.expanded .card-expand { max-height: 300px; }
+/* Hover mode: only active when body has data-card-mode="hover" */
+[data-card-mode="hover"] .ticket-card:hover .card-expand { max-height: 300px; }
 .ticket-card.dragging .card-expand { max-height: 0 !important; }
 
 .card-info-row    { display: flex; align-items: center; justify-content: space-between;
                     margin-top: 6px; }
 .card-date        { font-size: 11px; color: var(--text-muted); }
 .card-action-row  { margin-top: 6px; }
+
+/* ── Card Meta Row (ticket ID + branch badge) ── */
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.card-ticket-id {
+  font-weight: 600;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.card-branch-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── WIP Limits ── */
 .wip-limit-label {

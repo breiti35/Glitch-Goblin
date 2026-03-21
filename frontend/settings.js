@@ -20,6 +20,8 @@ export function loadSettingsForm() {
   document.getElementById("set-accent-color").value = s.accent_color ?? s.accentColor ?? "#F97316";
   document.getElementById("accent-color-label").textContent = s.accent_color ?? s.accentColor ?? "#F97316";
   document.getElementById("set-theme").value = s.theme || "dark";
+  const cardModeEl = document.getElementById("set-card-mode");
+  if (cardModeEl) cardModeEl.value = s.card_expand_mode || "click";
   document.getElementById("set-notifications").checked = s.notifications_enabled !== false;
   document.getElementById("set-sounds").checked = s.sounds_enabled !== false;
   document.getElementById("set-backups").checked = s.backups_enabled !== false;
@@ -52,6 +54,7 @@ export async function saveSettingsForm() {
     auto_execute_types: document.getElementById("set-auto-execute").value.split(",").map(s => s.trim()).filter(Boolean),
     accent_color: document.getElementById("set-accent-color").value,
     theme: document.getElementById("set-theme").value,
+    card_expand_mode: document.getElementById("set-card-mode")?.value || "click",
     notifications_enabled: document.getElementById("set-notifications").checked,
     sounds_enabled: document.getElementById("set-sounds").checked,
     backups_enabled: document.getElementById("set-backups").checked,
@@ -79,6 +82,7 @@ export async function saveSettingsForm() {
     document.body.dataset.theme = settings.theme;
     updateThemeUI();
     applyAccentColor(settings.accent_color);
+    document.body.dataset.cardMode = settings.card_expand_mode || "click";
     setLocale(settings.language);
     updateBugSyncVisibility();
     await saveDeploySettingsForm();
