@@ -1,15 +1,15 @@
 // ── Tauri IPC ──
-import { invoke, Channel } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // ── Modules ──
-import { debounce, esc, withGuard, timeAgo, logError } from './utils.js';
+import { debounce, esc, withGuard, logError } from './utils.js';
 import { installErrorHandler } from './error-handler.js';
 import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
 import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
-import { setupTerminalListeners, openTicketTerminal, openBoardTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
+import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
 import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener, setupSettingsTabs } from './settings.js';
 import { loadStatistics } from './statistics.js';
 import { loadDashboard, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
@@ -19,14 +19,17 @@ import { setupDeployListeners, loadDeployConfig } from './deploy.js';
 import { setupBugSyncListeners, updateBugSyncBadge } from './bugsync.js';
 import { t, setLocale, onLocaleChange, translateDOM } from './i18n.js';
 
-// ── Re-export renderBoard for modules that need it ──
-export { renderBoard } from './board.js';
+// ── Extracted Modules ──
+import { notifyDesktop, playSound, showToast, setupNotifCenter } from './notifications.js';
+import { openProjectPicker, switchProject, addProjectFlow, updateSidebar, loadClaudeUsage } from './projects.js';
+import { enterFocusMode, exitFocusMode } from './focus-mode.js';
+import { checkTicketRecovery } from './recovery.js';
+import { openSearchSpotlight, closeSearchSpotlight, globalSearch } from './search.js';
 
-// ── Sound Data URIs ──
-const SOUNDS = {
-  success: "data:audio/wav;base64,UklGRlQBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTABAAAAAAAlAEoAbACLAKgAwgDYAOoA9wAAAAUABQAAAAMA/v/2/+3/4f/V/8j/vP+x/6f/n/+Z/5X/lP+V/5r/ov+t/7r/yv/c//D/AAARACoAPABPAGIAdQCHAJYApACvALcAvAC+AL0AuACvAKIAkgB+AGQASABIAC8AEgD0/9T/sv+R/3D/UP8z/xj/AP/s/tz+0P7I/sT+xf7K/tP+4f7z/gj/IP88/1r/ev+d/8H/5v8LAC8AVABxAKAAuwDWAOoA+gAFAQoBC",
-  error: "data:audio/wav;base64,UklGRlQBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTABAAAAAPj/4f/E/6P/gf9g/0D/JP8N//z+8f7u/vH+/P4O/yb/Rf9p/5L/vf/r/xoASAB1AKAA1QAAASkBSgFkAXUBfgF+AXUBZAFKAV8BKAHyALcAdwA1APIE1v+k/3D/Qf8V//D+0P60/p/+j/6F/oL+hf6O/p3+sv7M/uz+EP84/2P/kP/A//D/IgBTAIIArwDaAAAAJAFCAVoBawF2AXkBdAFoAVQBOAEWAe0AvgCKAFIAFwDZ/5b/"
-};
+// ── Re-exports for other modules ──
+export { renderBoard } from './board.js';
+export { showToast } from './notifications.js';
+export { updateSidebar, loadClaudeUsage } from './projects.js';
 
 // ── Local State (shared with all modules) ──
 /** Globales State-Objekt, das von allen Frontend-Modulen geteilt wird. */
@@ -393,7 +396,7 @@ async function setupListeners() {
 }
 
 // ── View Routing ──
-/** Wechselt die aktive Ansicht und lädt ggf. Inhalte der Ziel-View nach (Lazy Loading).
+/** Wechselt die aktive Ansicht und laedt ggf. Inhalte der Ziel-View nach (Lazy Loading).
  * @param {string} name - Name der Ziel-Ansicht (z.B. "board", "git", "settings").
  */
 export function switchView(name) {
@@ -419,8 +422,8 @@ export function switchView(name) {
 }
 
 // ── Execution ──
-/** Zeigt den Bestätigungsdialog zum Ausführen eines Tickets mit Modell-Empfehlung und Auswahl.
- * @param {object} ticket - Das auszuführende Ticket-Objekt.
+/** Zeigt den Bestaetigungsdialog zum Ausfuehren eines Tickets mit Modell-Empfehlung und Auswahl.
+ * @param {object} ticket - Das auszufuehrende Ticket-Objekt.
  */
 export function confirmExecute(ticket) {
   const isCodeChanging = ticket.ticket_type === "feature" || ticket.ticket_type === "bugfix";
@@ -461,9 +464,9 @@ function getModelRecommendation(ticketType) {
   }
 }
 
-/** Normalisiert einen Modell-Kurznamen (z.B. "sonnet") oder Legacy-ID zu einer vollständigen Modell-ID.
- * @param {string} model - Kurzname oder vollständige Modell-ID.
- * @returns {string} Vollständige Modell-ID.
+/** Normalisiert einen Modell-Kurznamen (z.B. "sonnet") oder Legacy-ID zu einer vollstaendigen Modell-ID.
+ * @param {string} model - Kurzname oder vollstaendige Modell-ID.
+ * @returns {string} Vollstaendige Modell-ID.
  */
 export function modelToFlag(model) {
   const compat = { sonnet: "claude-sonnet-4-6", opus: "claude-opus-4-6", haiku: "claude-haiku-4-5-20251001" };
@@ -485,7 +488,7 @@ const executeTicket = withGuard(async function(ticketId, model) {
     try {
       await openTicketTerminal(result, selectedModel);
       // Activate focus mode
-      enterFocusMode(ticket, result.branch, selectedModel);
+      enterFocusMode(ticket, result.branch, selectedModel, finishTicket);
     } catch (termErr) {
       appendLog("Terminal error: " + termErr, true);
       showToast(t('toast.terminalFailed'), "error");
@@ -495,14 +498,14 @@ const executeTicket = withGuard(async function(ticketId, model) {
     // Sync backend state — running_ticket may need clearing
     invoke("get_running_ticket").then(rt => { state.runningTicket = rt; }).catch(e => logError("get_running_ticket", e));
     appendLog("Start error: " + err, true);
-    notifyDesktop(t('notify.error'), t('notify.failed', {title: ticketTitle}));
-    playSound("error");
+    notifyDesktop(t('notify.error'), t('notify.failed', {title: ticketTitle}), state.settings);
+    playSound("error", state.settings);
     refreshBoard();
   }
 });
 
-/** Öffnet den Review-Diff-Dialog zum Abschließen eines Tickets (Ticket wechselt nach Bestätigung zu Done).
- * @param {string} ticketId - ID des abzuschließenden Tickets.
+/** Oeffnet den Review-Diff-Dialog zum Abschliessen eines Tickets (Ticket wechselt nach Bestaetigung zu Done).
+ * @param {string} ticketId - ID des abzuschliessenden Tickets.
  */
 export async function finishTicket(ticketId) {
   // Open review modal instead of immediately finishing
@@ -577,8 +580,8 @@ async function openReviewModal(ticketId) {
       state.runningTicket = null;
       appendLog(`\u2713 ${ticketId} -> Done`);
       showToast(t('toast.ticketDone', {id: ticketId}), "success");
-      notifyDesktop(t('notify.ticketDone'), t('notify.ticketFinished', {id: ticketId}));
-      playSound("success");
+      notifyDesktop(t('notify.ticketDone'), t('notify.ticketFinished', {id: ticketId}), state.settings);
+      playSound("success", state.settings);
       refreshBoard();
     } catch (err) {
       appendLog("Finish error: " + err, true);
@@ -606,7 +609,7 @@ function renderDiffLines(diff) {
   }).join("\n");
 }
 
-/** Führt einen Ticket-Branch nach Benutzerbestätigung in den Hauptbranch zusammen (gegen Doppelklick gesichert).
+/** Fuehrt einen Ticket-Branch nach Benutzerbestaetigung in den Hauptbranch zusammen (gegen Doppelklick gesichert).
  * @param {string} ticketId - ID des zu mergenden Tickets.
  */
 export const mergeTicket = withGuard(async function(ticketId) {
@@ -622,34 +625,8 @@ export const mergeTicket = withGuard(async function(ticketId) {
   }
 });
 
-// ── Notifications ──
-function notifyDesktop(title, body) {
-  if (state.settings.notifications_enabled === false) return;
-  try {
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(title, { body });
-    }
-  } catch (e) {
-    logError("Notification failed", e);
-  }
-}
-
-// ── Sounds ──
-function playSound(name) {
-  if (state.settings.sounds_enabled === false) return;
-  const uri = SOUNDS[name];
-  if (!uri) return;
-  try {
-    const audio = new Audio(uri);
-    audio.volume = 0.5;
-    audio.play().catch(() => { /* autoplay restricted */ });
-  } catch (e) {
-    logError("Sound failed", e);
-  }
-}
-
 // ── Board Refresh ──
-/** Holt den aktuellen Board-State vom Backend und rendert das Board neu. Beendet den Focus-Modus wenn kein Ticket läuft. */
+/** Holt den aktuellen Board-State vom Backend und rendert das Board neu. Beendet den Focus-Modus wenn kein Ticket laeuft. */
 export async function refreshBoard() {
   try {
     state.board = await invoke("get_board");
@@ -665,7 +642,7 @@ export async function refreshBoard() {
 // ── Log Panel ──
 const LOG_MAX_LINES = 500;
 
-/** Fügt eine Zeile zum Log-Panel hinzu (max. 500 Zeilen). Fehler werden zusätzlich als Toast angezeigt.
+/** Fuegt eine Zeile zum Log-Panel hinzu (max. 500 Zeilen). Fehler werden zusaetzlich als Toast angezeigt.
  * @param {string} text - Der anzuzeigende Text.
  * @param {boolean} [isError=false] - Wenn true, wird die Zeile als Fehler hervorgehoben.
  */
@@ -683,56 +660,6 @@ export function appendLog(text, isError = false) {
   // Also show toast for important messages
   if (isError) {
     showToast(text, "error");
-  }
-}
-
-// ── Toast System ──
-/** Zeigt eine kurze Toast-Benachrichtigung an und fügt sie dem Notification-Center hinzu.
- * @param {string} message - Der anzuzeigende Text.
- * @param {"info"|"success"|"error"} [type="info"] - Typ der Benachrichtigung.
- * @param {number} [duration=3000] - Anzeigedauer in Millisekunden.
- */
-export function showToast(message, type = "info", duration = 3000) {
-  // Also add to notification center
-  addNotification(message, type);
-
-  const container = document.getElementById("toast-container");
-  if (!container) return;
-
-  const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
-
-  const icons = { success: "\u2713", error: "\u2717", info: "\u24D8" };
-  toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-text">${esc(message)}</span>`;
-
-  container.appendChild(toast);
-
-  // Trigger enter animation
-  requestAnimationFrame(() => toast.classList.add("toast-visible"));
-
-  // Auto-dismiss
-  setTimeout(() => {
-    toast.classList.remove("toast-visible");
-    toast.addEventListener("transitionend", () => toast.remove(), { once: true });
-    // Fallback removal if transition doesn't fire
-    setTimeout(() => toast.remove(), 400);
-  }, duration);
-}
-
-// ── Sidebar ──
-function updateSidebar() {
-  const nameEl = document.getElementById("sidebar-project-name");
-  const pathEl = document.getElementById("sidebar-project-path");
-
-  if (state.project) {
-    nameEl.textContent = state.project.name;
-    // Clean Windows UNC prefix (\\?\) from path display
-    let cleanPath = state.project.path || "";
-    cleanPath = cleanPath.replace(/^\\\\\?\\/, "");
-    pathEl.textContent = cleanPath;
-  } else {
-    nameEl.textContent = t('header.noProject');
-    pathEl.textContent = "\u2014";
   }
 }
 
@@ -768,91 +695,6 @@ export function applyAccentColor(color) {
   el.style.setProperty("--accent-hover", hover);
   el.style.setProperty("--accent-glow", `rgba(${r}, ${g}, ${b}, 0.15)`);
   el.style.setProperty("--primary-container", hover);
-}
-
-// ── Project Picker ──
-function openProjectPicker() {
-  const list = document.getElementById("picker-list");
-  list.innerHTML = "";
-
-  state.projects.forEach(p => {
-    const item = document.createElement("div");
-    item.className = "picker-item";
-    if (state.project && state.project.name === p.name) item.classList.add("active");
-    item.innerHTML = `
-      <span class="picker-item-name">${esc(p.name)}</span>
-      <span class="picker-item-path">${esc(p.path)}</span>
-      <button class="picker-item-remove" title="Projekt entfernen">&times;</button>
-    `;
-    item.querySelector(".picker-item-remove").addEventListener("click", (e) => {
-      e.stopPropagation();
-      removeProjectFlow(p.name);
-    });
-    item.addEventListener("click", () => switchProject(p.name));
-    list.appendChild(item);
-  });
-
-  openModal("modal-picker");
-}
-
-async function switchProject(name) {
-  try {
-    state.board = await invoke("switch_project", { name });
-    state.project = await invoke("get_current_project");
-    state.projects = await invoke("get_projects");
-    state.runningTicket = await invoke("get_running_ticket");
-    closeModal("modal-picker");
-    renderBoard();
-    updateSidebar();
-    checkGitStatus();
-    updateGitWarnings();
-    loadDeployConfig();
-    loadClaudeUsage();
-
-    // Reload the currently active view
-    const activeView = document.querySelector(".view.active");
-    if (activeView) {
-      const viewName = activeView.id.replace("view-", "");
-      if (viewName === "dashboard") loadDashboard();
-      else if (viewName === "git") loadGitView();
-      else if (viewName === "activity") loadActivityView();
-      else if (viewName === "statistics") loadStatistics();
-      else if (viewName === "settings") loadSettingsForm();
-      else if (viewName === "agents") loadAgents();
-      else if (viewName === "commands") loadCommands();
-    }
-
-    showToast(t('toast.projectLoaded', {name}), "success");
-  } catch (err) {
-    appendLog("Switch project error: " + err, true);
-  }
-}
-
-async function removeProjectFlow(name) {
-  if (!confirm(`Projekt "${name}" aus der Liste entfernen?\n(Die Dateien werden nicht gel\u00F6scht)`)) return;
-  try {
-    await invoke("remove_project", { name });
-    state.projects = await invoke("get_projects");
-    openProjectPicker();
-  } catch (err) {
-    appendLog("Remove project error: " + err, true);
-  }
-}
-
-async function addProjectFlow() {
-  try {
-    const folder = await invoke("pick_folder");
-    if (!folder) return;
-
-    const parts = folder.replace(/\\/g, "/").split("/");
-    const name = parts[parts.length - 1] || "project";
-
-    await invoke("add_project", { name, path: folder });
-    state.projects = await invoke("get_projects");
-    openProjectPicker();
-  } catch (err) {
-    appendLog("Add project error: " + err, true);
-  }
 }
 
 // ── New Task Modal ──
@@ -894,278 +736,11 @@ export function openModal(id) {
   document.getElementById(id).classList.remove("hidden");
 }
 
-/** Fügt die "hidden"-Klasse zu einem Modal-Element hinzu, um es auszublenden.
+/** Fuegt die "hidden"-Klasse zu einem Modal-Element hinzu, um es auszublenden.
  * @param {string} id - Die Element-ID des Modals.
  */
 export function closeModal(id) {
   document.getElementById(id).classList.add("hidden");
-}
-
-// ── Claude Usage ──
-async function loadClaudeUsage() {
-  try {
-    const usage = await invoke("get_claude_usage");
-    updateUsageDisplay(usage);
-  } catch (e) {
-    // Usage unavailable (no credentials, offline, etc.)
-    const container = document.getElementById("sidebar-usage");
-    if (container) container.classList.add("hidden");
-  }
-}
-
-function updateUsageDisplay(usage) {
-  const container = document.getElementById("sidebar-usage");
-  if (!container) return;
-  container.classList.remove("hidden");
-
-  // 5h bar
-  const fill5h = document.getElementById("usage-5h-fill");
-  const pct5h = document.getElementById("usage-5h-pct");
-  if (fill5h && pct5h) {
-    const val = Math.round(usage.fiveHour);
-    fill5h.style.width = Math.min(val, 100) + "%";
-    fill5h.className = "usage-bar-fill " + usageColor(val);
-    pct5h.textContent = val + "%";
-  }
-
-  // 7d bar
-  const fill7d = document.getElementById("usage-7d-fill");
-  const pct7d = document.getElementById("usage-7d-pct");
-  if (fill7d && pct7d) {
-    const val = Math.round(usage.sevenDay);
-    fill7d.style.width = Math.min(val, 100) + "%";
-    fill7d.className = "usage-bar-fill " + usageColor(val);
-    pct7d.textContent = val + "%";
-  }
-}
-
-function usageColor(pct) {
-  if (pct >= 90) return "usage-red";
-  if (pct >= 70) return "usage-yellow";
-  return "usage-green";
-}
-
-// ── Notification Center ──
-const notifications = [];
-const NOTIF_MAX = 50;
-
-/** Fügt eine Benachrichtigung in das Notification-Center ein (max. 50 Einträge).
- * @param {string} message - Der Benachrichtigungstext.
- * @param {"info"|"success"|"error"} [type="info"] - Typ der Benachrichtigung.
- */
-export function addNotification(message, type = "info") {
-  notifications.unshift({ message, type, time: new Date() });
-  if (notifications.length > NOTIF_MAX) notifications.pop();
-  updateNotifBadge();
-  renderNotifList();
-}
-
-function updateNotifBadge() {
-  const badge = document.getElementById("header-notif-badge");
-  if (badge) {
-    const count = notifications.length;
-    badge.textContent = count;
-    badge.classList.toggle("hidden", count === 0);
-  }
-}
-
-function renderNotifList() {
-  const list = document.getElementById("notif-list");
-  if (!list) return;
-  if (notifications.length === 0) {
-    list.innerHTML = `<p class="empty-state">${t('header.noNotifications')}</p>`;
-    return;
-  }
-  list.innerHTML = notifications.map(n => {
-    const icons = { success: "\u2713", error: "\u2717", info: "\u24D8", warning: "\u26A0" };
-    const ago = timeAgo(n.time.toISOString());
-    return `<div class="notif-item notif-${n.type}">
-      <span class="notif-icon">${icons[n.type] || icons.info}</span>
-      <span class="notif-text">${esc(n.message)}</span>
-      <span class="notif-time">${ago}</span>
-    </div>`;
-  }).join("");
-}
-
-function setupNotifCenter() {
-  document.getElementById("header-notif-btn")?.addEventListener("click", () => {
-    const panel = document.getElementById("notif-panel");
-    if (panel) {
-      panel.classList.toggle("hidden");
-      renderNotifList();
-    }
-  });
-  document.getElementById("btn-notif-clear")?.addEventListener("click", () => {
-    notifications.length = 0;
-    updateNotifBadge();
-    renderNotifList();
-    document.getElementById("notif-panel")?.classList.add("hidden");
-  });
-  // Close on outside click
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".notif-wrapper")) {
-      document.getElementById("notif-panel")?.classList.add("hidden");
-    }
-  });
-}
-
-// ── Crash Recovery ──
-async function checkTicketRecovery() {
-  // If a ticket is in "progress" with running_ticket set, but no terminal is open,
-  // the app likely crashed. Show recovery dialog.
-  if (!state.runningTicket) return;
-
-  // No terminals running = app was restarted after crash
-  if (Object.keys(state.terminals).length > 0) return;
-
-  const ticket = (state.board.tickets || []).find(t => t.id === state.runningTicket);
-  if (!ticket) return;
-
-  document.getElementById("recovery-message").textContent =
-    `Das Ticket "${ticket.id} \u2014 ${ticket.title}" war in Bearbeitung als die App geschlossen wurde.`;
-
-  // Check git status on the branch
-  const statusEl = document.getElementById("recovery-status");
-  try {
-    const diff = await invoke("get_working_diff");
-    if (diff.files.length > 0) {
-      statusEl.innerHTML = `<div class="recovery-info recovery-warn">
-        <strong>${diff.files.length} Dateien mit \u00C4nderungen</strong> gefunden
-        (+${diff.totalAdditions} / -${diff.totalDeletions})
-      </div>`;
-    } else {
-      statusEl.innerHTML = `<div class="recovery-info recovery-ok">
-        <strong>Keine uncommitteten \u00C4nderungen</strong> \u2014 Arbeit wurde vermutlich abgeschlossen
-      </div>`;
-    }
-  } catch {
-    statusEl.innerHTML = `<div class="recovery-info">Git-Status konnte nicht gepr\u00FCft werden</div>`;
-  }
-
-  // "Weiterarbeiten" — open terminal on branch
-  document.getElementById("btn-recovery-continue").onclick = async () => {
-    closeModal("modal-recovery");
-    openBoardTerminal();
-    showToast(t('toast.terminalOpened'), "info");
-  };
-
-  // "Abschließen" — commit + review
-  document.getElementById("btn-recovery-finish").onclick = () => {
-    closeModal("modal-recovery");
-    finishTicket(ticket.id);
-  };
-
-  // "Zurück ins Backlog" — reset ticket
-  document.getElementById("btn-recovery-reset").onclick = async () => {
-    closeModal("modal-recovery");
-    try {
-      await invoke("move_ticket", { ticketId: ticket.id, targetColumn: "backlog" });
-      state.runningTicket = null;
-      state.board = await invoke("get_board");
-      renderBoard();
-      showToast(t('toast.backToBacklog', {id: ticket.id}), "info");
-    } catch (err) {
-      appendLog("Recovery error: " + err, true);
-    }
-  };
-
-  openModal("modal-recovery");
-}
-
-// ── Focus Mode ──
-let focusElapsedInterval = null;
-
-function enterFocusMode(ticket, branch, model) {
-  const focus = document.getElementById("focus-mode");
-  if (!focus) return;
-
-  document.getElementById("focus-ticket-id").textContent = ticket.id;
-  document.getElementById("focus-ticket-title").textContent = ticket.title;
-  document.getElementById("focus-ticket-desc").textContent = ticket.description || "";
-  document.getElementById("focus-branch").textContent = branch || "\u2014";
-  document.getElementById("focus-model").textContent = model || "\u2014";
-
-  // Elapsed timer (shared between focus mode and terminal status bar)
-  const startTime = Date.now();
-  document.getElementById("focus-elapsed").textContent = "0:00";
-  if (focusElapsedInterval) clearInterval(focusElapsedInterval);
-
-  // Show terminal status bar
-  const statusBar = document.getElementById("terminal-running-status");
-  if (statusBar) {
-    statusBar.classList.remove("hidden");
-    document.getElementById("terminal-running-label").textContent = t('terminal.working', {id: ticket.id});
-  }
-
-  focusElapsedInterval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const min = Math.floor(elapsed / 60);
-    const sec = elapsed % 60;
-    const timeStr = `${min}:${sec.toString().padStart(2, "0")}`;
-    document.getElementById("focus-elapsed").textContent = timeStr;
-    const elapsedEl = document.getElementById("terminal-running-elapsed");
-    if (elapsedEl) elapsedEl.textContent = timeStr;
-  }, 1000);
-
-  // Move active terminal into focus area
-  const focusArea = document.getElementById("focus-terminal-area");
-  if (state.activeTerminal && state.terminals[state.activeTerminal]) {
-    const inst = state.terminals[state.activeTerminal];
-    focusArea.innerHTML = "";
-    focusArea.appendChild(inst.containerEl);
-    inst.containerEl.style.display = "block";
-    requestAnimationFrame(() => inst.fitAddon.fit());
-  }
-
-  // Quick note save
-  document.getElementById("focus-notes-input").value = "";
-  document.getElementById("btn-focus-note-save").onclick = async () => {
-    const input = document.getElementById("focus-notes-input");
-    const text = input.value.trim();
-    if (!text || !state.runningTicket) return;
-    try {
-      await invoke("add_comment", { ticketId: state.runningTicket, text: "\u{1F4DD} " + text });
-      input.value = "";
-      showToast(t('focus.noteSaved'), "success");
-    } catch (e) {
-      appendLog("Note error: " + e, true);
-    }
-  };
-
-  // Finish button
-  document.getElementById("btn-focus-finish").onclick = () => {
-    if (state.runningTicket) finishTicket(state.runningTicket);
-  };
-
-  // Exit button
-  document.getElementById("btn-focus-exit").onclick = () => exitFocusMode();
-
-  focus.classList.remove("hidden");
-}
-
-function exitFocusMode() {
-  const focus = document.getElementById("focus-mode");
-  if (!focus) return;
-  focus.classList.add("hidden");
-
-  if (focusElapsedInterval) {
-    clearInterval(focusElapsedInterval);
-    focusElapsedInterval = null;
-  }
-
-  // Hide terminal status bar
-  const statusBar = document.getElementById("terminal-running-status");
-  if (statusBar) statusBar.classList.add("hidden");
-
-  // Move terminal back to board panel
-  if (state.activeTerminal && state.terminals[state.activeTerminal]) {
-    const inst = state.terminals[state.activeTerminal];
-    const boardInstances = document.getElementById("board-terminal-instances");
-    if (boardInstances && !boardInstances.contains(inst.containerEl)) {
-      boardInstances.appendChild(inst.containerEl);
-      requestAnimationFrame(() => inst.fitAddon.fit());
-    }
-  }
 }
 
 // ── Board Keyboard Navigation ──
@@ -1282,80 +857,8 @@ function updateTaskHelper() {
   `;
 }
 
-// ── Search Spotlight ──
-function openSearchSpotlight() {
-  const overlay = document.getElementById("search-overlay");
-  if (overlay) {
-    overlay.classList.remove("hidden");
-    const input = document.getElementById("global-search-input");
-    if (input) { input.value = ""; input.focus(); }
-    document.getElementById("global-search-results")?.classList.add("hidden");
-  }
-}
-
-function closeSearchSpotlight() {
-  document.getElementById("search-overlay")?.classList.add("hidden");
-  document.getElementById("global-search-results")?.classList.add("hidden");
-}
-
-function globalSearch() {
-  const input = document.getElementById("global-search-input");
-  const query = (input?.value || "").toLowerCase().trim();
-
-  let dropdown = document.getElementById("global-search-results");
-  if (!dropdown) {
-    dropdown = document.createElement("div");
-    dropdown.id = "global-search-results";
-    dropdown.className = "global-search-results hidden";
-    input.parentElement.appendChild(dropdown);
-  }
-
-  if (!query || query.length < 2) {
-    dropdown.classList.add("hidden");
-    return;
-  }
-
-  const results = [];
-
-  // Search tickets
-  (state.board.tickets || []).forEach(t => {
-    if (t.title.toLowerCase().includes(query) || (t.description || "").toLowerCase().includes(query) || t.id.toLowerCase().includes(query)) {
-      results.push({ type: "ticket", icon: "\u{1F4CB}", label: `${t.id} — ${t.title}`, sub: t.column, action: () => { switchView("board"); openDetailPanel(t); } });
-    }
-  });
-
-  // Search settings keywords
-  const settingsKeywords = ["claude", "terminal", "deploy", "docker", "ssh", "backup", "theme", "accent", "bug-sync", "model", "shell"];
-  settingsKeywords.forEach(kw => {
-    if (kw.includes(query)) {
-      results.push({ type: "settings", icon: "\u2699", label: `Settings: ${kw}`, sub: "", action: () => switchView("settings") });
-    }
-  });
-
-  if (results.length === 0) {
-    dropdown.innerHTML = `<div class="search-empty">${t('search.noResults')}</div>`;
-  } else {
-    dropdown.innerHTML = results.slice(0, 10).map((r, i) => `
-      <div class="search-result-item" data-search-idx="${i}">
-        <span class="search-icon">${r.icon}</span>
-        <span class="search-label">${esc(r.label)}</span>
-        <span class="search-sub">${esc(r.sub)}</span>
-      </div>
-    `).join("");
-
-    dropdown.querySelectorAll(".search-result-item").forEach((el, i) => {
-      el.addEventListener("click", () => {
-        results[i].action();
-        closeSearchSpotlight();
-      });
-    });
-  }
-
-  dropdown.classList.remove("hidden");
-}
-
 // ── Git Warning Banner ──
-/** Prüft den Git-Status und zeigt ggf. ein Warning-Banner an (kein Git-Repo, laufende Operation). */
+/** Prueft den Git-Status und zeigt ggf. ein Warning-Banner an (kein Git-Repo, laufende Operation). */
 export async function updateGitWarnings() {
   try {
     const status = await invoke("get_git_status");
@@ -1393,13 +896,6 @@ export async function updateGitWarnings() {
 }
 
 // ── Status Bar ──
-async function updateStatusBar() {
-  try {
-    const status = await invoke("get_git_status");
-    const branchEl = document.getElementById("status-git-branch");
-    if (branchEl) branchEl.textContent = status.currentBranch || "—";
-  } catch {
-    const branchEl = document.getElementById("status-git-branch");
-    if (branchEl) branchEl.textContent = "—";
-  }
+function updateStatusBar() {
+  // Placeholder for status bar updates
 }
