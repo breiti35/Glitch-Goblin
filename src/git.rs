@@ -1265,4 +1265,179 @@ mod integration_tests {
         assert!(has_in_progress_operation(&repo).await.is_none());
         cleanup(&repo);
     }
+
+    // ── Ticket Lifecycle End-to-End Tests ──
+
+    #[tokio::test]
+    async fn lifecycle_start_commit_finish_merge_done() {
+        let repo = create_test_repo();
+
+        let ticket = test_ticket(
+            "GG-100",
+            "Lifecycle Test",
+            "lifecycle-test",
+            TicketType::Feature,
+            Column::Backlog,
+        );
+
+        // START: checkout ticket branch
+        let branch = checkout_branch(&repo, &ticket).await.unwrap();
+        assert_eq!(branch, "gg/GG-100-lifecycle-test");
+        assert_eq!(sync_current_branch(&repo), "gg/GG-100-lifecycle-test");
+
+        // COMMIT: create file and auto-commit
+        std::fs::write(repo.join("feature.rs"), "fn main() {}").unwrap();
+        let committed = auto_commit(&repo, "GG-100: Lifecycle Test").await.unwrap();
+        assert!(committed);
+        assert!(!check_uncommitted(&repo).await.unwrap());
+
+        // FINISH: auto-commit (nothing left) should return false
+        let finish_committed = auto_commit(&repo, "GG-100: Finish").await.unwrap();
+        assert!(!finish_committed);
+
+        // MERGE: switch to main, merge, delete branch
+        checkout_main(&repo).await.unwrap();
+        let main = sync_current_branch(&repo);
+        assert!(main == "main" || main == "master");
+
+        merge_branch(&repo, &branch).await.unwrap();
+        assert!(repo.join("feature.rs").exists(), "Merged file should exist on main");
+
+        delete_branch(&repo, &branch, false).await.unwrap();
+
+        // Verify branch is gone
+        let output = std::process::Command::new("git")
+            .args(["branch", "--list", &branch])
+            .current_dir(&repo)
+            .output()
+            .unwrap();
+        assert!(
+            String::from_utf8_lossy(&output.stdout).trim().is_empty(),
+            "Branch should be deleted after merge"
+        );
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn lifecycle_merge_with_auto_push() {
+        // Create a bare "remote" repo
+        let remote_dir = std::env::temp_dir().join(format!("gg-remote-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&remote_dir).unwrap();
+        let run_at = |dir: &Path, args: &[&str]| {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(dir)
+                .output()
+                .expect("git command");
+            assert!(
+                output.status.success(),
+                "git {} failed: {}",
+                args.join(" "),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        };
+        run_at(&remote_dir, &["init", "--bare"]);
+
+        // Create local repo and add remote
+        let repo = create_test_repo();
+        let remote_url = remote_dir.to_string_lossy().to_string();
+        run_at(&repo, &["remote", "add", "origin", &remote_url]);
+        // Push initial commit to set up tracking
+        let main = sync_current_branch(&repo);
+        run_at(&repo, &["push", "-u", "origin", &main]);
+
+        // Verify remote is detected
+        assert!(has_remote(&repo).await);
+
+        // Create ticket branch, add file, commit
+        let ticket = test_ticket(
+            "GG-101",
+            "Push Test",
+            "push-test",
+            TicketType::Feature,
+            Column::Progress,
+        );
+        let branch = checkout_branch(&repo, &ticket).await.unwrap();
+        commit_file(&repo, "pushed.txt", "pushed content", "GG-101: Push Test");
+
+        // Merge back to main
+        checkout_main(&repo).await.unwrap();
+        merge_branch(&repo, &branch).await.unwrap();
+
+        // Auto-push main to remote
+        let main_branch = default_branch_name(&repo).await;
+        let push_result = push_branch(&repo, &main_branch).await;
+        assert!(push_result.is_ok(), "Push should succeed with remote: {:?}", push_result.err());
+
+        // Verify remote has the merge (clone to temp and check file)
+        let verify_dir = std::env::temp_dir().join(format!("gg-verify-{}", uuid::Uuid::new_v4()));
+        run_at(
+            &std::env::temp_dir(),
+            &["clone", &remote_url, &verify_dir.to_string_lossy()],
+        );
+        assert!(
+            verify_dir.join("pushed.txt").exists(),
+            "Remote should have the pushed file after merge+push"
+        );
+
+        let _ = std::fs::remove_dir_all(&verify_dir);
+        let _ = std::fs::remove_dir_all(&remote_dir);
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn lifecycle_finish_without_changes() {
+        let repo = create_test_repo();
+
+        let ticket = test_ticket(
+            "GG-102",
+            "No Changes",
+            "no-changes",
+            TicketType::Bugfix,
+            Column::Progress,
+        );
+
+        // Start: checkout branch
+        checkout_branch(&repo, &ticket).await.unwrap();
+
+        // Finish without making any changes — auto_commit should return false
+        let committed = auto_commit(&repo, "GG-102: No Changes").await.unwrap();
+        assert!(!committed, "Should not commit when there are no changes");
+
+        // Repo should be clean
+        assert!(!check_uncommitted(&repo).await.unwrap());
+
+        cleanup(&repo);
+    }
+
+    #[tokio::test]
+    async fn lifecycle_start_without_git_repo_error() {
+        // Simulate the start_ticket pre-flight check: is_git_repo must return false
+        // for a plain directory so the command rejects it before touching git.
+        let dir = std::env::temp_dir().join(format!("gg-no-repo-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // Verify is_git_repo rejects a non-repo directory (using GIT_CEILING_DIRECTORIES
+        // to prevent git from traversing into a parent repo)
+        let parent = dir.parent().unwrap_or(&dir).to_string_lossy().to_string();
+        let detected = tokio::process::Command::new("git")
+            .args(["rev-parse", "--git-dir"])
+            .current_dir(&dir)
+            .env("GIT_CEILING_DIRECTORIES", &parent)
+            .output()
+            .await
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        assert!(
+            !detected,
+            "Plain directory must not be detected as git repo — start_ticket would reject this"
+        );
+
+        // Also verify that auto_commit fails gracefully in a non-git context
+        let result = auto_commit(&dir, "should fail").await;
+        assert!(result.is_err(), "auto_commit should fail without git repo");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
