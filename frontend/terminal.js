@@ -2,7 +2,7 @@
 // PTY terminal sessions, tabs, board terminal panel.
 
 import { invoke } from '@tauri-apps/api/core';
-import { esc } from './utils.js';
+import { esc, logError } from './utils.js';
 import { state, appendLog, modelToFlag, switchView, refreshBoard } from './app.js';
 import { t } from './i18n.js';
 
@@ -16,7 +16,7 @@ export async function loadShellOptions(selectId, selectedValue) {
     select.innerHTML = '<option value="">' + esc(t('terminal.autoDetect')) + '</option>' +
       shells.map(s => `<option value="${esc(s.path)}"${s.path === selectedValue ? " selected" : ""}>${esc(s.name)}</option>`).join("");
   } catch (e) {
-    console.warn("terminal: failed to load shells", e);
+    logError("terminal: failed to load shells", e);
   }
 }
 
@@ -62,7 +62,7 @@ export async function closeTerminalById(terminalId) {
   try {
     await invoke("close_terminal", { terminalId });
   } catch (e) {
-    console.warn("terminal: close failed", e);
+    logError("terminal: close failed", e);
   }
   cleanupTerminal(terminalId);
 }
@@ -143,11 +143,11 @@ function createTerminalInstance(terminalId, name, containerId, tabsId) {
   term.open(container);
   fitAddon.fit();
   const { cols, rows } = term;
-  invoke("resize_terminal", { terminalId, cols, rows }).catch(e => console.warn("terminal: resize", e));
+  invoke("resize_terminal", { terminalId, cols, rows }).catch(e => logError("terminal: resize", e));
   term.focus();
 
   term.onData(data => {
-    invoke("write_terminal", { terminalId, data }).catch(e => console.warn("terminal: write", e));
+    invoke("write_terminal", { terminalId, data }).catch(e => logError("terminal: write", e));
   });
 
   state.terminals[terminalId] = { term, fitAddon, tabEl: tab, containerEl: container, name };
@@ -217,7 +217,7 @@ export async function openTicketTerminal(startResult, model) {
     const claudePath = state.settings.claude_cli_path || "claude";
     const modelFlag = modelToFlag(model || state.settings.claude_model || "claude-sonnet-4-6");
     const claudeCmd = `${claudePath} --dangerously-skip-permissions --model ${modelFlag}\r`;
-    invoke("write_terminal", { terminalId, data: claudeCmd }).catch(e => console.warn("terminal: write", e));
+    invoke("write_terminal", { terminalId, data: claudeCmd }).catch(e => logError("terminal: write", e));
 
     const inst = state.terminals[terminalId];
     if (!inst) return;
@@ -242,7 +242,7 @@ export async function openTicketTerminal(startResult, model) {
         inst.onOutput = null;
         clearInterval(checkInterval);
         const prompt = startResult.prompt + "\r";
-        invoke("write_terminal", { terminalId, data: prompt }).catch(e => console.warn("terminal: write", e));
+        invoke("write_terminal", { terminalId, data: prompt }).catch(e => logError("terminal: write", e));
       }
     }, 500);
 
@@ -256,7 +256,7 @@ export async function openTicketTerminal(startResult, model) {
         inst.onOutput = null;
         clearInterval(checkInterval);
         const prompt = startResult.prompt + "\r";
-        invoke("write_terminal", { terminalId, data: prompt }).catch(e => console.warn("terminal: write", e));
+        invoke("write_terminal", { terminalId, data: prompt }).catch(e => logError("terminal: write", e));
       }
     }, 20000);
 
@@ -285,7 +285,7 @@ export function refitBoardTerminal() {
   requestAnimationFrame(() => {
     inst.fitAddon.fit();
     const { cols, rows } = inst.term;
-    invoke("resize_terminal", { terminalId: state.activeTerminal, cols, rows }).catch(e => console.warn("terminal: resize", e));
+    invoke("resize_terminal", { terminalId: state.activeTerminal, cols, rows }).catch(e => logError("terminal: resize", e));
   });
 }
 

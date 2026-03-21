@@ -5,6 +5,12 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Fixed
+- **Frontend Fehler-Logging:** Alle `console.error`/`console.warn` Aufrufe in `app.js`, `dashboard.js`, `deploy.js` und `terminal.js` durch `logError()` aus `utils.js` ersetzt — Fehler landen jetzt sichtbar im Log-Panel der App statt nur in der DevConsole
+- **Stille Fehler beseitigt:** `invoke("get_running_ticket").catch(() => {})` gibt Fehler jetzt weiter; `invoke("save_settings").catch(console.error)` durch typisiertes `logError()` ersetzt
+
 ## v0.2.0 — Stitch Design System (2026-03-21)
 
 ### Design-System: "Goblin Gloss" (Stitch)

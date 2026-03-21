@@ -4,7 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // ── Modules ──
-import { debounce, esc, withGuard, timeAgo } from './utils.js';
+import { debounce, esc, withGuard, timeAgo, logError } from './utils.js';
 import { installErrorHandler } from './error-handler.js';
 import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
@@ -482,7 +482,7 @@ const executeTicket = withGuard(async function(ticketId, model) {
   } catch (err) {
     state.runningTicket = null;
     // Sync backend state — running_ticket may need clearing
-    invoke("get_running_ticket").then(rt => { state.runningTicket = rt; }).catch(() => {});
+    invoke("get_running_ticket").then(rt => { state.runningTicket = rt; }).catch(e => logError("get_running_ticket", e));
     appendLog("Start error: " + err, true);
     notifyDesktop(t('notify.error'), t('notify.failed', {title: ticketTitle}));
     playSound("error");
@@ -613,7 +613,7 @@ function notifyDesktop(title, body) {
       new Notification(title, { body });
     }
   } catch (e) {
-    console.warn("Notification failed:", e);
+    logError("Notification failed", e);
   }
 }
 
@@ -627,7 +627,7 @@ function playSound(name) {
     audio.volume = 0.5;
     audio.play().catch(() => { /* autoplay restricted */ });
   } catch (e) {
-    console.warn("Sound failed:", e);
+    logError("Sound failed", e);
   }
 }
 
@@ -640,7 +640,7 @@ export async function refreshBoard() {
     // Exit focus mode if ticket no longer running
     if (!state.runningTicket) exitFocusMode();
   } catch (e) {
-    console.error("Failed to refresh board:", e);
+    logError("Failed to refresh board", e);
   }
 }
 
@@ -716,7 +716,7 @@ function toggleTheme() {
   document.body.dataset.theme = next;
   updateThemeUI();
   state.settings.theme = next;
-  invoke("save_settings", { settings: state.settings }).catch(console.error);
+  invoke("save_settings", { settings: state.settings }).catch(e => logError("save_settings", e));
 }
 
 export function updateThemeUI() {
