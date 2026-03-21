@@ -2,7 +2,7 @@
 // Dashboard view, templates, import/export.
 
 import { invoke } from '@tauri-apps/api/core';
-import { esc, timeAgo, formatDuration } from './utils.js';
+import { esc, timeAgo, formatDuration, logError } from './utils.js';
 import { state, appendLog, switchView, confirmExecute } from './app.js';
 import { renderBoard } from './board.js';
 import { t } from './i18n.js';
@@ -107,7 +107,7 @@ export async function loadDashboard() {
         : '<span style="color:var(--text-muted)">' + esc(t('dashboard.noActivity')) + '</span>';
 
   } catch (e) {
-    console.error("Dashboard error:", e);
+    logError("Dashboard error", e);
   }
 }
 
@@ -121,7 +121,7 @@ export async function loadTemplatesForModal() {
     select.innerHTML = '<option value="">' + esc(t('dashboard.noTemplate')) + '</option>' +
       templates.map(tpl => `<option value="${esc(tpl.name)}">${esc(tpl.name)}</option>`).join("");
   } catch (e) {
-    console.error("Failed to load templates:", e);
+    logError("Failed to load templates", e);
   }
 }
 
@@ -142,7 +142,7 @@ export function setupTemplateListener() {
         }
       }
     } catch (e) {
-      console.error("Template load error:", e);
+      logError("Template load error", e);
     }
   });
 }

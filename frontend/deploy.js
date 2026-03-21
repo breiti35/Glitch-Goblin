@@ -2,7 +2,7 @@
 // Docker/SSH deploy operations.
 
 import { invoke } from '@tauri-apps/api/core';
-import { esc, shellEscape, shellEscapeLocal, validateDeployParam } from './utils.js';
+import { esc, shellEscape, shellEscapeLocal, validateDeployParam, logError } from './utils.js';
 import { state, appendLog, openModal, closeModal } from './app.js';
 import { openDeployTerminal } from './terminal.js';
 import { t } from './i18n.js';
@@ -97,7 +97,7 @@ async function executeLocalDeploy() {
     if (cfg.envFile) cmd += ` --env-file ${shellEscapeLocal(cfg.envFile)}`;
     cmd += " up --build -d\r";
     setTimeout(() => {
-      invoke("write_terminal", { terminalId, data: cmd }).catch(e => console.warn("deploy: write", e));
+      invoke("write_terminal", { terminalId, data: cmd }).catch(e => logError("deploy: write", e));
     }, 1500);
 
     updateDeployBadge("success", "Local running");
@@ -180,7 +180,7 @@ async function executeLiveDeploy() {
     sshCmd += "\r";
 
     setTimeout(() => {
-      invoke("write_terminal", { terminalId, data: sshCmd }).catch(e => console.warn("deploy: write", e));
+      invoke("write_terminal", { terminalId, data: sshCmd }).catch(e => logError("deploy: write", e));
     }, 1500);
 
     updateDeployBadge("success", "Live deployed");
@@ -203,7 +203,7 @@ async function executeLocalDeployStop() {
     files.forEach(f => cmd += ` -f ${f}`);
     cmd += " down\r";
     setTimeout(() => {
-      invoke("write_terminal", { terminalId, data: cmd }).catch(e => console.warn("deploy: write", e));
+      invoke("write_terminal", { terminalId, data: cmd }).catch(e => logError("deploy: write", e));
     }, 1500);
 
     updateDeployBadge("hidden", "");
