@@ -3724,6 +3724,35 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   color: var(--text);
 }
 .stats-kpi-success { color: var(--success); }
+.stats-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.stats-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.stats-card-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.stats-card-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+}
 
 /* ── Git View Stitch ── */
 .git-current-commits-title {
@@ -3800,9 +3829,105 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   border: 2px solid var(--bg);
 }
 
+/* ── Horizontal Bar Chart (Nach Spalte) ── */
+.hbar-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 40px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.hbar-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.hbar-track {
+  height: 8px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hbar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.hbar-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ── Recent Completed Cards ── */
+.recent-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.recent-item:last-child { border-bottom: none; }
+.recent-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--success);
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.recent-body { flex: 1; min-width: 0; }
+.recent-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.recent-meta { display: flex; align-items: center; gap: 8px; }
+.recent-type-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #fff;
+}
+.recent-dur { font-size: 11px; color: var(--text-muted); }
+
+/* ── Pie Chart Donut ── */
+.pie-chart {
+  position: relative;
+  border-radius: 50%;
+}
+.pie-chart::after {
+  content: '';
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background: var(--card-bg);
+}
+.legend-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
 /* ── Responsive Stitch ── */
 @media (max-width: 900px) {
   .dash-grid { grid-template-columns: 1fr; }
   .stats-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-row-2col { grid-template-columns: 1fr; }
   .git-merged-list { grid-template-columns: 1fr; }
 }

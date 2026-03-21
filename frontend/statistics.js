@@ -1,5 +1,5 @@
 // ── Statistics Module ──
-// Charts, metrics, recent completed.
+// Charts, metrics, recent completed — Stitch Design.
 
 import { esc, formatDuration } from './utils.js';
 import { state } from './app.js';
@@ -9,7 +9,7 @@ export function loadStatistics() {
   const tickets = state.board.tickets || [];
   const done = tickets.filter(t => t.column === "done");
 
-  // Basic stats
+  // KPI stats
   document.getElementById("stat-total").textContent = tickets.length;
   document.getElementById("stat-done").textContent = done.length;
 
@@ -21,25 +21,11 @@ export function loadStatistics() {
   document.getElementById("stat-cycle").textContent =
     cycleTimes.length > 0 ? formatDuration(cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length) : "-";
 
-  // Avg review time (element may not exist in new KPI layout)
-  const reviewTimes = done
-    .filter(t => t.review_at && t.done_at)
-    .map(t => new Date(t.done_at) - new Date(t.review_at))
-    .filter(d => d > 0);
-  const reviewEl = document.getElementById("stat-review");
-  if (reviewEl) {
-    reviewEl.textContent =
-      reviewTimes.length > 0 ? formatDuration(reviewTimes.reduce((a, b) => a + b, 0) / reviewTimes.length) : "-";
-  }
-
   // Cost stats
   const ticketsWithCost = tickets.filter(t => t.cost_usd);
   const totalCost = ticketsWithCost.reduce((sum, t) => sum + (t.cost_usd || 0), 0);
   const costEl = document.getElementById("stat-total-cost");
   if (costEl) costEl.textContent = totalCost > 0 ? "$" + totalCost.toFixed(2) : "-";
-  const avgCostEl = document.getElementById("stat-avg-cost");
-  if (avgCostEl) avgCostEl.textContent = ticketsWithCost.length > 0
-    ? "$" + (totalCost / ticketsWithCost.length).toFixed(2) : "-";
 
   // Stats badge
   document.getElementById("stats-badge").textContent = done.length + "/" + tickets.length;
@@ -54,7 +40,7 @@ function renderTypePieChart(tickets) {
   const counts = { feature: 0, bugfix: 0, security: 0, docs: 0 };
   tickets.forEach(t => { if (counts[t.ticket_type] !== undefined) counts[t.ticket_type]++; });
   const total = tickets.length || 1;
-  const colors = { feature: "#3B82F6", bugfix: "#EAB308", security: "#EF4444", docs: "#EC4899" };
+  const colors = { feature: "#3B82F6", bugfix: "#f4a460", security: "#e04f5e", docs: "#a855f7" };
   const segments = [];
   let offset = 0;
 
@@ -71,17 +57,21 @@ function renderTypePieChart(tickets) {
   } else {
     pie.style.background = `conic-gradient(${segments.join(", ")})`;
   }
+  // Center hole for donut effect
+  pie.style.position = "relative";
 
   const legend = document.getElementById("pie-legend");
   legend.innerHTML = Object.entries(counts)
     .filter(([_, c]) => c > 0)
-    .map(([type, count]) =>
-      `<div class="legend-item"><span class="legend-dot" style="background:${colors[type]}"></span>${type}: ${count}</div>`
-    ).join("");
+    .map(([type, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `<div class="legend-item"><span class="legend-dot" style="background:${colors[type]}"></span>${type} <span class="legend-pct">${pct}%</span></div>`;
+    }).join("");
 }
 
 function renderColumnBarChart(tickets) {
   const cols = ["backlog", "progress", "review", "done"];
+  const labels = { backlog: "BACKLOG", progress: "IN PROGRESS", review: "REVIEW", done: "DONE" };
   const counts = {};
   cols.forEach(c => counts[c] = tickets.filter(t => t.column === c).length);
   const max = Math.max(...Object.values(counts), 1);
@@ -89,11 +79,12 @@ function renderColumnBarChart(tickets) {
 
   const chart = document.getElementById("bar-chart");
   chart.innerHTML = cols.map(col => `
-    <div class="bar-group">
-      <div class="bar" style="height: ${(counts[col] / max) * 100}%; background: ${colors[col]}">
-        <span class="bar-value">${counts[col]}</span>
+    <div class="hbar-row">
+      <span class="hbar-label">${labels[col]}</span>
+      <div class="hbar-track">
+        <div class="hbar-fill" style="width: ${(counts[col] / max) * 100}%; background: ${colors[col]}"></div>
       </div>
-      <span class="bar-label">${col}</span>
+      <span class="hbar-value">${counts[col]}</span>
     </div>
   `).join("");
 }
@@ -102,7 +93,7 @@ function renderRecentCompleted(doneTickets) {
   const sorted = doneTickets
     .filter(t => t.done_at)
     .sort((a, b) => new Date(b.done_at) - new Date(a.done_at))
-    .slice(0, 10);
+    .slice(0, 5);
 
   const container = document.getElementById("recent-completed");
   if (sorted.length === 0) {
@@ -110,13 +101,22 @@ function renderRecentCompleted(doneTickets) {
     return;
   }
 
-  container.innerHTML = sorted.map(t => {
-    const dur = t.created_at && t.done_at
-      ? formatDuration(new Date(t.done_at) - new Date(t.created_at))
+  const typeColors = { feature: "#3B82F6", bugfix: "#f4a460", security: "#e04f5e", docs: "#a855f7" };
+
+  container.innerHTML = sorted.map(ticket => {
+    const dur = ticket.created_at && ticket.done_at
+      ? formatDuration(new Date(ticket.done_at) - new Date(ticket.created_at))
       : "-";
+    const color = typeColors[ticket.ticket_type] || "var(--text-muted)";
     return `<div class="recent-item">
-      <span class="recent-title">${esc(t.id)} - ${esc(t.title)}</span>
-      <span class="recent-dur">${dur}</span>
+      <span class="recent-check">\u2713</span>
+      <div class="recent-body">
+        <div class="recent-title">${esc(ticket.id)} ${esc(ticket.title)}</div>
+        <div class="recent-meta">
+          <span class="recent-type-badge" style="background:${color}">${esc(ticket.ticket_type)}</span>
+          <span class="recent-dur">${dur}</span>
+        </div>
+      </div>
     </div>`;
   }).join("");
 }
@@ -125,7 +125,6 @@ function renderWeeklyVelocity(doneTickets) {
   const container = document.getElementById("velocity-chart");
   if (!container) return;
 
-  // Group done tickets by week (last 8 weeks)
   const now = new Date();
   const weeks = [];
   for (let i = 7; i >= 0; i--) {

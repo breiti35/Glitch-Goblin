@@ -528,37 +528,48 @@
         </div>
       </section>
 
-      <!-- View: Statistics (Block D2) -->
+      <!-- View: Statistics -->
       <section id="view-statistics" class="view">
-        <div class="view-header"><h1 data-i18n="stats.title">Statistics</h1></div>
+        <div class="view-header"><h1 data-i18n="stats.title">Statistiken</h1></div>
         <div class="stats-dashboard">
-          <div class="stats-row">
-            <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label" data-i18n="stats.totalTickets">Total Tickets</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-done">0</div><div class="stat-label" data-i18n="stats.completed">Completed</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-cycle">-</div><div class="stat-label" data-i18n="stats.avgCycleTime">Avg Cycle Time</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-review">-</div><div class="stat-label" data-i18n="stats.avgReviewTime">Avg Review Time</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-total-cost">-</div><div class="stat-label" data-i18n="stats.totalCost">Total Cost</div></div>
-            <div class="stat-card"><div class="stat-value" id="stat-avg-cost">-</div><div class="stat-label" data-i18n="stats.avgCostTicket">Avg Cost/Ticket</div></div>
+          <div class="stats-kpi-grid">
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label" data-i18n="stats.totalTickets">TICKETS GESAMT</div>
+              <div class="stats-kpi-value" id="stat-total">0</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label" data-i18n="stats.completed">ABGESCHLOSSEN</div>
+              <div class="stats-kpi-value stats-kpi-success" id="stat-done">0</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label" data-i18n="stats.avgCycleTime">&Oslash; ZYKLUSZEIT</div>
+              <div class="stats-kpi-value" id="stat-cycle">-</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label" data-i18n="stats.totalCost">GESAMTKOSTEN</div>
+              <div class="stats-kpi-value" id="stat-total-cost">-</div>
+            </div>
           </div>
-          <div class="stats-row">
-            <div class="stat-card chart-card">
-              <div class="stat-label" data-i18n="stats.byType">By Type</div>
+          <div class="stats-row-2col">
+            <div class="stats-card">
+              <div class="stats-card-title" data-i18n="stats.velocity">VELOCITY</div>
+              <div class="stats-card-subtitle">TICKETS / WOCHE</div>
+              <div id="velocity-chart" class="velocity-chart"></div>
+            </div>
+            <div class="stats-card">
+              <div class="stats-card-title" data-i18n="stats.recentCompleted">ZULETZT ABGESCHLOSSEN</div>
+              <div id="recent-completed" class="recent-list"></div>
+            </div>
+          </div>
+          <div class="stats-row-2col">
+            <div class="stats-card">
+              <div class="stats-card-title" data-i18n="stats.byType">NACH TYP</div>
               <div id="pie-chart" class="pie-chart"></div>
               <div id="pie-legend" class="pie-legend"></div>
             </div>
-            <div class="stat-card chart-card">
-              <div class="stat-label" data-i18n="stats.byColumn">By Column</div>
+            <div class="stats-card">
+              <div class="stats-card-title" data-i18n="stats.byColumn">NACH SPALTE</div>
               <div id="bar-chart" class="bar-chart"></div>
-            </div>
-          </div>
-          <div class="stats-row">
-            <div class="stat-card chart-card">
-              <div class="stat-label" data-i18n="stats.velocity">Velocity (Tickets/Woche)</div>
-              <div id="velocity-chart" class="velocity-chart"></div>
-            </div>
-            <div class="stat-card" style="flex:1">
-              <div class="stat-label" data-i18n="stats.recentCompleted">Recent Completed</div>
-              <div id="recent-completed" class="recent-list"></div>
             </div>
           </div>
         </div>
