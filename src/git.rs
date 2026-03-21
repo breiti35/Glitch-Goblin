@@ -16,11 +16,11 @@ fn validate_git_ref(name: &str) -> Result<(), String> {
         );
     }
     if name.contains("..") || name.contains('\0') {
-        return Err(AppError::InvalidInput(format!("Ungültiger Branch-Name '{name}'")).into());
+        return Err(AppError::InvalidInput(format!("Ung\u{00fc}ltiger Branch-Name '{name}'")).into());
     }
     if !name.chars().all(|c| c.is_alphanumeric() || "-/_.".contains(c)) {
         return Err(
-            AppError::InvalidInput(format!("Branch-Name '{name}' enthält ungültige Zeichen"))
+            AppError::InvalidInput(format!("Branch-Name '{name}' enth\u{00e4}lt ung\u{00fc}ltige Zeichen"))
                 .into(),
         );
     }
@@ -217,7 +217,7 @@ pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), Strin
                 .output()
                 .await;
             return Err(AppError::GitMerge(
-                format!("Merge-Konflikt in Branch '{}'. Der Merge wurde abgebrochen. Bitte löse die Konflikte manuell im Terminal.", branch)
+                format!("Merge-Konflikt in Branch '{}'. Der Merge wurde abgebrochen. Bitte l\u{00f6}se die Konflikte manuell im Terminal.", branch)
             ).into());
         }
 
@@ -802,4 +802,165 @@ pub async fn abort_merge(project_path: &Path) -> Result<(), String> {
         return Err(AppError::GitMerge(format!("abort: {}", stderr.trim())).into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_unc_prefix_windows() {
+        let path = PathBuf::from(r"\\?\C:\Users\test\project");
+        let stripped = strip_unc_prefix(&path);
+        assert_eq!(stripped, PathBuf::from(r"C:\Users\test\project"));
+    }
+
+    #[test]
+    fn strip_unc_prefix_unix_style() {
+        let path = PathBuf::from("//?/C:/Users/test/project");
+        let stripped = strip_unc_prefix(&path);
+        assert_eq!(stripped, PathBuf::from("C:/Users/test/project"));
+    }
+
+    #[test]
+    fn strip_unc_prefix_no_prefix() {
+        let path = PathBuf::from("C:/normal/path");
+        let stripped = strip_unc_prefix(&path);
+        assert_eq!(stripped, PathBuf::from("C:/normal/path"));
+    }
+
+    #[test]
+    fn validate_git_ref_rejects_empty() {
+        assert!(validate_git_ref("").is_err());
+    }
+
+    #[test]
+    fn validate_git_ref_rejects_dash_prefix() {
+        assert!(validate_git_ref("-flag").is_err());
+    }
+
+    #[test]
+    fn validate_git_ref_rejects_dot_dot() {
+        assert!(validate_git_ref("main..feature").is_err());
+    }
+
+    #[test]
+    fn validate_git_ref_rejects_special_chars() {
+        assert!(validate_git_ref("branch name").is_err());
+        assert!(validate_git_ref("branch;rm").is_err());
+        assert!(validate_git_ref("branch|pipe").is_err());
+    }
+
+    #[test]
+    fn validate_git_ref_accepts_valid() {
+        assert!(validate_git_ref("main").is_ok());
+        assert!(validate_git_ref("feature/GG-001-add-auth").is_ok());
+        assert!(validate_git_ref("gg/GG-018-fix-bug").is_ok());
+        assert!(validate_git_ref("release-1.0").is_ok());
+    }
+
+    #[test]
+    fn validate_git_ref_rejects_null_byte() {
+        assert!(validate_git_ref("branch\0name").is_err());
+    }
+
+    #[test]
+    fn validate_git_ref_accepts_dots_and_underscores() {
+        assert!(validate_git_ref("v1.0.0").is_ok());
+        assert!(validate_git_ref("feature_branch").is_ok());
+        assert!(validate_git_ref("a/b/c.d_e").is_ok());
+    }
+
+    #[test]
+    fn branch_name_format() {
+        let ticket = Ticket {
+            id: "GG-018".to_string(),
+            title: "Fix Login Bug".to_string(),
+            slug: "fix-login-bug".to_string(),
+            ticket_type: crate::kanban::TicketType::Bugfix,
+            column: crate::kanban::Column::Backlog,
+            description: String::new(),
+            prio: None,
+            created_at: None,
+            started_at: None,
+            review_at: None,
+            done_at: None,
+            has_changes: None,
+            branch: None,
+            tokens_used: None,
+            cost_usd: None,
+            model_used: None,
+            comments: None,
+            portal_bug_id: None,
+            portal_bug_url: None,
+        };
+        assert_eq!(branch_name(&ticket), "gg/GG-018-fix-login-bug");
+    }
+
+    #[test]
+    fn branch_name_feature() {
+        let ticket = Ticket {
+            id: "GG-001".to_string(),
+            title: "Add Auth".to_string(),
+            slug: "add-auth".to_string(),
+            ticket_type: crate::kanban::TicketType::Feature,
+            column: crate::kanban::Column::Progress,
+            description: String::new(),
+            prio: None,
+            created_at: None,
+            started_at: None,
+            review_at: None,
+            done_at: None,
+            has_changes: None,
+            branch: None,
+            tokens_used: None,
+            cost_usd: None,
+            model_used: None,
+            comments: None,
+            portal_bug_id: None,
+            portal_bug_url: None,
+        };
+        assert_eq!(branch_name(&ticket), "gg/GG-001-add-auth");
+    }
+
+    #[test]
+    fn branch_info_serde_camel_case() {
+        let info = BranchInfo {
+            name: "gg/GG-001-test".into(),
+            is_current: true,
+            is_kanban: true,
+            last_commit_msg: "initial".into(),
+            last_commit_date: "2026-03-20".into(),
+            is_merged: false,
+            files_changed: 3,
+            ahead_count: 1,
+            ticket_id: Some("GG-001".into()),
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        // Verify camelCase serialization
+        assert!(json.contains("\"isCurrent\""));
+        assert!(json.contains("\"isKanban\""));
+        assert!(json.contains("\"lastCommitMsg\""));
+        assert!(json.contains("\"filesChanged\""));
+        assert!(json.contains("\"aheadCount\""));
+        assert!(json.contains("\"ticketId\""));
+    }
+
+    #[test]
+    fn diff_info_serde_camel_case() {
+        let info = DiffInfo {
+            files: vec![DiffStat {
+                file_path: "src/main.rs".into(),
+                additions: 10,
+                deletions: 5,
+                status: "M".into(),
+            }],
+            total_additions: 10,
+            total_deletions: 5,
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        assert!(json.contains("\"filePath\""));
+        assert!(json.contains("\"totalAdditions\""));
+        assert!(json.contains("\"totalDeletions\""));
+    }
 }

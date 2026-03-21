@@ -291,10 +291,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn roundtrip_v2() {
+    fn roundtrip_v3() {
         let token = "my-secret-api-token";
         let encrypted = encrypt_token(token).unwrap();
-        assert!(encrypted.starts_with("v2:"));
+        assert!(encrypted.starts_with("v3:"), "Expected v3 prefix, got: {}", &encrypted[..6.min(encrypted.len())]);
         let decrypted = decrypt_token(&encrypted).unwrap();
         assert_eq!(decrypted, token);
     }

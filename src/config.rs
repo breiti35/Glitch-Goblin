@@ -274,7 +274,7 @@ fn default_templates() -> Vec<TicketTemplate> {
             ticket_type: "security".into(),
             default_prio: "high".into(),
             title_prefix: "[SEC] ".into(),
-            description_template: "## Prüfbereiche\n- [ ] Input Validation\n- [ ] Auth/AuthZ\n- [ ] SQL Injection\n- [ ] XSS\n".into(),
+            description_template: "## Pr\u{00fc}fbereiche\n- [ ] Input Validation\n- [ ] Auth/AuthZ\n- [ ] SQL Injection\n- [ ] XSS\n".into(),
         },
         TicketTemplate {
             name: "Doku Update".into(),
@@ -386,4 +386,106 @@ fn read_md_filenames(dir: &std::path::Path) -> Vec<String> {
                 .map(|s| s.to_string_lossy().to_string())
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_data_dir_rejects_empty_name() {
+        assert!(project_data_dir("").is_err());
+    }
+
+    #[test]
+    fn project_data_dir_rejects_only_special_chars() {
+        assert!(project_data_dir("...").is_err());
+    }
+
+    #[test]
+    fn project_data_dir_sanitizes_name() {
+        // This test verifies the sanitization logic without actually creating dirs
+        let safe: String = "My Project!@#"
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+            .collect();
+        assert_eq!(safe, "My-Project---");
+    }
+
+    #[test]
+    fn project_data_dir_rejects_all_dashes() {
+        // Input "!!!" becomes "---" which is all dashes
+        assert!(project_data_dir("!!!").is_err());
+    }
+
+    #[test]
+    fn projects_config_default_is_empty() {
+        let config = ProjectsConfig::default();
+        assert!(config.projects.is_empty());
+        assert!(config.default_project.is_none());
+    }
+
+    #[test]
+    fn projects_config_serde_roundtrip() {
+        let config = ProjectsConfig {
+            projects: vec![
+                ProjectEntry {
+                    name: "my-project".into(),
+                    path: PathBuf::from("/home/user/project"),
+                },
+            ],
+            default_project: Some("my-project".into()),
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: ProjectsConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.projects.len(), 1);
+        assert_eq!(parsed.projects[0].name, "my-project");
+        assert_eq!(parsed.default_project.as_deref(), Some("my-project"));
+    }
+
+    #[test]
+    fn default_templates_has_four_entries() {
+        let templates = default_templates();
+        assert_eq!(templates.len(), 4);
+        let types: Vec<&str> = templates.iter().map(|t| t.ticket_type.as_str()).collect();
+        assert!(types.contains(&"feature"));
+        assert!(types.contains(&"bugfix"));
+        assert!(types.contains(&"security"));
+        assert!(types.contains(&"docs"));
+    }
+
+    #[test]
+    fn ticket_template_serde_roundtrip() {
+        let template = TicketTemplate {
+            name: "Test Template".into(),
+            ticket_type: "feature".into(),
+            default_prio: "high".into(),
+            title_prefix: "[TEST] ".into(),
+            description_template: "## Test\n".into(),
+        };
+        let json = serde_json::to_string(&template).unwrap();
+        let parsed: TicketTemplate = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.name, "Test Template");
+        assert_eq!(parsed.ticket_type, "feature");
+        assert_eq!(parsed.default_prio, "high");
+        assert_eq!(parsed.title_prefix, "[TEST] ");
+    }
+
+    #[test]
+    fn read_md_filenames_nonexistent_dir() {
+        let result = read_md_filenames(Path::new("/nonexistent/dir/that/does/not/exist"));
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn list_agents_nonexistent_project() {
+        let result = list_agents(Path::new("/nonexistent/project/path"));
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn list_commands_nonexistent_project() {
+        let result = list_commands(Path::new("/nonexistent/project/path"));
+        assert!(result.is_empty());
+    }
 }

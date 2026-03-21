@@ -229,3 +229,183 @@ impl Drop for AppState {
         self.watcher_stop.store(true, Ordering::Relaxed);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_default_values() {
+        let s = Settings::default();
+        assert_eq!(s.language, "de");
+        assert!(!s.auto_push_after_merge);
+        assert_eq!(s.commit_prefix, "kanban:");
+        assert_eq!(s.max_backups, 10);
+        assert_eq!(s.terminal_font_size, 14);
+        assert!(s.notifications_enabled);
+        assert!(s.sounds_enabled);
+        assert!(s.backups_enabled);
+        assert_eq!(s.theme, "dark");
+        assert_eq!(s.accent_color, "#F97316");
+        assert_eq!(s.claude_cli_path, "claude");
+        assert_eq!(s.claude_model, "claude-sonnet-4-6");
+        assert!((s.cost_per_input_mtok - 3.0).abs() < f64::EPSILON);
+        assert!((s.cost_per_output_mtok - 15.0).abs() < f64::EPSILON);
+        assert!(s.default_shell.is_empty());
+    }
+
+    #[test]
+    fn settings_default_auto_execute_types() {
+        let s = Settings::default();
+        assert!(s.auto_execute_types.contains(&"docs".to_string()));
+        assert!(s.auto_execute_types.contains(&"security".to_string()));
+        assert_eq!(s.auto_execute_types.len(), 2);
+    }
+
+    #[test]
+    fn settings_serde_with_missing_fields() {
+        // Simulate loading an old settings file without new fields
+        let json = r##"{
+            "auto_execute_types": ["docs"],
+            "commit_prefix": "fix:",
+            "claude_cli_path": "claude",
+            "accent_color": "#FF0000",
+            "theme": "light"
+        }"##;
+        let s: Settings = serde_json::from_str(json).unwrap();
+        // New fields should have defaults
+        assert_eq!(s.language, "de");
+        assert!(!s.auto_push_after_merge);
+        assert_eq!(s.max_backups, 10);
+        assert!(s.notifications_enabled);
+        assert!(s.sounds_enabled);
+        assert!(s.backups_enabled);
+        assert_eq!(s.terminal_font_size, 14);
+        assert_eq!(s.claude_model, "claude-sonnet-4-6");
+        // Explicitly set fields should be preserved
+        assert_eq!(s.commit_prefix, "fix:");
+        assert_eq!(s.accent_color, "#FF0000");
+        assert_eq!(s.theme, "light");
+        assert_eq!(s.auto_execute_types, vec!["docs"]);
+    }
+
+    #[test]
+    fn settings_serde_roundtrip() {
+        let s = Settings::default();
+        let json = serde_json::to_string(&s).unwrap();
+        let s2: Settings = serde_json::from_str(&json).unwrap();
+        assert_eq!(s2.language, s.language);
+        assert_eq!(s2.commit_prefix, s.commit_prefix);
+        assert_eq!(s2.claude_model, s.claude_model);
+        assert_eq!(s2.max_backups, s.max_backups);
+        assert_eq!(s2.terminal_font_size, s.terminal_font_size);
+        assert_eq!(s2.theme, s.theme);
+        assert_eq!(s2.accent_color, s.accent_color);
+    }
+
+    #[test]
+    fn bugsync_settings_default() {
+        let bs = BugSyncSettings::default();
+        assert!(!bs.enabled);
+        assert!(bs.api_url.is_empty());
+        assert!(bs.api_token.is_empty());
+        assert_eq!(bs.interval_secs, 300);
+    }
+
+    #[test]
+    fn bugsync_settings_serde_with_defaults() {
+        let json = r#"{}"#;
+        let bs: BugSyncSettings = serde_json::from_str(json).unwrap();
+        assert!(!bs.enabled);
+        assert!(bs.api_url.is_empty());
+        assert_eq!(bs.interval_secs, 300);
+    }
+
+    #[test]
+    fn bugsync_settings_serde_roundtrip() {
+        let bs = BugSyncSettings {
+            enabled: true,
+            api_url: "https://api.example.com".into(),
+            api_token: "secret-token".into(),
+            interval_secs: 600,
+        };
+        let json = serde_json::to_string(&bs).unwrap();
+        let parsed: BugSyncSettings = serde_json::from_str(&json).unwrap();
+        assert!(parsed.enabled);
+        assert_eq!(parsed.api_url, "https://api.example.com");
+        assert_eq!(parsed.api_token, "secret-token");
+        assert_eq!(parsed.interval_secs, 600);
+    }
+
+    #[test]
+    fn app_state_new_defaults() {
+        let state = AppState::new();
+        assert!(state.board.project_name.is_empty());
+        assert!(state.board.tickets.is_empty());
+        assert_eq!(state.board.next_ticket_id, 1);
+        assert!(state.project.is_none());
+        assert!(state.projects.is_empty());
+        assert!(state.running_ticket.is_none());
+        assert!(state.log_lines.is_empty());
+        assert!(state.kanban_path.as_os_str().is_empty());
+        assert!(state.terminals.is_empty());
+        assert!(state.db.is_none());
+    }
+
+    #[test]
+    fn app_state_log_appends_messages() {
+        let mut state = AppState::new();
+        state.log("first".into());
+        state.log("second".into());
+        assert_eq!(state.log_lines.len(), 2);
+        assert_eq!(state.log_lines[0], "first");
+        assert_eq!(state.log_lines[1], "second");
+    }
+
+    #[test]
+    fn app_state_log_prunes_at_500() {
+        let mut state = AppState::new();
+        for i in 0..510 {
+            state.log(format!("msg-{}", i));
+        }
+        assert_eq!(state.log_lines.len(), 500);
+        // Oldest messages should be pruned
+        assert_eq!(state.log_lines[0], "msg-10");
+        assert_eq!(*state.log_lines.back().unwrap(), "msg-509");
+    }
+
+    #[test]
+    fn app_state_project_path_none_when_no_project() {
+        let state = AppState::new();
+        assert!(state.project_path().is_none());
+    }
+
+    #[test]
+    fn app_state_project_path_some_when_set() {
+        let mut state = AppState::new();
+        state.project = Some(ProjectEntry {
+            name: "test".into(),
+            path: PathBuf::from("/home/user/project"),
+        });
+        assert_eq!(state.project_path(), Some(PathBuf::from("/home/user/project")));
+    }
+
+    #[test]
+    fn app_state_data_dir_none_when_empty() {
+        let state = AppState::new();
+        assert!(state.data_dir().is_none());
+    }
+
+    #[test]
+    fn app_state_data_dir_some_when_set() {
+        let mut state = AppState::new();
+        state.data_dir = PathBuf::from("/home/user/.config/glitch-goblin/projects/test");
+        assert!(state.data_dir().is_some());
+    }
+
+    #[test]
+    fn app_state_watcher_stop_initial_false() {
+        let state = AppState::new();
+        assert!(!state.watcher_stop.load(Ordering::Relaxed));
+    }
+}
