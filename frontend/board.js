@@ -18,6 +18,7 @@ function emptyStateText(col) {
 
 let renderBoardPending = false;
 
+/** Rendert das Kanban-Board neu. Führt schnell aufeinanderfolgende Aufrufe via requestAnimationFrame zusammen. */
 export function renderBoard() {
   // Coalesce rapid consecutive calls via requestAnimationFrame
   if (renderBoardPending) return;
@@ -139,6 +140,9 @@ function updateColumnStats(tickets) {
   }
 }
 
+/** Aktualisiert die farbige Health-Bar basierend auf dem Done- und Review-Anteil aller Tickets.
+ * @param {Array} tickets - Alle Tickets des aktuellen Boards.
+ */
 export function updateHealthBar(tickets) {
   const total = tickets.length || 1;
   const done    = tickets.filter(t => t.column === "done").length;
@@ -288,6 +292,10 @@ function createCard(ticket, col) {
 
 // ── Context Menu ──
 
+/** Zeigt das Rechtsklick-Kontextmenü für ein Ticket an der Mausposition an.
+ * @param {MouseEvent} e - Das contextmenu-Ereignis.
+ * @param {object} ticket - Das Ticket, auf dem rechts geklickt wurde.
+ */
 export function showContextMenu(e, ticket) {
   contextTicket = ticket;
   const menu = document.getElementById("context-menu");
@@ -323,11 +331,15 @@ export function showContextMenu(e, ticket) {
   });
 }
 
+/** Schließt das Kontextmenü und setzt den gespeicherten Ticket-Verweis zurück. */
 export function closeContextMenu() {
   document.getElementById("context-menu").classList.add("hidden");
   contextTicket = null;
 }
 
+/** Verarbeitet Klicks auf Menüeinträge des Kontextmenüs (Start, Edit, Merge, Delete, Move, Copy).
+ * @param {MouseEvent} e - Das click-Ereignis auf dem Kontextmenü.
+ */
 export async function handleContextMenuAction(e) {
   const item = e.target.closest("[data-action], [data-move], [data-target-project]");
   if (!item || !contextTicket) return;
@@ -383,6 +395,9 @@ function copyTicketToClipboard(ticket) {
   });
 }
 
+/** Exportiert den aktuellen Log-Inhalt als Datei für ein bestimmtes Ticket.
+ * @param {string} ticketId - ID des Tickets, für das der Log exportiert wird.
+ */
 export async function exportLogForTicket(ticketId) {
   const logLines = Array.from(document.querySelectorAll("#log-body .log-line"))
     .map(l => l.textContent)
@@ -399,6 +414,7 @@ export async function exportLogForTicket(ticketId) {
   }
 }
 
+/** Exportiert den Log des aktuell laufenden Tickets (oder "general" wenn kein Ticket läuft). */
 export async function exportCurrentLog() {
   const ticketId = state.runningTicket || "general";
   await exportLogForTicket(ticketId);
@@ -406,6 +422,7 @@ export async function exportCurrentLog() {
 
 // ── Filter ──
 
+/** Schaltet die Filter-Leiste ein/aus und setzt bei Öffnung den Fokus auf das Eingabefeld. */
 export function toggleFilterBar() {
   const bar = document.getElementById("filter-bar");
   bar.classList.toggle("hidden");
@@ -414,6 +431,7 @@ export function toggleFilterBar() {
   }
 }
 
+/** Filtert Board-Karten nach Text, Ticket-Typ und Priorität. Aktualisiert den Filter-Badge. */
 export function applyFilters() {
   const text = document.getElementById("filter-input").value.toLowerCase();
   const activeTypes = Array.from(document.querySelectorAll("[data-filter-type].active")).map(b => b.dataset.filterType);
@@ -444,6 +462,7 @@ export function applyFilters() {
   }
 }
 
+/** Setzt alle aktiven Filter (Text, Typ, Priorität) zurück und aktualisiert die Karten-Anzeige. */
 export function clearFilters() {
   document.getElementById("filter-input").value = "";
   document.querySelectorAll(".filter-toggle.active").forEach(b => b.classList.remove("active"));
@@ -454,6 +473,7 @@ export function clearFilters() {
 
 let dragDropInitialized = false;
 
+/** Registriert Drag-&-Drop-Event-Listener am Board-Container (wird nur beim ersten Aufruf ausgeführt). */
 export function setupDragDrop() {
   if (dragDropInitialized) return;
   dragDropInitialized = true;

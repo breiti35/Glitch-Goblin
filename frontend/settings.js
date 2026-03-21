@@ -12,6 +12,7 @@ import { t, setLocale, getLocale } from './i18n.js';
 
 // ── Settings Form ──
 
+/** Befüllt das Einstellungsformular mit den aktuellen Werten aus dem globalen State. */
 export function loadSettingsForm() {
   const s = state.settings;
   document.getElementById("set-claude-path").value = s.claude_cli_path ?? s.claudeCliPath ?? "claude";
@@ -47,6 +48,7 @@ export function loadSettingsForm() {
   document.getElementById("bugsync-interval-label").textContent = bsInterval >= 60 ? Math.round(bsInterval / 60) + " min" : bsInterval + " s";
 }
 
+/** Liest das Einstellungsformular aus, speichert die Werte via Tauri-Command und aktualisiert Theme, Farbe und Board. */
 export async function saveSettingsForm() {
   const settings = {
     claude_cli_path: document.getElementById("set-claude-path").value.trim(),
@@ -96,6 +98,7 @@ export async function saveSettingsForm() {
 
 // ── Backup Modal ──
 
+/** Öffnet das Backup-Modal und listet alle verfügbaren Backups mit Restore-Schaltfläche auf. */
 export async function openBackupModal() {
   openModal("modal-backup");
   const list = document.getElementById("backup-list");
@@ -135,6 +138,7 @@ export async function openBackupModal() {
 
 // ── Settings Tab Navigation ──
 
+/** Registriert die Tab-Navigations-Klick-Handler im Einstellungsdialog. */
 export function setupSettingsTabs() {
   document.querySelectorAll(".settings-tab").forEach(tab => {
     tab.addEventListener("click", () => {
@@ -149,6 +153,7 @@ export function setupSettingsTabs() {
 
 // ── Model Preset ──
 
+/** Registriert den Change-Handler für die Modell-Auswahl und befüllt die Kosten-Felder mit Preset-Werten. */
 export function setupModelPresetListener() {
   document.getElementById("set-claude-model")?.addEventListener("change", (e) => {
     const val = e.target.value;
