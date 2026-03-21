@@ -27,9 +27,7 @@ import { checkTicketRecovery } from './recovery.js';
 import { openSearchSpotlight, closeSearchSpotlight, globalSearch } from './search.js';
 
 // ── Re-exports for other modules ──
-export { renderBoard } from './board.js';
 export { showToast } from './notifications.js';
-export { updateSidebar, loadClaudeUsage } from './projects.js';
 
 // ── Local State (shared with all modules) ──
 /** Globales State-Objekt, das von allen Frontend-Modulen geteilt wird. */
