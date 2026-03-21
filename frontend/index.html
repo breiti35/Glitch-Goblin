@@ -126,38 +126,54 @@
 
     <!-- Main Content -->
     <main id="main-content">
-      <!-- View: Dashboard (Phase 3 - Block D) -->
+      <!-- View: Dashboard (Stitch Bento Layout) -->
       <section id="view-dashboard" class="view">
         <div class="view-header">
-          <h1 id="dashboard-project-name">Dashboard</h1>
+          <div class="view-header-left">
+            <span class="view-breadcrumb" id="dash-breadcrumb"></span>
+            <h1 id="dashboard-project-name">Dashboard</h1>
+          </div>
           <button id="dash-goto-board" class="btn-secondary" style="font-size:12px" data-i18n="dashboard.goToBoard">Zum Board &rarr;</button>
         </div>
+
         <!-- Action Cards -->
         <div class="dash-actions" id="dash-actions"></div>
 
-        <div class="dash-layout">
-          <!-- Left: Stats + Tech -->
-          <div class="dash-col-left">
-            <div class="dash-card dash-card-compact">
+        <div class="dash-grid">
+          <!-- Left Column -->
+          <div class="dash-col-main">
+            <div class="dash-card">
+              <div class="dash-card-title" data-i18n="dashboard.readme">README</div>
+              <div class="dash-card-body dash-readme-content" id="dash-readme-body"></div>
+            </div>
+            <div class="dash-card">
               <div class="dash-card-title" data-i18n="dashboard.project">Projekt</div>
               <div class="dash-card-body">
                 <div id="dash-tech-badges" style="margin-bottom:8px"></div>
                 <div id="dash-stats-body"></div>
               </div>
             </div>
-            <div class="dash-card dash-card-compact">
-              <div class="dash-card-title" data-i18n="dashboard.readme">README</div>
-              <div class="dash-card-body dash-readme-content" id="dash-readme-body"></div>
-            </div>
           </div>
-          <!-- Right: Commits + Activity -->
-          <div class="dash-col-right">
-            <div class="dash-card dash-card-compact">
-              <div class="dash-card-title" data-i18n="dashboard.recentCommits">Recent Commits</div>
+          <!-- Right Column -->
+          <div class="dash-col-side">
+            <div class="dash-card">
+              <div class="dash-card-header">
+                <span class="dash-card-title" data-i18n="dashboard.recentCommits">Letzte Commits</span>
+              </div>
               <div class="dash-card-body" id="dash-commits-body"></div>
             </div>
-            <div class="dash-card dash-card-compact">
-              <div class="dash-card-title" data-i18n="dashboard.recentActivity">Recent Activity</div>
+            <div class="dash-card dash-card-row">
+              <div class="dash-kpi">
+                <div class="dash-kpi-label">BUILD STATUS</div>
+                <div class="dash-kpi-value dash-kpi-success">Passing</div>
+              </div>
+              <div class="dash-kpi">
+                <div class="dash-kpi-label">COVERAGE</div>
+                <div class="dash-kpi-value">&mdash;</div>
+              </div>
+            </div>
+            <div class="dash-card">
+              <div class="dash-card-title" data-i18n="dashboard.recentActivity">Letzte Aktivit&auml;t</div>
               <div class="dash-card-body" id="dash-activity-body"></div>
             </div>
           </div>

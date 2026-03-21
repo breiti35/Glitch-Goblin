@@ -16,6 +16,12 @@ export async function loadDashboard() {
   }
   document.getElementById("dashboard-project-name").textContent = state.project.name;
 
+  // Breadcrumb
+  const breadcrumb = document.getElementById("dash-breadcrumb");
+  if (breadcrumb && state.project) {
+    breadcrumb.textContent = `${state.project.name} / main`;
+  }
+
   // Render action cards
   renderDashActions();
 
@@ -44,19 +50,25 @@ export async function loadDashboard() {
     document.getElementById("dash-readme-body").textContent =
       info.readmePreview || t('dashboard.noReadme');
 
-    // Recent commits
+    // Recent commits — timeline style
     document.getElementById("dash-commits-body").innerHTML =
       info.recentCommits.length > 0
-        ? info.recentCommits.map(c => {
+        ? '<div class="dash-commit-timeline">' + info.recentCommits.map((c, i) => {
             const isMerge = c.message.startsWith("Merge ");
+            const dotClass = i === 0 ? "dash-timeline-dot active" : "dash-timeline-dot";
             return `
-            <div class="dash-commit-item${isMerge ? " merge-commit" : ""}">
-              <span class="hash">${esc(c.hash)}</span>
-              ${isMerge ? '<span class="commit-badge merge">M</span>' : ""}
-              <span class="msg">${esc(c.message)}</span>
-              <span class="date">${timeAgo(c.date)}</span>
+            <div class="dash-timeline-entry${isMerge ? " merge-commit" : ""}">
+              <div class="${dotClass}"></div>
+              <div class="dash-timeline-content">
+                <div class="dash-timeline-header">
+                  <span class="hash">${esc(c.hash)}</span>
+                  <span class="date">${timeAgo(c.date)}</span>
+                </div>
+                <div class="msg">${esc(c.message)}</div>
+                ${c.author ? `<div class="author">${esc(c.author)}</div>` : ""}
+              </div>
             </div>`;
-          }).join("")
+          }).join("") + '</div>'
         : '<span style="color:var(--muted)">' + esc(t('dashboard.noCommits')) + '</span>';
 
     // Recent activity

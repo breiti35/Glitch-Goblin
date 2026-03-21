@@ -21,13 +21,16 @@ export function loadStatistics() {
   document.getElementById("stat-cycle").textContent =
     cycleTimes.length > 0 ? formatDuration(cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length) : "-";
 
-  // Avg review time
+  // Avg review time (element may not exist in new KPI layout)
   const reviewTimes = done
     .filter(t => t.review_at && t.done_at)
     .map(t => new Date(t.done_at) - new Date(t.review_at))
     .filter(d => d > 0);
-  document.getElementById("stat-review").textContent =
-    reviewTimes.length > 0 ? formatDuration(reviewTimes.reduce((a, b) => a + b, 0) / reviewTimes.length) : "-";
+  const reviewEl = document.getElementById("stat-review");
+  if (reviewEl) {
+    reviewEl.textContent =
+      reviewTimes.length > 0 ? formatDuration(reviewTimes.reduce((a, b) => a + b, 0) / reviewTimes.length) : "-";
+  }
 
   // Cost stats
   const ticketsWithCost = tickets.filter(t => t.cost_usd);
