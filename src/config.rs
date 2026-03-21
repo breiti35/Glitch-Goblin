@@ -5,6 +5,17 @@ use tracing::{error, info, warn};
 use crate::error::AppError;
 use crate::state::Settings;
 
+/// Strip Windows UNC prefix (`\\?\` or `//?/`) from paths.
+/// `canonicalize()` on Windows adds this prefix, which causes display issues.
+fn strip_unc(path: PathBuf) -> PathBuf {
+    let s = path.to_string_lossy();
+    let stripped = s
+        .strip_prefix(r"\\?\")
+        .or_else(|| s.strip_prefix("//?/"))
+        .unwrap_or(&s);
+    PathBuf::from(stripped.to_string())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectEntry {
     pub name: String,
@@ -82,10 +93,10 @@ pub fn project_data_dir(project_name: &str) -> Result<PathBuf, String> {
         .map_err(|e| format!("Failed to create project data dir: {e}"))?;
     // Canonicalize both paths after creation so symlinks and relative components
     // are fully resolved, then verify the result stays inside the expected base.
-    let canonical_dir = std::fs::canonicalize(&dir)
-        .map_err(|e| format!("Failed to resolve project data dir: {e}"))?;
-    let canonical_base = std::fs::canonicalize(&base)
-        .map_err(|e| format!("Failed to resolve base dir: {e}"))?;
+    let canonical_dir = strip_unc(std::fs::canonicalize(&dir)
+        .map_err(|e| format!("Failed to resolve project data dir: {e}"))?);
+    let canonical_base = strip_unc(std::fs::canonicalize(&base)
+        .map_err(|e| format!("Failed to resolve base dir: {e}"))?);
     if !canonical_dir.starts_with(&canonical_base) {
         return Err(format!(
             "Project name '{}' resolves outside the data directory",
@@ -126,8 +137,9 @@ pub fn save_projects(config: &ProjectsConfig) -> Result<(), String> {
 pub fn add_project(name: &str, path: &str) -> Result<(), String> {
     let mut config = load_projects()?;
 
-    let abs_path =
-        std::fs::canonicalize(path).map_err(|e| format!("Invalid path '{}': {e}", path))?;
+    let abs_path = strip_unc(
+        std::fs::canonicalize(path).map_err(|e| format!("Invalid path '{}': {e}", path))?,
+    );
 
     // Auto-create kanban.json in project data dir if it doesn't exist
     let data_dir = project_data_dir(name)?;

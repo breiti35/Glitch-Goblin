@@ -84,6 +84,7 @@ export async function saveSettingsForm() {
     applyAccentColor(settings.accent_color);
     document.body.dataset.cardMode = settings.card_expand_mode || "click";
     setLocale(settings.language);
+    renderBoard();
     updateBugSyncVisibility();
     await saveDeploySettingsForm();
     appendLog("Settings saved");
