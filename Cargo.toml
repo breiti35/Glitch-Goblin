@@ -1,6 +1,6 @@
 [package]
 name = "glitch-goblin"
-version = "0.0.2"
+version = "0.2.5"
 edition = "2021"
 
 [build-dependencies]
