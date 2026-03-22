@@ -4,10 +4,17 @@
 import { esc, formatDuration } from './utils.js';
 import { state } from './app.js';
 import { t } from './i18n.js';
+import { invoke } from '@tauri-apps/api/core';
 
-export function loadStatistics() {
-  const tickets = state.board.tickets || [];
-  const done = tickets.filter(t => t.column === "done");
+export async function loadStatistics() {
+  // Board-Tickets + archivierte Tickets fuer vollstaendige Statistik
+  const boardTickets = state.board.tickets || [];
+  let archivedTickets = [];
+  try {
+    archivedTickets = await invoke("get_archived_tickets");
+  } catch { /* ignore */ }
+  const tickets = [...boardTickets, ...archivedTickets];
+  const done = tickets.filter(t => t.column === "done" || t.column === "archived");
 
   // KPI stats
   document.getElementById("stat-total").textContent = tickets.length;
