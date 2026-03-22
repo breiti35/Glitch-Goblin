@@ -209,20 +209,14 @@ impl AppState {
     }
 
     pub fn save_and_backup(&self) -> Result<(), String> {
-        if let Some(conn) = &self.db {
-            crate::db::save_board(conn, &self.board)?;
-            // Backup: write a JSON snapshot into kanban-backups/ for safety
-            if self.settings.backups_enabled && !self.kanban_path.as_os_str().is_empty() {
-                if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
-                    error!(error = %e, "Backup failed");
-                }
-            }
-        } else {
-            kanban::save_board(&self.kanban_path, &self.board)?;
-            if self.settings.backups_enabled {
-                if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
-                    error!(error = %e, "Backup failed");
-                }
+        let conn = self
+            .db
+            .as_ref()
+            .ok_or("Keine aktive Datenbankverbindung")?;
+        crate::db::save_board(conn, &self.board)?;
+        if self.settings.backups_enabled && !self.kanban_path.as_os_str().is_empty() {
+            if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
+                error!(error = %e, "Backup failed");
             }
         }
         Ok(())

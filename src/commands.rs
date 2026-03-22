@@ -86,7 +86,7 @@ pub async fn get_current_project(state: State<'_>) -> Result<Option<ProjectEntry
 pub async fn switch_project(
     name: String,
     state: State<'_>,
-    app: AppHandle,
+    _app: AppHandle,
 ) -> Result<KanbanBoard, String> {
     let mut s = state.lock().await;
     let project = s
@@ -108,38 +108,25 @@ pub async fn switch_project(
     // Migrate old runtime data from .claude/ if needed
     let _ = config::migrate_project_data(&project.path, &data_dir);
 
-    // Open SQLite DB + run JSON migration if needed
-    let new_conn = crate::db::open(&data_dir).map_err(|e| error!(error = %e, "DB open failed")).ok();
-    if let Some(ref conn) = new_conn {
-        let _ = crate::db::migrate_from_json(conn, &data_dir);
-    }
+    // Open SQLite DB — SQLite ist die einzige Datenquelle
+    let new_conn = crate::db::open(&data_dir).map_err(|e| {
+        error!(error = %e, "DB open failed");
+        format!("Datenbank konnte nicht geöffnet werden: {e}")
+    })?;
+    let _ = crate::db::migrate_from_json(&new_conn, &data_dir);
 
-    // Load board from DB, fall back to JSON
-    let kanban_path = data_dir.join("kanban.json");
-    let board = new_conn
-        .as_ref()
-        .and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
-        .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(kanban::KanbanBoard {
-            project_name: String::new(),
-            tickets: Vec::new(),
-            next_ticket_id: 1,
-        }));
+    let board = crate::db::load_board(&new_conn).map_err(|e| {
+        error!(error = %e, "DB load_board failed");
+        format!("Board konnte nicht geladen werden: {e}")
+    })?;
 
     // Stop old watcher
     s.watcher_stop.store(true, Ordering::Relaxed);
     s.watcher_stop = Arc::new(AtomicBool::new(false));
 
-    // File watcher: only when no DB
-    if new_conn.is_none() {
-        let stop = s.watcher_stop.clone();
-        if let Err(e) = kanban::watch_kanban(&kanban_path, app.clone(), stop) {
-            s.log(format!("File watcher error: {e}"));
-        }
-    }
-
-    s.db = new_conn;
+    s.db = Some(new_conn);
     s.board = board.clone();
-    s.kanban_path = kanban_path;
+    s.kanban_path = data_dir.join("kanban.json");
     s.data_dir = data_dir;
     s.project = Some(project);
     s.log("Project switched".to_string());
@@ -352,7 +339,7 @@ pub async fn start_ticket(
     }
 
     // Phase 1: Lock briefly to update state
-    let (ticket, project_path, kanban_path) = {
+    let (ticket, project_path) = {
         let mut s = state.lock().await;
         if s.running_ticket.is_some() {
             return Err("A ticket is already running".to_string());
@@ -371,14 +358,13 @@ pub async fn start_ticket(
         let project_path = s
             .project_path()
             .ok_or(AppError::NoProjectSelected)?;
-        let kanban_path = s.kanban_path.clone();
         s.save_and_backup()?;
         s.log(format!(
             "Starting {} - {}",
             ticket.id, ticket.title
         ));
         s.log_activity("ticket_started", Some(&ticket.id), Some(&ticket.title), None);
-        (ticket, project_path, kanban_path)
+        (ticket, project_path)
     }; // Lock released
 
     info!(ticket_id = %ticket_id, "Ticket started");
@@ -400,16 +386,10 @@ pub async fn start_ticket(
         .to_string_lossy()
         .to_string();
 
-    // Notify frontend of board change (re-read current state from DB or file)
+    // Notify frontend of board change
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
-            .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
-                project_name: String::new(),
-                tickets: Vec::new(),
-                next_ticket_id: 1,
-            }));
-        let _ = app.emit("board-changed", &board_snapshot);
+        let _ = app.emit("board-changed", &s.board);
     }
 
     Ok(StartTicketResult {
@@ -427,7 +407,7 @@ pub async fn finish_ticket(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (ticket, project_path, kanban_path, commit_prefix) = {
+    let (ticket, project_path, commit_prefix) = {
         let s = state.lock().await;
         let idx = s
             .board
@@ -439,9 +419,8 @@ pub async fn finish_ticket(
         let project_path = s
             .project_path()
             .ok_or(AppError::NoProjectSelected)?;
-        let kanban_path = s.kanban_path.clone();
         let commit_prefix = s.settings.commit_prefix.clone();
-        (ticket, project_path, kanban_path, commit_prefix)
+        (ticket, project_path, commit_prefix)
     };
 
     // Auto-commit if there are uncommitted changes
@@ -474,13 +453,7 @@ pub async fn finish_ticket(
 
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
-            .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
-                project_name: String::new(),
-                tickets: Vec::new(),
-                next_ticket_id: 1,
-            }));
-        let _ = app.emit("board-changed", &board_snapshot);
+        let _ = app.emit("board-changed", &s.board);
     }
 
     Ok(())
@@ -493,7 +466,7 @@ pub async fn merge_ticket(
     state: State<'_>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (ticket, project_path, kanban_path, auto_push) = {
+    let (ticket, project_path, auto_push) = {
         let s = state.lock().await;
         let idx = s
             .board
@@ -505,9 +478,8 @@ pub async fn merge_ticket(
         let project_path = s
             .project_path()
             .ok_or(AppError::NoProjectSelected)?;
-        let kanban_path = s.kanban_path.clone();
         let auto_push = s.settings.auto_push_after_merge;
-        (ticket, project_path, kanban_path, auto_push)
+        (ticket, project_path, auto_push)
     };
 
     let branch = ticket
@@ -555,13 +527,7 @@ pub async fn merge_ticket(
 
     {
         let s = state.lock().await;
-        let board_snapshot = s.db.as_ref().and_then(|c| crate::db::load_board(c).map_err(|e| error!(error = %e, "DB load_board failed")).ok())
-            .unwrap_or_else(|| kanban::load_board(&kanban_path).unwrap_or(KanbanBoard {
-                project_name: String::new(),
-                tickets: Vec::new(),
-                next_ticket_id: 1,
-            }));
-        let _ = app.emit("board-changed", &board_snapshot);
+        let _ = app.emit("board-changed", &s.board);
     }
 
     Ok(())

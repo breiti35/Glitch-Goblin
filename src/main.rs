@@ -81,7 +81,7 @@ fn main() {
             // Resolve default project
             let project = config::resolve_default_project().unwrap_or(None);
 
-            // Open SQLite DB + migrate JSON → SQLite if needed
+            // Open SQLite DB — SQLite ist die einzige Datenquelle
             let (board, kanban_path, data_dir, db_conn) = match &project {
                 Some(p) => {
                     let dd = config::project_data_dir(&p.name).unwrap_or_default();
@@ -90,30 +90,24 @@ fn main() {
                         warn!(error = %e, "Project data migration issue");
                     }
 
-                    let conn = db::open(&dd).ok();
+                    let conn = db::open(&dd).map_err(|e| {
+                        error!(error = %e, "Datenbank konnte nicht geöffnet werden");
+                        format!("Datenbank konnte nicht geöffnet werden: {e}")
+                    })?;
 
                     // Run JSON → SQLite migration (no-op if already done)
-                    if let Some(ref c) = conn {
-                        if let Err(e) = db::migrate_from_json(c, &dd) {
-                            warn!(error = %e, "JSON to SQLite migration issue");
-                        }
+                    if let Err(e) = db::migrate_from_json(&conn, &dd) {
+                        warn!(error = %e, "JSON to SQLite migration issue");
                     }
 
-                    // Load board from DB (fallback: kanban.json)
-                    let board = conn
-                        .as_ref()
-                        .and_then(|c| db::load_board(c).ok())
-                        .unwrap_or_else(|| {
-                            let kp = dd.join("kanban.json");
-                            kanban::load_board(&kp).unwrap_or(kanban::KanbanBoard {
-                                project_name: String::new(),
-                                tickets: Vec::new(),
-                                next_ticket_id: 1,
-                            })
-                        });
+                    // Load board from DB — SQLite ist die einzige Datenquelle
+                    let board = db::load_board(&conn).map_err(|e| {
+                        error!(error = %e, "Board konnte nicht geladen werden");
+                        format!("Board konnte nicht aus der Datenbank geladen werden: {e}")
+                    })?;
 
                     let kp = dd.join("kanban.json");
-                    (board, kp, dd, conn)
+                    (board, kp, dd, Some(conn))
                 }
                 None => (
                     kanban::KanbanBoard {
@@ -127,9 +121,6 @@ fn main() {
                 ),
             };
 
-            // Get owned AppHandle (it is 'static and Clone)
-            let app_handle = app.handle().clone();
-
             // Initialize state
             let state = app.state::<Mutex<AppState>>();
             let mut s = tauri::async_runtime::block_on(state.lock());
@@ -140,14 +131,6 @@ fn main() {
             s.data_dir = data_dir;
             s.settings = settings;
             s.db = db_conn;
-
-            // File watcher: only start when DB is unavailable (JSON fallback)
-            if s.db.is_none() && kanban_path.exists() {
-                let stop = s.watcher_stop.clone();
-                if let Err(e) = kanban::watch_kanban(&kanban_path, app_handle.clone(), stop) {
-                    s.log(format!("File watcher error: {e}"));
-                }
-            }
 
             // Register window-destroyed handler for terminal cleanup (primary path).
             // The Drop impl on AppState serves as an additional fallback.

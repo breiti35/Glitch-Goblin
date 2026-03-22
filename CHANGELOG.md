@@ -26,6 +26,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Rust-Dokumentation:** Alle `#[tauri::command]`-Funktionen in `src/commands.rs` (73 Commands) und alle öffentlichen Funktionen in `src/git.rs` mit `///`-Kommentaren versehen
 
 ### Fixed
+- **GG-018 kanban.json-Fallback entfernt:** SQLite ist jetzt die einzige Datenquelle. Der stille JSON-Fallback in `switch_project()` und beim App-Start wurde entfernt — laesst sich die DB nicht oeffnen oder das Board nicht laden, wird jetzt eine klare Fehlermeldung ausgegeben statt veraltete Daten aus `kanban.json` zu lesen. JSON-Sync-Code aus `save_and_backup()` entfernt. `watch_kanban()` (JSON-Datei-Watcher) entfernt. board-changed-Events in `start_ticket`, `finish_ticket` und `merge_ticket` lesen nicht mehr redundant aus der DB, sondern nutzen den aktuellen In-Memory-State.
 - **Frontend Fehler-Logging:** Alle `console.error`/`console.warn` Aufrufe in `app.js`, `dashboard.js`, `deploy.js` und `terminal.js` durch `logError()` aus `utils.js` ersetzt — Fehler landen jetzt sichtbar im Log-Panel der App statt nur in der DevConsole
 - **Stille Fehler beseitigt:** `invoke("get_running_ticket").catch(() => {})` gibt Fehler jetzt weiter; `invoke("save_settings").catch(console.error)` durch typisiertes `logError()` ersetzt
 
