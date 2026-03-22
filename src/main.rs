@@ -215,6 +215,7 @@ fn main() {
             commands::get_current_project,
             commands::switch_project,
             commands::add_project,
+            commands::set_ticket_prefix,
             commands::remove_project,
             // Ticket operations
             commands::create_ticket,

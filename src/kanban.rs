@@ -157,15 +157,15 @@ pub fn load_board(path: &Path) -> Result<KanbanBoard, String> {
             ticket.slug = slugify(&ticket.title);
         }
     }
-    // Compute next_ticket_id from existing tickets if not set (legacy files)
+    // Compute next_ticket_id from existing tickets if not set (legacy files).
+    // Extracts the numeric part after the first dash in any prefix (e.g. "GG-001", "VTC-042").
     if board.next_ticket_id == 0 {
         let max_id = board
             .tickets
             .iter()
             .filter_map(|t| {
-                t.id.strip_prefix("GG-")
-                    .or_else(|| t.id.strip_prefix("KANBAN-"))
-                    .and_then(|n| n.parse::<u32>().ok())
+                t.id.find('-')
+                    .and_then(|pos| t.id[pos + 1..].parse::<u32>().ok())
             })
             .max()
             .unwrap_or(0);

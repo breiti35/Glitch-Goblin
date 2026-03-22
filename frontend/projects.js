@@ -25,13 +25,39 @@ export function openProjectPicker() {
     item.className = "picker-item";
     if (state.project && state.project.name === p.name) item.classList.add("active");
     item.innerHTML = `
-      <span class="picker-item-name">${esc(p.name)}</span>
+      <span class="picker-item-row">
+        <span class="picker-item-name">${esc(p.name)}</span>
+        <span class="picker-item-prefix" title="Ticket-Prefix">
+          <input type="text" class="prefix-input" value="${esc(p.ticket_prefix || p.ticketPrefix || 'GG')}" maxlength="8" placeholder="GG">
+        </span>
+      </span>
       <span class="picker-item-path">${esc(p.path)}</span>
       <button class="picker-item-remove" title="Projekt entfernen">&times;</button>
     `;
     item.querySelector(".picker-item-remove").addEventListener("click", (e) => {
       e.stopPropagation();
       removeProjectFlow(p.name);
+    });
+    const prefixInput = item.querySelector(".prefix-input");
+    prefixInput.addEventListener("click", (e) => e.stopPropagation());
+    prefixInput.addEventListener("change", async (e) => {
+      e.stopPropagation();
+      const newPrefix = e.target.value.trim().toUpperCase();
+      if (!newPrefix || !/^[A-Z0-9]+$/.test(newPrefix)) {
+        e.target.value = p.ticket_prefix || p.ticketPrefix || "GG";
+        showToast("Prefix darf nur Buchstaben/Zahlen enthalten", "error");
+        return;
+      }
+      try {
+        await invoke("set_ticket_prefix", { projectName: p.name, prefix: newPrefix });
+        state.projects = await invoke("get_projects");
+        if (state.project?.name === p.name) {
+          state.project = await invoke("get_current_project");
+        }
+        showToast(`Ticket-Prefix → ${newPrefix}`, "success");
+      } catch (err) {
+        appendLog("Set prefix error: " + err, true);
+      }
     });
     item.addEventListener("click", () => switchProject(p.name));
     list.appendChild(item);

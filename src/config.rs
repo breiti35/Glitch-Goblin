@@ -20,6 +20,12 @@ fn strip_unc(path: PathBuf) -> PathBuf {
 pub struct ProjectEntry {
     pub name: String,
     pub path: PathBuf,
+    #[serde(default = "default_ticket_prefix")]
+    pub ticket_prefix: String,
+}
+
+fn default_ticket_prefix() -> String {
+    "GG".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -168,6 +174,7 @@ pub fn add_project(name: &str, path: &str) -> Result<(), String> {
     config.projects.push(ProjectEntry {
         name: name.to_string(),
         path: abs_path,
+        ticket_prefix: default_ticket_prefix(),
     });
 
     if config.default_project.is_none() {
@@ -445,6 +452,7 @@ mod tests {
                 ProjectEntry {
                     name: "my-project".into(),
                     path: PathBuf::from("/home/user/project"),
+                    ticket_prefix: "GG".into(),
                 },
             ],
             default_project: Some("my-project".into()),
