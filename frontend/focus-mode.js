@@ -94,8 +94,9 @@ async function loadFocusUsage() {
     if (offlineRow) offlineRow.classList.add("hidden");
     updateFocusUsageRow("focus-usage-5h", "focus-usage-5h-fill", "focus-usage-5h-pct", usage.fiveHour);
     updateFocusUsageRow("focus-usage-7d", "focus-usage-7d-fill", "focus-usage-7d-pct", usage.sevenDay);
-  } catch {
+  } catch (e) {
     // Usage unavailable — Offline-Symbol anzeigen
+    appendLog("Focus usage unavailable: " + e);
     const row5h = document.getElementById("focus-usage-5h");
     const row7d = document.getElementById("focus-usage-7d");
     if (row5h) row5h.classList.add("hidden");
