@@ -376,6 +376,7 @@ export default {
   // Claude Usage
   usage: {
     title: "Claude Kontingent",
+    offline: "Offline",
   },
 
   // Search

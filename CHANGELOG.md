@@ -14,6 +14,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ### Fixed
 - **WIP-Limit-Balken entfernt:** Die Fortschrittsbalken unter den Spaltentiteln "In Arbeit" und "Review" wurden entfernt — bringen keinen Mehrwert für Solo-Entwickler.
 - **Git View: Default-Branch in "Erledigte Branches":** Der Default-Branch (z.B. `master`) wurde inkonsistent in der "Erledigte Branches"-Sektion angezeigt, weil `git branch --merged master` den Default-Branch selbst mit zurückgibt. Der Default-Branch wird jetzt aus dem Merged-Set gefiltert.
+- **Usage-Anzeige: Offline-Symbol bei API-Fehler:** Wenn die Anthropic API nicht erreichbar ist oder der OAuth-Token abgelaufen ist, zeigen die Usage-Balken (Header und Focus-Modus) jetzt ein `cloud_off`-Symbol statt leere Balken.
 
 ## [0.2.6] - 2026-03-22
 
