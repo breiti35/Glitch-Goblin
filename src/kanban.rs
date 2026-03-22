@@ -1,11 +1,6 @@
 use chrono::Utc;
-use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
-use tauri::Emitter;
 
 use crate::error::AppError;
 
@@ -253,61 +248,6 @@ pub fn requires_confirmation(ticket_type: &TicketType) -> bool {
     matches!(ticket_type, TicketType::Feature | TicketType::Bugfix)
 }
 
-pub fn watch_kanban(
-    path: &Path,
-    app_handle: tauri::AppHandle,
-    stop_flag: Arc<AtomicBool>,
-) -> Result<(), String> {
-    let watched_path = path.to_path_buf();
-    let (notify_tx, notify_rx) = std::sync::mpsc::channel();
-
-    let mut debouncer = new_debouncer(Duration::from_millis(500), notify_tx)
-        .map_err(|e| format!("Failed to create debouncer: {e}"))?;
-
-    let parent = watched_path
-        .parent()
-        .ok_or_else(|| "kanban.json has no parent directory".to_string())?;
-
-    debouncer
-        .watcher()
-        .watch(parent, notify::RecursiveMode::NonRecursive)
-        .map_err(|e| format!("Failed to watch directory: {e}"))?;
-
-    let file_name = watched_path
-        .file_name()
-        .map(|f| f.to_string_lossy().to_string())
-        .unwrap_or_default();
-
-    std::thread::spawn(move || {
-        let _debouncer = debouncer; // keep alive
-        loop {
-            if stop_flag.load(Ordering::Relaxed) {
-                break;
-            }
-            match notify_rx.recv_timeout(Duration::from_secs(1)) {
-                Ok(Ok(events)) => {
-                    let relevant = events.iter().any(|e| {
-                        e.kind == DebouncedEventKind::Any
-                            && e.path
-                                .file_name()
-                                .map(|f| f.to_string_lossy() == file_name)
-                                .unwrap_or(false)
-                    });
-                    if relevant {
-                        if let Ok(board) = load_board(&watched_path) {
-                            let _ = app_handle.emit("board-changed", &board);
-                        }
-                    }
-                }
-                Ok(Err(_)) => {}
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
-            }
-        }
-    });
-
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {
