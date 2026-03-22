@@ -3586,7 +3586,10 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 /* ── Focus Mode ── */
 .focus-mode {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 32px; /* Platz fuer die system-status-bar */
   z-index: 80;
   display: flex;
   background: var(--bg);
