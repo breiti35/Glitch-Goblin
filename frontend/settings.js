@@ -158,7 +158,9 @@ export function setupModelPresetListener() {
     const val = e.target.value;
     const presets = {
       "claude-sonnet-4-6": [3, 15],
+      "claude-sonnet-4-6[1m]": [3, 15],
       "claude-opus-4-6": [15, 75],
+      "claude-opus-4-6[1m]": [15, 75],
       "claude-haiku-4-5-20251001": [0.8, 4],
     };
     const p = presets[val];
