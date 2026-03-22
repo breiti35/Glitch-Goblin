@@ -15,6 +15,7 @@ pub enum Column {
     Progress,
     Review,
     Done,
+    Archived,
 }
 
 #[allow(dead_code)]
@@ -32,6 +33,7 @@ impl Column {
             Column::Progress => "Progress",
             Column::Review => "Review",
             Column::Done => "Done",
+            Column::Archived => "Archived",
         }
     }
 
@@ -41,6 +43,7 @@ impl Column {
             Column::Progress => 1,
             Column::Review => 2,
             Column::Done => 3,
+            Column::Archived => 4,
         }
     }
 
@@ -50,6 +53,7 @@ impl Column {
             1 => Column::Progress,
             2 => Column::Review,
             3 => Column::Done,
+            4 => Column::Archived,
             _ => Column::Backlog,
         }
     }
@@ -85,6 +89,8 @@ pub struct Ticket {
     pub review_at: Option<String>,
     #[serde(default, alias = "doneAt")]
     pub done_at: Option<String>,
+    #[serde(default, alias = "archivedAt")]
+    pub archived_at: Option<String>,
     #[serde(default, alias = "hasChanges")]
     pub has_changes: Option<bool>,
     #[serde(default)]
@@ -468,6 +474,7 @@ mod tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
                 Ticket {
                     id: "GG-002".into(),
@@ -489,6 +496,7 @@ mod tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
                 Ticket {
                     id: "GG-003".into(),
@@ -510,6 +518,7 @@ mod tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
             ],
             next_ticket_id: 4,
@@ -549,6 +558,7 @@ mod tests {
             comments: None,
             portal_bug_id: None,
             portal_bug_url: None,
+            archived_at: None,
         };
         assert_eq!(build_prompt_for(&ticket), "/new-feature Add dark mode");
     }
@@ -575,6 +585,7 @@ mod tests {
             comments: None,
             portal_bug_id: None,
             portal_bug_url: None,
+            archived_at: None,
         };
         assert_eq!(build_prompt_for(&ticket), "/bugfix Fix login\n\nUsers cannot log in");
     }
@@ -601,6 +612,7 @@ mod tests {
             comments: None,
             portal_bug_id: None,
             portal_bug_url: None,
+            archived_at: None,
         };
         assert_eq!(build_prompt_for(&ticket), "/security-audit Audit API");
     }
@@ -627,6 +639,7 @@ mod tests {
             comments: None,
             portal_bug_id: None,
             portal_bug_url: None,
+            archived_at: None,
         };
         assert_eq!(build_prompt_for(&ticket), "/kanban Update README");
     }
@@ -676,6 +689,7 @@ mod tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
             ],
             next_ticket_id: 2,

@@ -302,8 +302,10 @@ export function showContextMenu(e, ticket) {
 
   const startItem = menu.querySelector('[data-action="start"]');
   const mergeItem = menu.querySelector('[data-action="merge"]');
+  const archiveItem = menu.querySelector('[data-action="archive"]');
   startItem.classList.toggle("hidden", ticket.column !== "backlog" || !!state.runningTicket);
   mergeItem.classList.toggle("hidden", ticket.column !== "review");
+  if (archiveItem) archiveItem.classList.toggle("hidden", ticket.column !== "done");
 
   // Populate project submenu
   const projSub = document.getElementById("ctx-project-submenu");
@@ -363,6 +365,8 @@ export async function handleContextMenuAction(e) {
         appendLog("Delete error: " + err, true);
       }
     }
+  } else if (item.dataset.action === "archive") {
+    archiveTicket(ticket.id);
   } else if (item.dataset.action === "copy") {
     copyTicketToClipboard(ticket);
   } else if (item.dataset.action === "export-log") {
@@ -644,4 +648,89 @@ function getDragAfterElement(container, y) {
     }
     return closest;
   }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// ── Archive ──
+
+async function archiveTicket(ticketId) {
+  try {
+    await invoke("archive_ticket", { ticketId });
+    state.board = await invoke("get_board");
+    renderBoard();
+    showToast(t('board.ticketArchived') || "Ticket archiviert", "success");
+  } catch (err) {
+    appendLog("Archive error: " + err, true);
+  }
+}
+
+export async function loadArchiveView() {
+  const body = document.getElementById("archive-body");
+  if (!body) return;
+  body.innerHTML = '<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div>';
+
+  try {
+    const tickets = await invoke("get_archived_tickets");
+    const badge = document.getElementById("archive-count");
+    if (badge) {
+      badge.textContent = tickets.length;
+      badge.classList.toggle("hidden", tickets.length === 0);
+    }
+
+    if (tickets.length === 0) {
+      body.innerHTML = '<p class="empty-state">' + esc(t('archive.empty') || 'Keine archivierten Tickets') + '</p>';
+      return;
+    }
+
+    body.innerHTML = `<table class="archive-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Titel</th>
+          <th>Typ</th>
+          <th>Erledigt</th>
+          <th>Archiviert</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tickets.map(t => `<tr data-ticket-id="${esc(t.id)}">
+          <td class="archive-id">${esc(t.id)}</td>
+          <td>${esc(t.title)}</td>
+          <td><span class="badge badge-${esc(t.ticket_type)}">${esc(t.ticket_type)}</span></td>
+          <td>${t.done_at ? new Date(t.done_at).toLocaleDateString("de-DE") : '–'}</td>
+          <td>${t.archived_at ? new Date(t.archived_at).toLocaleDateString("de-DE") : '–'}</td>
+          <td><button class="btn-unarchive" data-unarchive="${esc(t.id)}" title="Wiederherstellen"><span class="material-symbols-outlined" style="font-size:18px">unarchive</span></button></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`;
+
+    // Unarchive click handlers
+    body.querySelectorAll("[data-unarchive]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        try {
+          await invoke("unarchive_ticket", { ticketId: btn.dataset.unarchive });
+          state.board = await invoke("get_board");
+          renderBoard();
+          loadArchiveView();
+          showToast(t('board.ticketUnarchived') || "Ticket wiederhergestellt", "success");
+        } catch (err) {
+          appendLog("Unarchive error: " + err, true);
+        }
+      });
+    });
+
+    // Search filter
+    const searchInput = document.getElementById("archive-search");
+    if (searchInput) {
+      searchInput.oninput = () => {
+        const q = searchInput.value.toLowerCase();
+        body.querySelectorAll("tbody tr").forEach(row => {
+          const text = row.textContent.toLowerCase();
+          row.style.display = text.includes(q) ? "" : "none";
+        });
+      };
+    }
+  } catch (err) {
+    body.innerHTML = `<p class="empty-state">Fehler: ${esc(String(err))}</p>`;
+  }
 }

@@ -204,6 +204,7 @@ pub async fn create_ticket(
         comments: None,
         portal_bug_id: None,
         portal_bug_url: None,
+        archived_at: None,
     };
     s.board.tickets.push(ticket.clone());
     s.save_and_backup()?;
@@ -250,6 +251,7 @@ pub async fn move_ticket(
         (Column::Review, Column::Done)
             | (Column::Review, Column::Backlog)
             | (Column::Done, Column::Review)
+            | (Column::Done, Column::Archived)
             | (Column::Backlog, Column::Review)
             | (Column::Backlog, Column::Progress)
     );
@@ -272,6 +274,9 @@ pub async fn move_ticket(
         }
         (_, Column::Done) => {
             s.board.tickets[idx].done_at = Some(kanban::now_iso());
+        }
+        (_, Column::Archived) => {
+            s.board.tickets[idx].archived_at = Some(kanban::now_iso());
         }
         _ => {}
     }
@@ -298,6 +303,78 @@ pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), St
     s.save_and_backup()?;
     s.log_activity("ticket_deleted", Some(&ticket_id), Some(&title), None);
     Ok(())
+}
+
+// ── Ticket Archive ──
+
+/// Archiviert ein Ticket (verschiebt von Done nach Archived).
+#[tauri::command]
+pub async fn archive_ticket(ticket_id: String, state: State<'_>) -> Result<(), String> {
+    let mut s = state.lock().await;
+    let idx = s
+        .board
+        .tickets
+        .iter()
+        .position(|t| t.id == ticket_id)
+        .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
+
+    if s.board.tickets[idx].column != Column::Done {
+        return Err("Nur erledigte Tickets können archiviert werden".to_string());
+    }
+
+    s.board.tickets[idx].column = Column::Archived;
+    s.board.tickets[idx].archived_at = Some(kanban::now_iso());
+    let title = s.board.tickets[idx].title.clone();
+    s.save_and_backup()?;
+    s.log_activity("ticket_archived", Some(&ticket_id), Some(&title), None);
+    Ok(())
+}
+
+/// Stellt ein archiviertes Ticket wieder her (zurück nach Done).
+#[tauri::command]
+pub async fn unarchive_ticket(ticket_id: String, state: State<'_>) -> Result<(), String> {
+    let mut s = state.lock().await;
+
+    // Ticket might be in board.tickets (already loaded) or only in DB
+    // Since archived tickets are NOT in board.tickets, we operate on DB directly
+    if let Some(conn) = &s.db {
+        // Check ticket exists and is archived
+        let col: String = conn
+            .query_row(
+                "SELECT col FROM tickets WHERE id = ?1",
+                rusqlite::params![ticket_id],
+                |r| r.get(0),
+            )
+            .map_err(|_| AppError::TicketNotFound(ticket_id.clone()))?;
+
+        if col != "archived" {
+            return Err("Ticket ist nicht archiviert".to_string());
+        }
+
+        conn.execute(
+            "UPDATE tickets SET col = 'done', archived_at = NULL WHERE id = ?1",
+            rusqlite::params![ticket_id],
+        )
+        .map_err(|e| format!("Unarchive fehlgeschlagen: {e}"))?;
+
+        // Reload board to pick up the restored ticket
+        s.board = db::load_board(conn)?;
+        s.log_activity("ticket_unarchived", Some(&ticket_id), None, None);
+        Ok(())
+    } else {
+        Err("Keine Datenbankverbindung".to_string())
+    }
+}
+
+/// Gibt alle archivierten Tickets zurück.
+#[tauri::command]
+pub async fn get_archived_tickets(state: State<'_>) -> Result<Vec<Ticket>, String> {
+    let s = state.lock().await;
+    if let Some(conn) = &s.db {
+        db::load_archived_tickets(conn)
+    } else {
+        Ok(Vec::new())
+    }
 }
 
 // ── Ticket Execution (interactive terminal mode) ──
@@ -1385,6 +1462,7 @@ pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
                         Column::Progress => "progress",
                         Column::Review => "review",
                         Column::Done => "done",
+                        Column::Archived => "archived",
                     };
                     tc == *col
                 })
@@ -1509,6 +1587,7 @@ pub async fn create_ticket_from_template(
         comments: None,
         portal_bug_id: None,
         portal_bug_url: None,
+        archived_at: None,
     };
 
     s.board.tickets.push(ticket.clone());
@@ -1549,6 +1628,7 @@ pub async fn export_tickets(
                     Column::Progress => "progress",
                     Column::Review => "review",
                     Column::Done => "done",
+                    Column::Archived => "archived",
                 };
                 wtr.write_record([
                     &t.id,
@@ -1657,6 +1737,7 @@ pub async fn import_tickets(
                 comments: None,
                 portal_bug_id: None,
                 portal_bug_url: None,
+                archived_at: None,
             });
         }
         s.board.next_ticket_id = s.board.next_ticket_id.saturating_add(new_tickets.len() as u32);
@@ -1967,6 +2048,7 @@ pub async fn sync_portal_bugs(
                 comments: None,
                 portal_bug_id: Some(bug.id),
                 portal_bug_url: bug.portal_url.clone(),
+                archived_at: None,
             };
 
             s.board.tickets.push(ticket.clone());

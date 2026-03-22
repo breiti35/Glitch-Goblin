@@ -114,6 +114,10 @@
           <span class="material-symbols-outlined nav-icon">code</span> <span data-i18n="nav.commands">Befehle</span>
           <span class="nav-badge hidden" id="command-count">0</span>
         </button>
+        <button data-view="archive" class="nav-item">
+          <span class="material-symbols-outlined nav-icon">archive</span> <span data-i18n="nav.archive">Archiv</span>
+          <span class="nav-badge hidden" id="archive-count">0</span>
+        </button>
       </nav>
 
       <!-- Claude Usage (moved to header) -->
@@ -309,6 +313,7 @@
                 <span class="column-title" data-i18n="board.done">ERLEDIGT</span>
                 <span class="column-count" data-count="done">(0)</span>
               </div>
+              <button id="btn-archive-done" class="column-add-btn" title="Erledigte archivieren"><span class="material-symbols-outlined" style="font-size:18px">archive</span></button>
             </div>
             <div class="column-wip-bar hidden" data-wip="done"></div>
             <div class="column-stat" data-stat="done"></div>
@@ -324,6 +329,21 @@
             </div>
           </div>
           <div id="log-body"></div>
+        </div>
+      </section>
+
+      <!-- View: Archive -->
+      <section id="view-archive" class="view">
+        <div class="view-header">
+          <div class="view-header-left">
+            <h1 data-i18n="nav.archive">Archiv</h1>
+          </div>
+          <div class="view-header-right">
+            <input type="text" id="archive-search" class="filter-input" placeholder="Archiv durchsuchen..." style="max-width:260px">
+          </div>
+        </div>
+        <div id="archive-body" class="archive-body">
+          <p class="empty-state" data-i18n="archive.empty">Keine archivierten Tickets</p>
         </div>
       </section>
 
@@ -1000,6 +1020,7 @@
         </div>
       </div>
       <div class="ctx-item" data-action="merge"><span>&#10003;</span> <span data-i18n="ctx.merge">Merge</span></div>
+      <div class="ctx-item" data-action="archive"><span class="material-symbols-outlined" style="font-size:16px">archive</span> <span data-i18n="ctx.archive">Archivieren</span></div>
       <div class="ctx-divider"></div>
       <div class="ctx-item" data-action="export-log"><span>&#128190;</span> <span data-i18n="ctx.exportLog">Log exportieren</span></div>
       <div class="ctx-item" data-action="copy"><span>&#128203;</span> <span data-i18n="ctx.copy">Kopieren</span></div>
