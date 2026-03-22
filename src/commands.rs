@@ -58,6 +58,25 @@ pub struct StartTicketResult {
 
 type State<'a> = tauri::State<'a, Mutex<AppState>>;
 
+/// Returns the ticket prefix for the current project (e.g. "GG", "VTC").
+fn ticket_prefix(state: &AppState) -> String {
+    state
+        .project
+        .as_ref()
+        .map(|p| p.ticket_prefix.clone())
+        .unwrap_or_else(|| "GG".to_string())
+}
+
+/// Formats a ticket ID from the project prefix and number (e.g. "GG-001").
+fn format_ticket_id(prefix: &str, num: u32) -> String {
+    format!("{}-{:03}", prefix, num)
+}
+
+/// Derives the commit prefix from a ticket prefix (e.g. "GG" → "gg:").
+fn commit_prefix_from(ticket_prefix: &str) -> String {
+    format!("{}:", ticket_prefix.to_lowercase())
+}
+
 // ── Project Management ──
 
 /// Gibt das aktuelle Kanban-Board zurück.
@@ -154,6 +173,34 @@ pub async fn add_project(
     Ok(entry)
 }
 
+/// Setzt das Ticket-Prefix für ein Projekt (z.B. "GG", "VTC").
+#[tauri::command]
+pub async fn set_ticket_prefix(
+    project_name: String,
+    prefix: String,
+    state: State<'_>,
+) -> Result<(), String> {
+    let prefix = prefix.trim().to_uppercase();
+    if prefix.is_empty() || !prefix.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err("Ticket-Prefix darf nur Buchstaben und Zahlen enthalten".to_string());
+    }
+    let mut cfg = config::load_projects()?;
+    let project = cfg
+        .projects
+        .iter_mut()
+        .find(|p| p.name == project_name)
+        .ok_or_else(|| AppError::ProjectNotFound(project_name.clone()))?;
+    project.ticket_prefix = prefix;
+    config::save_projects(&cfg)?;
+    let mut s = state.lock().await;
+    s.projects = cfg.projects.clone();
+    // Update current project if it matches
+    if s.project.as_ref().is_some_and(|p| p.name == project_name) {
+        s.project = cfg.projects.into_iter().find(|p| p.name == project_name);
+    }
+    Ok(())
+}
+
 /// Entfernt ein Projekt aus der Konfiguration.
 #[tauri::command]
 pub async fn remove_project(name: String, state: State<'_>) -> Result<(), String> {
@@ -180,9 +227,10 @@ pub async fn create_ticket(
     state: State<'_>,
 ) -> Result<Ticket, String> {
     let mut s = state.lock().await;
+    let prefix = ticket_prefix(&s);
     let next_num = s.board.next_ticket_id;
     s.board.next_ticket_id += 1;
-    let id = format!("GG-{:03}", next_num);
+    let id = format_ticket_id(&prefix, next_num);
     let slug = kanban::slugify(&title);
     let ticket = Ticket {
         id: id.clone(),
@@ -496,7 +544,8 @@ pub async fn finish_ticket(
         let project_path = s
             .project_path()
             .ok_or(AppError::NoProjectSelected)?;
-        let commit_prefix = s.settings.commit_prefix.clone();
+        let prefix = ticket_prefix(&s);
+        let commit_prefix = commit_prefix_from(&prefix);
         (ticket, project_path, commit_prefix)
     };
 
@@ -1018,10 +1067,11 @@ pub async fn move_ticket_to_project(
     let target_kanban_path = target_data_dir.join("kanban.json");
     let mut target_board = kanban::load_board(&target_kanban_path)?;
 
-    // Re-generate ticket ID based on target board
+    // Re-generate ticket ID based on target board and project prefix
+    let target_prefix = &target.ticket_prefix;
     let next_num = target_board.next_ticket_id;
     target_board.next_ticket_id += 1;
-    ticket.id = format!("GG-{:03}", next_num);
+    ticket.id = format_ticket_id(target_prefix, next_num);
     ticket.column = Column::Backlog;
     ticket.branch = None;
 
@@ -1551,9 +1601,10 @@ pub async fn create_ticket_from_template(
         .find(|t| t.name == template_name)
         .ok_or_else(|| format!("Template '{}' not found", template_name))?;
 
+    let prefix = ticket_prefix(&s);
     let next_num = s.board.next_ticket_id;
     s.board.next_ticket_id += 1;
-    let id = format!("GG-{:03}", next_num);
+    let id = format_ticket_id(&prefix, next_num);
     let full_title = format!("{}{}", tpl.title_prefix, title);
     let slug = kanban::slugify(&full_title);
     let ticket_type = match tpl.ticket_type.as_str() {
@@ -1702,6 +1753,7 @@ pub async fn import_tickets(
             .has_headers(true)
             .from_reader(content.trim_start_matches('\u{FEFF}').as_bytes());
 
+        let prefix = ticket_prefix(&s);
         let mut new_tickets = Vec::new();
         for result in rdr.records() {
             let record = result.map_err(|e| format!("CSV parse: {e}"))?;
@@ -1709,7 +1761,7 @@ pub async fn import_tickets(
                 continue;
             }
             let next_num = s.board.next_ticket_id.saturating_add(new_tickets.len() as u32);
-            let id = format!("GG-{:03}", next_num);
+            let id = format_ticket_id(&prefix, next_num);
             let title = record.get(1).unwrap_or("").to_string();
             let ticket_type = match record.get(2).unwrap_or("feature") {
                 "bugfix" => TicketType::Bugfix,
@@ -1751,10 +1803,11 @@ pub async fn import_tickets(
             s.board = imported;
         } else {
             // Append to backlog
+            let prefix = ticket_prefix(&s);
             for mut t in imported.tickets {
                 let next_num = s.board.next_ticket_id;
                 s.board.next_ticket_id += 1;
-                t.id = format!("GG-{:03}", next_num);
+                t.id = format_ticket_id(&prefix, next_num);
                 t.column = Column::Backlog;
                 t.branch = None;
                 s.board.tickets.push(t);
@@ -2003,6 +2056,7 @@ pub async fn sync_portal_bugs(
             .filter_map(|t| t.portal_bug_id)
             .collect();
 
+        let prefix = ticket_prefix(&s);
         for bug in &bugs {
             if existing_bug_ids.contains(&bug.id) {
                 continue;
@@ -2010,7 +2064,7 @@ pub async fn sync_portal_bugs(
 
             let next_num = s.board.next_ticket_id;
             s.board.next_ticket_id += 1;
-            let id = format!("GG-{:03}", next_num);
+            let id = format_ticket_id(&prefix, next_num);
             let slug = kanban::slugify(&bug.title);
 
             let mut desc_parts = Vec::new();

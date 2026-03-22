@@ -73,6 +73,7 @@ impl Default for BugSyncSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub auto_execute_types: Vec<String>,
+    #[serde(default)]
     pub commit_prefix: String,
     pub claude_cli_path: String,
     pub accent_color: String,
@@ -109,7 +110,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             auto_execute_types: vec!["docs".into(), "security".into()],
-            commit_prefix: "gg:".into(),
+            commit_prefix: String::new(),
             claude_cli_path: "claude".into(),
             accent_color: "#F97316".into(),
             theme: "dark".into(),
@@ -241,7 +242,7 @@ mod tests {
         let s = Settings::default();
         assert_eq!(s.language, "de");
         assert!(!s.auto_push_after_merge);
-        assert_eq!(s.commit_prefix, "gg:");
+        assert!(s.commit_prefix.is_empty());
         assert_eq!(s.max_backups, 10);
         assert_eq!(s.terminal_font_size, 14);
         assert!(s.notifications_enabled);
@@ -388,6 +389,7 @@ mod tests {
         state.project = Some(ProjectEntry {
             name: "test".into(),
             path: PathBuf::from("/home/user/project"),
+            ticket_prefix: "GG".into(),
         });
         assert_eq!(state.project_path(), Some(PathBuf::from("/home/user/project")));
     }

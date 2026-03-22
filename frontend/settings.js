@@ -16,7 +16,6 @@ import { t, setLocale, getLocale } from './i18n.js';
 export function loadSettingsForm() {
   const s = state.settings;
   document.getElementById("set-claude-path").value = s.claude_cli_path ?? s.claudeCliPath ?? "claude";
-  document.getElementById("set-commit-prefix").value = s.commit_prefix ?? s.commitPrefix ?? "kanban:";
   document.getElementById("set-auto-execute").value = (s.auto_execute_types ?? s.autoExecuteTypes ?? []).join(", ");
   document.getElementById("set-accent-color").value = s.accent_color ?? s.accentColor ?? "#F97316";
   document.getElementById("accent-color-label").textContent = s.accent_color ?? s.accentColor ?? "#F97316";
@@ -52,7 +51,7 @@ export function loadSettingsForm() {
 export async function saveSettingsForm() {
   const settings = {
     claude_cli_path: document.getElementById("set-claude-path").value.trim(),
-    commit_prefix: document.getElementById("set-commit-prefix").value.trim(),
+    commit_prefix: "",
     auto_execute_types: document.getElementById("set-auto-execute").value.split(",").map(s => s.trim()).filter(Boolean),
     accent_color: document.getElementById("set-accent-color").value,
     theme: document.getElementById("set-theme").value,

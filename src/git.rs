@@ -86,9 +86,16 @@ pub struct CommitInfo {
     pub date: String,
 }
 
-/// Erzeugt den Branch-Namen für ein Ticket (`gg/<id>-<slug>`).
+/// Erzeugt den Branch-Namen für ein Ticket (`<prefix>/<id>-<slug>`).
+/// Der Prefix wird aus der Ticket-ID abgeleitet (z.B. "GG-001" → "gg/GG-001-slug").
 pub fn branch_name(ticket: &Ticket) -> String {
-    format!("gg/{}-{}", ticket.id, ticket.slug)
+    let branch_prefix = ticket
+        .id
+        .split('-')
+        .next()
+        .unwrap_or("gg")
+        .to_lowercase();
+    format!("{}/{}-{}", branch_prefix, ticket.id, ticket.slug)
 }
 
 /// Checkt den Branch eines Tickets aus oder erstellt ihn neu, falls er nicht existiert.
@@ -330,28 +337,19 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
             continue;
         }
         let name = parts[0].trim().to_string();
-        let is_kanban = name.starts_with("gg/") || name.starts_with("kanban/");
 
-        // Extract ticket ID from branch name: gg/GG-018-slug → GG-018, kanban/KANBAN-018-slug → KANBAN-018
-        let ticket_id = if is_kanban {
-            name.strip_prefix("gg/")
-                .or_else(|| name.strip_prefix("kanban/"))
-                .and_then(|rest| {
-                // Match GG-NNN or KANBAN-NNN pattern at start
-                let dash_parts: Vec<&str> = rest.splitn(3, '-').collect();
-                if dash_parts.len() >= 2 {
-                    if dash_parts[1].parse::<u32>().is_ok() {
-                        Some(format!("{}-{}", dash_parts[0], dash_parts[1]))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        };
+        // Extract ticket ID from branch name: prefix/XXX-NNN-slug → XXX-NNN
+        // Supports any prefix pattern (gg/GG-018-slug, vtc/VTC-001-slug, kanban/KANBAN-018-slug)
+        let ticket_id = name.find('/').and_then(|slash| {
+            let rest = &name[slash + 1..];
+            let dash_parts: Vec<&str> = rest.splitn(3, '-').collect();
+            if dash_parts.len() >= 2 && dash_parts[0].chars().all(|c| c.is_ascii_alphanumeric()) && dash_parts[1].parse::<u32>().is_ok() {
+                Some(format!("{}-{}", dash_parts[0], dash_parts[1]))
+            } else {
+                None
+            }
+        });
+        let is_kanban = ticket_id.is_some();
 
         // Get ahead count and files changed (lightweight: rev-list count + diffstat)
         let (ahead_count, files_changed) = if name != default {
