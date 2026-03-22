@@ -3236,6 +3236,8 @@ details.git-merged-group[open] > .git-group-collapsible::before {
                    cursor: pointer; border-radius: 2px; transition: background 0.2s; }
 .status-bar-item:hover { background: rgba(255,255,255,0.1); }
 .status-bar-item .material-symbols-outlined { font-size: 14px; }
+.status-git-dirty { color: var(--warning); }
+.status-git-sync  { color: var(--info); }
 
 /* ── Card Layout (Compact + Hover-Expand) ── */
 .card-header-row  { display: flex; justify-content: space-between; align-items: flex-start;

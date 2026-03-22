@@ -815,6 +815,31 @@ pub async fn has_in_progress_operation(project_path: &Path) -> Option<String> {
 }
 
 /// Abort a merge in progress.
+/// Gibt (ahead, behind) relativ zum Upstream-Branch zurück.
+/// Liefert (0, 0) wenn kein Tracking-Branch gesetzt ist.
+pub async fn ahead_behind(project_path: &Path) -> (u32, u32) {
+    let clean_project = strip_unc_prefix(project_path);
+    let output = Command::new("git")
+        .args(["rev-list", "--left-right", "--count", "@{u}...HEAD"])
+        .current_dir(&clean_project)
+        .output()
+        .await;
+    match output {
+        Ok(o) if o.status.success() => {
+            let s = String::from_utf8_lossy(&o.stdout);
+            let parts: Vec<&str> = s.trim().split_whitespace().collect();
+            if parts.len() == 2 {
+                let behind = parts[0].parse().unwrap_or(0);
+                let ahead = parts[1].parse().unwrap_or(0);
+                (ahead, behind)
+            } else {
+                (0, 0)
+            }
+        }
+        _ => (0, 0),
+    }
+}
+
 pub async fn abort_merge(project_path: &Path) -> Result<(), String> {
     let clean_project = strip_unc_prefix(project_path);
     let result = Command::new("git")

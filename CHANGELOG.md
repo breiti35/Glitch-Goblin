@@ -11,6 +11,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Dead Code Cleanup:** Ungenutzte Re-Exports `renderBoard` und `updateSidebar`/`loadClaudeUsage` aus `app.js` entfernt (wurden nie von anderen Modulen ueber `app.js` importiert); 3 veraltete CSS-Kommentare (`removed — replaced by Stitch`) aus `style.css` geloescht
 
 ### Added
+- **Statusleiste Git-Info:** `updateStatusBar()` zeigt jetzt Branch-Name, Dirty-Indikator (●) und Ahead/Behind-Zaehler (↑/↓) aus dem `get_git_status`-Command. Neues `ahead_behind()`-Backend in `git.rs` via `git rev-list --left-right --count @{u}...HEAD`. Automatisches Refresh alle 30 Sekunden.
 - **Frontend Modul-Split:** `app.js` (1.394 Zeilen) in 5 Module aufgeteilt — `notifications.js` (Toasts, Sounds, Notification-Center), `projects.js` (Projektverwaltung, Sidebar, Usage), `focus-mode.js` (Focus-Modus Logik), `recovery.js` (Crash-Recovery Dialog), `search.js` (Spotlight/Global Search). `app.js` enthaelt nur noch Init, State, Event-Binding und Execution-Logik
 - **Integration Tests Ticket-Lifecycle:** 6 neue End-to-End Tests fuer den kritischen Ticket-Workflow — vollstaendiger Flow (start → commit → finish → merge → Done), Merge mit Auto-Push via Remote, Finish ohne Aenderungen, Start ohne Git-Repo, sowie DB-Lifecycle-Roundtrip (Backlog → Done mit allen Timestamps/Feldern)
 

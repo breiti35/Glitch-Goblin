@@ -79,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateGitWarnings();
   loadClaudeUsage();
   setInterval(loadClaudeUsage, 120000);
+  setInterval(updateStatusBar, 30000);
 
   // Check for interrupted ticket (crash recovery)
   checkTicketRecovery();
@@ -894,6 +895,47 @@ export async function updateGitWarnings() {
 }
 
 // ── Status Bar ──
-function updateStatusBar() {
-  // Placeholder for status bar updates
+async function updateStatusBar() {
+  try {
+    const info = await invoke("get_git_status");
+    const branchEl = document.getElementById("status-git-branch");
+    const dirtyEl  = document.getElementById("status-git-dirty");
+    const syncEl   = document.getElementById("status-git-sync");
+    const iconEl   = document.getElementById("status-git-icon");
+
+    if (!info.isGitRepo) {
+      if (branchEl) branchEl.textContent = "—";
+      if (dirtyEl)  { dirtyEl.textContent = ""; dirtyEl.classList.add("hidden"); }
+      if (syncEl)   { syncEl.textContent = "";  syncEl.classList.add("hidden"); }
+      if (iconEl)   iconEl.textContent = "source_environment";
+      return;
+    }
+
+    if (branchEl) branchEl.textContent = info.currentBranch || "HEAD";
+
+    if (dirtyEl) {
+      if (info.isDirty) {
+        dirtyEl.textContent = " ●";
+        dirtyEl.classList.remove("hidden");
+      } else {
+        dirtyEl.textContent = "";
+        dirtyEl.classList.add("hidden");
+      }
+    }
+
+    if (syncEl) {
+      const parts = [];
+      if (info.aheadCount > 0)  parts.push(`↑${info.aheadCount}`);
+      if (info.behindCount > 0) parts.push(`↓${info.behindCount}`);
+      if (parts.length > 0) {
+        syncEl.textContent = " " + parts.join(" ");
+        syncEl.classList.remove("hidden");
+      } else {
+        syncEl.textContent = "";
+        syncEl.classList.add("hidden");
+      }
+    }
+
+    if (iconEl) iconEl.textContent = info.isDirty ? "edit" : "source_environment";
+  } catch (_) { /* non-critical */ }
 }
