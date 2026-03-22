@@ -43,6 +43,22 @@ function renderBoardImpl() {
     countEl.textContent = "(" + colTickets.length + ")";
     body.innerHTML = "";
 
+    // Sort tickets by mode
+    const sortMode = state.settings.ticket_sort_mode || "priority";
+    if (sortMode === "priority") {
+      const prioOrder = { high: 0, medium: 1, low: 2 };
+      colTickets.sort((a, b) => {
+        const pa = prioOrder[a.prio] ?? 3;
+        const pb = prioOrder[b.prio] ?? 3;
+        if (pa !== pb) return pa - pb;
+        return (parseInt(a.id.replace(/\D/g, ""), 10) || 0) - (parseInt(b.id.replace(/\D/g, ""), 10) || 0);
+      });
+    } else {
+      colTickets.sort((a, b) =>
+        (parseInt(a.id.replace(/\D/g, ""), 10) || 0) - (parseInt(b.id.replace(/\D/g, ""), 10) || 0)
+      );
+    }
+
     if (colTickets.length === 0) {
       // Empty state
       const empty = document.createElement("div");
@@ -53,23 +69,6 @@ function renderBoardImpl() {
       colTickets.forEach(ticket => {
         body.appendChild(createCard(ticket, col));
       });
-    }
-
-    // WIP limit check
-    const colEl = body.closest(".column");
-    const wipLimit = parseInt(colEl?.dataset.wipLimit || "0");
-    if (wipLimit > 0) {
-      colEl.classList.toggle("wip-exceeded", colTickets.length > wipLimit);
-    }
-
-    // WIP progress bar
-    const wipBar = document.querySelector(`[data-wip="${col}"]`);
-    if (wipBar && wipLimit > 0) {
-      const pct = Math.min(100, Math.round((colTickets.length / wipLimit) * 100));
-      wipBar.innerHTML = `<div class="wip-fill" style="width:${pct}%"></div>`;
-      wipBar.classList.toggle("hidden", false);
-    } else if (wipBar) {
-      wipBar.classList.add("hidden");
     }
   });
 
@@ -169,8 +168,8 @@ function createCard(ticket, col) {
   const isRunning = state.runningTicket === ticket.id;
   if (isRunning) card.classList.add("running");
 
-  // Progress per column
-  const colProgress = { backlog: 10, progress: 50, review: 80, done: 100 };
+  // Workflow progress per column (0% → 33% → 66% → 100%)
+  const colProgress = { backlog: 0, progress: 33, review: 66, done: 100 };
 
   // Date string
   const dateStr = ticket.created_at
@@ -196,8 +195,7 @@ function createCard(ticket, col) {
   if (ticket.portal_bug_id) extraParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
   if (extraParts.length > 0) extraBadgesHTML = `<div class="card-badges">${extraParts.join("")}</div>`;
 
-  // Stitch card layout: ID+Prio top, title, bottom row, expandable
-  const showProgress = col === "progress" || col === "review";
+  // Stitch card layout: ID+Prio top, title, bottom row, expandable, workflow bar
   card.innerHTML = `
     <div class="card-header-row">
       <span class="card-ticket-id">${esc(ticket.id)}</span>
@@ -211,12 +209,6 @@ function createCard(ticket, col) {
           : ''}
         ${ticket.cost_usd ? `<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>` : ''}
       </div>
-      ${showProgress
-        ? `<div class="card-progress-inline">
-            <span class="card-progress-pct">${colProgress[col]}%</span>
-            <div class="card-progress-mini"><div class="card-progress-fill" style="width:${colProgress[col]}%"></div></div>
-          </div>`
-        : ''}
     </div>
     <div class="card-expand">
       ${ticket.description ? `<div class="card-desc">${esc(ticket.description)}</div>` : ""}
@@ -224,6 +216,7 @@ function createCard(ticket, col) {
       ${extraBadgesHTML}
       ${actionHTML ? `<div class="card-action-row">${actionHTML}</div>` : ""}
     </div>
+    <div class="card-workflow-bar"><div class="card-workflow-fill" style="width:${colProgress[col]}%"></div></div>
   `;
 
   // Card expand mode

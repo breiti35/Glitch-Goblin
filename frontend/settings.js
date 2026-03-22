@@ -22,6 +22,8 @@ export function loadSettingsForm() {
   document.getElementById("set-theme").value = s.theme || "dark";
   const cardModeEl = document.getElementById("set-card-mode");
   if (cardModeEl) cardModeEl.value = s.card_expand_mode || "click";
+  const sortModeEl = document.getElementById("set-ticket-sort");
+  if (sortModeEl) sortModeEl.value = s.ticket_sort_mode || "priority";
   document.getElementById("set-notifications").checked = s.notifications_enabled !== false;
   document.getElementById("set-sounds").checked = s.sounds_enabled !== false;
   document.getElementById("set-backups").checked = s.backups_enabled !== false;
@@ -56,6 +58,7 @@ export async function saveSettingsForm() {
     accent_color: document.getElementById("set-accent-color").value,
     theme: document.getElementById("set-theme").value,
     card_expand_mode: document.getElementById("set-card-mode")?.value || "click",
+    ticket_sort_mode: document.getElementById("set-ticket-sort")?.value || "priority",
     notifications_enabled: document.getElementById("set-notifications").checked,
     sounds_enabled: document.getElementById("set-sounds").checked,
     backups_enabled: document.getElementById("set-backups").checked,
