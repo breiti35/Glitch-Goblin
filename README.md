@@ -122,32 +122,12 @@ Fertige Builds (Windows .exe + Installer, Linux Binary + AppImage) gibt es unter
 
 ## Architektur
 
-```
-glitch-goblin/
-  src/
-    main.rs          Tauri-Setup, State-Init, Bug-Sync Timer
-    commands.rs      Alle Tauri-Commands (~70 IPC Handler)
-    state.rs         AppState, Settings
-    kanban.rs        Board, Ticket, Backup
-    db.rs            SQLite-Persistenz (einzige Datenquelle)
-    git.rs           Git-Operationen (Branch, Diff, Commit, Merge)
-    terminal.rs      PTY Terminal Sessions (portable-pty)
-    config.rs        Projekt-/Settings-Konfiguration
-    deploy.rs        Docker/SSH Deploy
-    bugsync.rs       Portal Bug-Tracker Sync
-    activity.rs      Activity Log
-    crypto.rs        Token-Verschluesselung (ChaCha20)
-    error.rs         Strukturierte Error-Typen
-  frontend/
-    index.html       Single-Page App
-    app.js           Orchestrator (State, Init, Routing)
-    board.js         Board-Rendering, Drag & Drop
-    terminal.js      Terminal-Sessions, Tabs
-    git.js           Git-View (Branch-Cards, Diffs)
-    settings.js      Settings, Backups
-    ...              + 10 weitere Module
-    style.css        Dark/Light Theme (CSS Variables)
-```
+| Schicht | Technologie | Beschreibung |
+|---------|------------|--------------|
+| **Backend** | Rust, Tauri v2 | ~70 IPC Commands, SQLite, PTY Terminal, Git-Operationen |
+| **Frontend** | Vanilla JS, CSS | Single-Page App, xterm.js, Dark/Light Theme |
+| **Persistenz** | SQLite (WAL) | Einzige Datenquelle, Schema-Migrationen mit Backup |
+| **Security** | ChaCha20 | Token-Verschluesselung, Input-Validierung, CSP |
 
 ---
 
