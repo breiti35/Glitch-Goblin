@@ -436,12 +436,7 @@ pub async fn start_ticket(
     app: AppHandle,
 ) -> Result<StartTicketResult, String> {
     // Check git is available
-    if tokio::process::Command::new("git")
-        .arg("--version")
-        .output()
-        .await
-        .is_err()
-    {
+    if crate::git::check_git_available().await.is_err() {
         return Err("Git ist nicht installiert oder nicht im PATH".to_string());
     }
 

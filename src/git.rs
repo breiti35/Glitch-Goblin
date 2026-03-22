@@ -5,6 +5,28 @@ use tokio::process::Command;
 use crate::error::AppError;
 use crate::kanban::Ticket;
 
+/// Erstellt ein `Command::new("git")` mit `CREATE_NO_WINDOW` Flag auf Windows,
+/// damit keine Konsolenfenster aufpoppen wenn die App ohne eigene Konsole laeuft.
+fn git_cmd() -> Command {
+    let mut cmd = Command::new("git");
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
+/// Prueft ob git im PATH verfuegbar ist.
+pub async fn check_git_available() -> Result<(), String> {
+    git_cmd()
+        .arg("--version")
+        .output()
+        .await
+        .map_err(|e| format!("Git nicht verfuegbar: {e}"))?;
+    Ok(())
+}
+
 /// Validate a git ref name to prevent option injection and invalid characters.
 fn validate_git_ref(name: &str) -> Result<(), String> {
     if name.is_empty() {
@@ -104,7 +126,7 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
     let clean_project = strip_unc_prefix(project_path);
 
     // Check if branch already exists
-    let check = Command::new("git")
+    let check = git_cmd()
         .args(["branch", "--list", &branch])
         .current_dir(&clean_project)
         .output()
@@ -114,7 +136,7 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
     let output = String::from_utf8_lossy(&check.stdout);
     if !output.trim().is_empty() {
         // Branch exists — just checkout
-        let co = Command::new("git")
+        let co = git_cmd()
             .args(["checkout", &branch])
             .current_dir(&clean_project)
             .output()
@@ -128,7 +150,7 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
     }
 
     // Create and checkout new branch
-    let result = Command::new("git")
+    let result = git_cmd()
         .args(["checkout", "-b", &branch])
         .current_dir(&clean_project)
         .output()
@@ -147,7 +169,7 @@ pub async fn checkout_branch(project_path: &Path, ticket: &Ticket) -> Result<Str
 pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
     let branch = default_branch(project_path).await;
     let clean_project = strip_unc_prefix(project_path);
-    let result = Command::new("git")
+    let result = git_cmd()
         .args(["checkout", &branch])
         .current_dir(&clean_project)
         .output()
@@ -165,7 +187,7 @@ pub async fn checkout_main(project_path: &Path) -> Result<(), String> {
 /// Staged alle Änderungen und erstellt einen Commit; gibt `false` zurück wenn nichts zu commiten ist.
 pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String> {
     // Stage all changes
-    let add = Command::new("git")
+    let add = git_cmd()
         .args(["add", "-A"])
         .current_dir(project_path)
         .output()
@@ -178,7 +200,7 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
     }
 
     // Check if there's anything to commit
-    let status = Command::new("git")
+    let status = git_cmd()
         .args(["status", "--porcelain"])
         .current_dir(project_path)
         .output()
@@ -189,7 +211,7 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
         return Ok(false); // Nothing to commit
     }
 
-    let commit = Command::new("git")
+    let commit = git_cmd()
         .args(["commit", "-m", msg])
         .current_dir(project_path)
         .output()
@@ -207,7 +229,7 @@ pub async fn auto_commit(project_path: &Path, msg: &str) -> Result<bool, String>
 /// Prüft, ob uncommittete Änderungen im Arbeitsverzeichnis vorhanden sind.
 pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
     let clean_project = strip_unc_prefix(project_path);
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["status", "--porcelain"])
         .current_dir(&clean_project)
         .output()
@@ -221,7 +243,7 @@ pub async fn check_uncommitted(project_path: &Path) -> Result<bool, String> {
 pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), String> {
     validate_git_ref(branch)?;
     let clean_project = strip_unc_prefix(project_path);
-    let result = Command::new("git")
+    let result = git_cmd()
         .args(["merge", "--no-ff", "--", branch])
         .current_dir(&clean_project)
         .output()
@@ -236,7 +258,7 @@ pub async fn merge_branch(project_path: &Path, branch: &str) -> Result<(), Strin
         // Check if it's a merge conflict (git may report on stdout or stderr)
         if combined.contains("CONFLICT") || combined.contains("Automatic merge failed") {
             // Abort the merge to leave repo in clean state
-            let _ = Command::new("git")
+            let _ = git_cmd()
                 .args(["merge", "--abort"])
                 .current_dir(&clean_project)
                 .output()
@@ -261,7 +283,7 @@ pub async fn default_branch_name(project_path: &Path) -> String {
 
 /// Detect the default branch name (main or master)
 async fn default_branch(project_path: &Path) -> String {
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["symbolic-ref", "refs/remotes/origin/HEAD", "--short"])
         .current_dir(project_path)
         .output()
@@ -276,7 +298,7 @@ async fn default_branch(project_path: &Path) -> String {
     }
 
     // Fallback: check if "main" exists, else "master"
-    let check = Command::new("git")
+    let check = git_cmd()
         .args(["branch", "--list", "main"])
         .current_dir(project_path)
         .output()
@@ -297,7 +319,7 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
     let default = default_branch(project_path).await;
 
     // Get branch list
-    let output = Command::new("git")
+    let output = git_cmd()
         .args([
             "branch",
             "--format=%(refname:short)|%(HEAD)|%(subject)|%(creatordate:iso8601)",
@@ -313,7 +335,7 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
     }
 
     // Get merged branches (once for all)
-    let merged_output = Command::new("git")
+    let merged_output = git_cmd()
         .args(["branch", "--merged", &default])
         .current_dir(&clean_project)
         .output()
@@ -385,7 +407,7 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
 /// Get ahead count and files changed for a branch relative to base.
 async fn get_branch_counts(project_path: &Path, base: &str, branch: &str) -> (u32, u32) {
     // Ahead count: commits on branch not in base
-    let ahead = Command::new("git")
+    let ahead = git_cmd()
         .args(["rev-list", "--count", &format!("{base}..{branch}")])
         .current_dir(project_path)
         .output()
@@ -400,7 +422,7 @@ async fn get_branch_counts(project_path: &Path, base: &str, branch: &str) -> (u3
         .unwrap_or(0);
 
     // Files changed: numstat between base and branch
-    let files = Command::new("git")
+    let files = git_cmd()
         .args(["diff", "--numstat", &format!("{base}...{branch}")])
         .current_dir(project_path)
         .output()
@@ -425,7 +447,7 @@ pub async fn get_branch_diff(
     validate_git_ref(branch)?;
     let base = default_branch(project_path).await;
 
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["diff", "--numstat", &format!("{}...{}", base, branch)])
         .current_dir(project_path)
         .output()
@@ -483,7 +505,7 @@ pub async fn get_file_diff(
     validate_git_ref(branch)?;
     let base = default_branch(project_path).await;
 
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["diff", &format!("{}...{}", base, branch), "--", file])
         .current_dir(project_path)
         .output()
@@ -500,7 +522,7 @@ pub async fn get_commit_diff(
 ) -> Result<DiffInfo, String> {
     validate_git_ref(commit_hash)?;
 
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["show", "-m", "--first-parent", "--numstat", "--format=", commit_hash])
         .current_dir(project_path)
         .output()
@@ -560,7 +582,7 @@ pub async fn get_commit_file_diff(
 ) -> Result<String, String> {
     validate_git_ref(commit_hash)?;
 
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["show", commit_hash, "--", file])
         .current_dir(project_path)
         .output()
@@ -578,7 +600,7 @@ pub async fn delete_branch(
 ) -> Result<(), String> {
     validate_git_ref(branch)?;
     let flag = if force { "-D" } else { "-d" };
-    let result = Command::new("git")
+    let result = git_cmd()
         .args(["branch", flag, "--", branch])
         .current_dir(project_path)
         .output()
@@ -601,7 +623,7 @@ pub async fn get_commit_log(
 ) -> Result<Vec<CommitInfo>, String> {
     validate_git_ref(branch)?;
     let clean_project = strip_unc_prefix(project_path);
-    let output = Command::new("git")
+    let output = git_cmd()
         .args([
             "log",
             branch,
@@ -643,7 +665,7 @@ pub async fn get_working_diff(project_path: &Path) -> Result<DiffInfo, String> {
     let clean_project = strip_unc_prefix(project_path);
 
     // Combine staged + unstaged: diff HEAD shows all uncommitted changes
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["diff", "HEAD", "--numstat"])
         .current_dir(&clean_project)
         .output()
@@ -685,7 +707,7 @@ pub async fn get_working_diff(project_path: &Path) -> Result<DiffInfo, String> {
     }
 
     // Also check for untracked files
-    let untracked = Command::new("git")
+    let untracked = git_cmd()
         .args(["ls-files", "--others", "--exclude-standard"])
         .current_dir(&clean_project)
         .output()
@@ -716,7 +738,7 @@ pub async fn get_working_diff(project_path: &Path) -> Result<DiffInfo, String> {
 pub async fn get_working_file_diff(project_path: &Path, file: &str) -> Result<String, String> {
     let clean_project = strip_unc_prefix(project_path);
 
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["diff", "HEAD", "--", file])
         .current_dir(&clean_project)
         .output()
@@ -732,7 +754,7 @@ pub async fn get_working_file_diff(project_path: &Path, file: &str) -> Result<St
 pub async fn push_branch(project_path: &Path, branch: &str) -> Result<(), String> {
     validate_git_ref(branch)?;
     let clean_project = strip_unc_prefix(project_path);
-    let result = Command::new("git")
+    let result = git_cmd()
         .args(["push", "-u", "origin", branch])
         .current_dir(&clean_project)
         .output()
@@ -748,7 +770,7 @@ pub async fn push_branch(project_path: &Path, branch: &str) -> Result<(), String
 /// Check if a remote named "origin" exists.
 pub async fn has_remote(project_path: &Path) -> bool {
     let clean_project = strip_unc_prefix(project_path);
-    Command::new("git")
+    git_cmd()
         .args(["remote", "get-url", "origin"])
         .current_dir(&clean_project)
         .output()
@@ -760,7 +782,7 @@ pub async fn has_remote(project_path: &Path) -> bool {
 /// Get the remote URL for "origin".
 pub async fn get_remote_url(project_path: &Path) -> Result<String, String> {
     let clean_project = strip_unc_prefix(project_path);
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["remote", "get-url", "origin"])
         .current_dir(&clean_project)
         .output()
@@ -772,7 +794,7 @@ pub async fn get_remote_url(project_path: &Path) -> Result<String, String> {
 /// Get the current branch name.
 pub async fn current_branch(project_path: &Path) -> Result<String, String> {
     let clean_project = strip_unc_prefix(project_path);
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["rev-parse", "--abbrev-ref", "HEAD"])
         .current_dir(&clean_project)
         .output()
@@ -786,7 +808,7 @@ pub async fn current_branch(project_path: &Path) -> Result<String, String> {
 /// Check if the project path contains a git repository.
 pub async fn is_git_repo(project_path: &Path) -> bool {
     let clean_project = strip_unc_prefix(project_path);
-    Command::new("git")
+    git_cmd()
         .args(["rev-parse", "--git-dir"])
         .current_dir(&clean_project)
         .output()
@@ -817,7 +839,7 @@ pub async fn has_in_progress_operation(project_path: &Path) -> Option<String> {
 /// Liefert (0, 0) wenn kein Tracking-Branch gesetzt ist.
 pub async fn ahead_behind(project_path: &Path) -> (u32, u32) {
     let clean_project = strip_unc_prefix(project_path);
-    let output = Command::new("git")
+    let output = git_cmd()
         .args(["rev-list", "--left-right", "--count", "@{u}...HEAD"])
         .current_dir(&clean_project)
         .output()
@@ -840,7 +862,7 @@ pub async fn ahead_behind(project_path: &Path) -> (u32, u32) {
 
 pub async fn abort_merge(project_path: &Path) -> Result<(), String> {
     let clean_project = strip_unc_prefix(project_path);
-    let result = Command::new("git")
+    let result = git_cmd()
         .args(["merge", "--abort"])
         .current_dir(&clean_project)
         .output()
