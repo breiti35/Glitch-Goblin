@@ -1201,6 +1201,8 @@ pub struct GitStatusInfo {
     pub operation_in_progress: Option<String>,
     pub has_remote: bool,
     pub remote_url: Option<String>,
+    pub ahead_count: u32,
+    pub behind_count: u32,
 }
 
 /// Gibt den vollständigen Git-Status des Projekts zurück (Branch, Dirty-Flag, Remote etc.).
@@ -1218,6 +1220,8 @@ pub async fn get_git_status(state: State<'_>) -> Result<GitStatusInfo, String> {
                 operation_in_progress: None,
                 has_remote: false,
                 remote_url: None,
+                ahead_count: 0,
+                behind_count: 0,
             })
         }
     };
@@ -1232,6 +1236,8 @@ pub async fn get_git_status(state: State<'_>) -> Result<GitStatusInfo, String> {
             operation_in_progress: None,
             has_remote: false,
             remote_url: None,
+            ahead_count: 0,
+            behind_count: 0,
         });
     }
 
@@ -1245,6 +1251,7 @@ pub async fn get_git_status(state: State<'_>) -> Result<GitStatusInfo, String> {
     } else {
         None
     };
+    let (ahead_count, behind_count) = git::ahead_behind(&project_path).await;
 
     Ok(GitStatusInfo {
         is_git_repo: true,
@@ -1254,6 +1261,8 @@ pub async fn get_git_status(state: State<'_>) -> Result<GitStatusInfo, String> {
         operation_in_progress,
         has_remote,
         remote_url,
+        ahead_count,
+        behind_count,
     })
 }
 
