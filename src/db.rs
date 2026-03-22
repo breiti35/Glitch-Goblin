@@ -385,7 +385,7 @@ pub fn save_board(conn: &Connection, board: &KanbanBoard) -> Result<(), String> 
     let existing_ids: Vec<String> = {
         let ids_result: SqlResult<Vec<String>> = {
             let mut s = tx
-                .prepare("SELECT id FROM tickets")
+                .prepare("SELECT id FROM tickets WHERE col != 'archived'")
                 .map_err(|e| format!("Ticket-IDs laden: {e}"))?;
             let rows = s
                 .query_map([], |r| r.get(0))
@@ -397,11 +397,14 @@ pub fn save_board(conn: &Connection, board: &KanbanBoard) -> Result<(), String> 
 
     let new_ids: std::collections::HashSet<&str> = board.tickets.iter().map(|t| t.id.as_str()).collect();
 
-    // Delete removed tickets
+    // Delete removed tickets (but never delete archived tickets — they are not in the board)
     for old_id in &existing_ids {
         if !new_ids.contains(old_id.as_str()) {
-            tx.execute("DELETE FROM tickets WHERE id = ?1", params![old_id])
-                .map_err(|e| format!("Ticket löschen fehlgeschlagen: {e}"))?;
+            tx.execute(
+                "DELETE FROM tickets WHERE id = ?1 AND col != 'archived'",
+                params![old_id],
+            )
+            .map_err(|e| format!("Ticket löschen fehlgeschlagen: {e}"))?;
         }
     }
 
