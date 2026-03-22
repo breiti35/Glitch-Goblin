@@ -346,6 +346,7 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
             String::from_utf8_lossy(&o.stdout)
                 .lines()
                 .map(|l| l.trim().trim_start_matches("* ").to_string())
+                .filter(|n| !n.is_empty() && n != &default)
                 .collect()
         })
         .unwrap_or_default();
