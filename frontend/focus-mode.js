@@ -5,6 +5,7 @@ import { showToast } from './notifications.js';
 import { t } from './i18n.js';
 
 let focusElapsedInterval = null;
+let focusUsageInterval = null;
 
 /** Aktiviert den Focus-Modus mit Terminal, Timer und Quick-Notes.
  * @param {object} ticket - Das aktive Ticket-Objekt.
@@ -77,7 +78,39 @@ export function enterFocusMode(ticket, branch, model, finishTicketFn) {
   // Exit button
   document.getElementById("btn-focus-exit").onclick = () => exitFocusMode();
 
+  // Load Claude usage into focus sidebar
+  loadFocusUsage();
+  if (focusUsageInterval) clearInterval(focusUsageInterval);
+  focusUsageInterval = setInterval(loadFocusUsage, 60_000);
+
   focus.classList.remove("hidden");
+}
+
+/** Laedt Claude-Usage-Daten und zeigt sie im Focus-Sidebar an. */
+async function loadFocusUsage() {
+  try {
+    const usage = await invoke("get_claude_usage");
+    updateFocusUsageRow("focus-usage-5h", "focus-usage-5h-fill", "focus-usage-5h-pct", usage.fiveHour);
+    updateFocusUsageRow("focus-usage-7d", "focus-usage-7d-fill", "focus-usage-7d-pct", usage.sevenDay);
+  } catch {
+    // Usage unavailable — hide rows
+    const row5h = document.getElementById("focus-usage-5h");
+    const row7d = document.getElementById("focus-usage-7d");
+    if (row5h) row5h.classList.add("hidden");
+    if (row7d) row7d.classList.add("hidden");
+  }
+}
+
+function updateFocusUsageRow(rowId, fillId, pctId, value) {
+  const row = document.getElementById(rowId);
+  const fill = document.getElementById(fillId);
+  const pct = document.getElementById(pctId);
+  if (!row || !fill || !pct) return;
+  const val = Math.round(value);
+  row.classList.remove("hidden");
+  fill.style.width = Math.min(val, 100) + "%";
+  fill.className = "focus-usage-fill " + (val >= 90 ? "usage-red" : val >= 70 ? "usage-yellow" : "usage-green");
+  pct.textContent = val + "%";
 }
 
 /** Deaktiviert den Focus-Modus und verschiebt das Terminal zurueck ins Board-Panel. */
@@ -89,6 +122,11 @@ export function exitFocusMode() {
   if (focusElapsedInterval) {
     clearInterval(focusElapsedInterval);
     focusElapsedInterval = null;
+  }
+
+  if (focusUsageInterval) {
+    clearInterval(focusUsageInterval);
+    focusUsageInterval = null;
   }
 
   // Hide terminal status bar
