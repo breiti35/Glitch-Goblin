@@ -3648,6 +3648,32 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   white-space: nowrap;
 }
 
+.focus-usage-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.focus-usage-track {
+  width: 60px;
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.focus-usage-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s, background 0.3s;
+}
+.focus-usage-fill.usage-green  { background: var(--success); }
+.focus-usage-fill.usage-yellow { background: var(--warning); }
+.focus-usage-fill.usage-red    { background: var(--danger); }
+.focus-usage-pct {
+  font-size: 11px;
+  min-width: 28px;
+  text-align: right;
+}
+
 .focus-notes {
   padding: 10px;
   background: var(--surface);
