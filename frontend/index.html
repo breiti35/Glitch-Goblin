@@ -672,30 +672,32 @@
       <!-- Focus Mode (visible when ticket is running) -->
       <div id="focus-mode" class="focus-mode hidden">
         <div class="focus-sidebar">
-          <div class="focus-ticket-header">
-            <span class="focus-ticket-id" id="focus-ticket-id"></span>
-            <button id="btn-focus-exit" class="icon-btn" title="Fokus-Modus verlassen" data-i18n-title="focus.exitTitle">&#10005;</button>
-          </div>
-          <h3 class="focus-ticket-title" id="focus-ticket-title"></h3>
-          <div class="focus-ticket-desc" id="focus-ticket-desc"></div>
-          <div class="focus-meta">
-            <div class="focus-meta-row">
-              <span class="focus-meta-label" data-i18n="focus.branch">Branch</span>
-              <span class="focus-meta-value" id="focus-branch">&mdash;</span>
+          <div class="focus-sidebar-scroll">
+            <div class="focus-ticket-header">
+              <span class="focus-ticket-id" id="focus-ticket-id"></span>
+              <button id="btn-focus-exit" class="icon-btn" title="Fokus-Modus verlassen" data-i18n-title="focus.exitTitle">&#10005;</button>
             </div>
-            <div class="focus-meta-row">
-              <span class="focus-meta-label" data-i18n="focus.model">Modell</span>
-              <span class="focus-meta-value" id="focus-model">&mdash;</span>
+            <h3 class="focus-ticket-title" id="focus-ticket-title"></h3>
+            <div class="focus-ticket-desc" id="focus-ticket-desc"></div>
+            <div class="focus-meta">
+              <div class="focus-meta-row">
+                <span class="focus-meta-label" data-i18n="focus.branch">Branch</span>
+                <span class="focus-meta-value" id="focus-branch">&mdash;</span>
+              </div>
+              <div class="focus-meta-row">
+                <span class="focus-meta-label" data-i18n="focus.model">Modell</span>
+                <span class="focus-meta-value" id="focus-model">&mdash;</span>
+              </div>
+              <div class="focus-meta-row">
+                <span class="focus-meta-label" data-i18n="focus.elapsed">Laufzeit</span>
+                <span class="focus-meta-value" id="focus-elapsed">0:00</span>
+              </div>
             </div>
-            <div class="focus-meta-row">
-              <span class="focus-meta-label" data-i18n="focus.elapsed">Laufzeit</span>
-              <span class="focus-meta-value" id="focus-elapsed">0:00</span>
+            <div class="focus-notes">
+              <div class="focus-notes-title" data-i18n="focus.notes">Notizen</div>
+              <textarea id="focus-notes-input" class="focus-notes-input" placeholder="Schnelle Notiz..." data-i18n-placeholder="focus.notePlaceholder"></textarea>
+              <button id="btn-focus-note-save" class="btn-secondary" style="width:100%;padding:4px;font-size:11px;margin-top:4px" data-i18n="focus.saveNote">Speichern</button>
             </div>
-          </div>
-          <div class="focus-notes">
-            <div class="focus-notes-title" data-i18n="focus.notes">Notizen</div>
-            <textarea id="focus-notes-input" class="focus-notes-input" placeholder="Schnelle Notiz..." data-i18n-placeholder="focus.notePlaceholder"></textarea>
-            <button id="btn-focus-note-save" class="btn-secondary" style="width:100%;padding:4px;font-size:11px;margin-top:4px" data-i18n="focus.saveNote">Speichern</button>
           </div>
           <div class="focus-actions">
             <button id="btn-focus-finish" class="btn-primary focus-finish-btn" data-i18n="focus.finishTicket">&#10004; Ticket abschlie&szlig;en</button>
