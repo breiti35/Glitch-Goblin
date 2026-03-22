@@ -25,16 +25,19 @@
       <button class="hidden" id="btn-header-add-project"></button>
       <!-- Usage Widget -->
       <div class="header-usage" id="header-usage">
-        <div class="header-usage-bar">
-          <span class="header-usage-label">5h</span>
-          <div class="header-usage-track"><div class="header-usage-fill" id="usage-5h-fill"></div></div>
-          <span class="header-usage-pct" id="usage-5h-pct">&ndash;</span>
+        <div id="header-usage-bars">
+          <div class="header-usage-bar">
+            <span class="header-usage-label">5h</span>
+            <div class="header-usage-track"><div class="header-usage-fill" id="usage-5h-fill"></div></div>
+            <span class="header-usage-pct" id="usage-5h-pct">&ndash;</span>
+          </div>
+          <div class="header-usage-bar">
+            <span class="header-usage-label">7d</span>
+            <div class="header-usage-track"><div class="header-usage-fill" id="usage-7d-fill"></div></div>
+            <span class="header-usage-pct" id="usage-7d-pct">&ndash;</span>
+          </div>
         </div>
-        <div class="header-usage-bar">
-          <span class="header-usage-label">7d</span>
-          <div class="header-usage-track"><div class="header-usage-fill" id="usage-7d-fill"></div></div>
-          <span class="header-usage-pct" id="usage-7d-pct">&ndash;</span>
-        </div>
+        <span class="material-symbols-outlined header-usage-offline hidden" id="usage-offline-icon" title="Usage nicht verfügbar">cloud_off</span>
       </div>
       <div class="notif-wrapper">
         <button class="header-icon-btn" id="header-notif-btn" title="Notifications" data-i18n-title="header.notifications">
@@ -725,6 +728,10 @@
                   <span class="focus-usage-track"><span class="focus-usage-fill usage-green" id="focus-usage-7d-fill"></span></span>
                   <span class="focus-usage-pct" id="focus-usage-7d-pct">&mdash;</span>
                 </span>
+              </div>
+              <div class="focus-meta-row hidden" id="focus-usage-offline">
+                <span class="focus-meta-label"><span class="material-symbols-outlined focus-usage-offline-icon">cloud_off</span></span>
+                <span class="focus-meta-value focus-usage-offline-text" data-i18n="usage.offline">Offline</span>
               </div>
             </div>
             <div class="focus-notes">

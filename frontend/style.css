@@ -3083,6 +3083,12 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   width: 24px;
   text-align: right;
 }
+.header-usage-offline {
+  font-size: 13px;
+  color: var(--text-muted);
+  align-self: center;
+  cursor: default;
+}
 /* Window Controls */
 .window-controls {
   display: flex;
@@ -3693,6 +3699,14 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   font-size: 11px;
   min-width: 28px;
   text-align: right;
+}
+.focus-usage-offline-icon {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.focus-usage-offline-text {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .focus-notes {

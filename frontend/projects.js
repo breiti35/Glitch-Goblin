@@ -155,16 +155,19 @@ export async function loadClaudeUsage() {
     const usage = await invoke("get_claude_usage");
     updateUsageDisplay(usage);
   } catch (e) {
-    // Usage unavailable (no credentials, offline, etc.)
-    const container = document.getElementById("sidebar-usage");
-    if (container) container.classList.add("hidden");
+    // Usage unavailable (no credentials, offline, etc.) — Offline-Symbol anzeigen
+    const bars = document.getElementById("header-usage-bars");
+    if (bars) bars.classList.add("hidden");
+    const offlineIcon = document.getElementById("usage-offline-icon");
+    if (offlineIcon) offlineIcon.classList.remove("hidden");
   }
 }
 
 function updateUsageDisplay(usage) {
-  const container = document.getElementById("sidebar-usage");
-  if (!container) return;
-  container.classList.remove("hidden");
+  const offlineIcon = document.getElementById("usage-offline-icon");
+  if (offlineIcon) offlineIcon.classList.add("hidden");
+  const bars = document.getElementById("header-usage-bars");
+  if (bars) bars.classList.remove("hidden");
 
   // 5h bar
   const fill5h = document.getElementById("usage-5h-fill");

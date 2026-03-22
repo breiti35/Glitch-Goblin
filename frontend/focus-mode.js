@@ -90,14 +90,18 @@ export function enterFocusMode(ticket, branch, model, finishTicketFn) {
 async function loadFocusUsage() {
   try {
     const usage = await invoke("get_claude_usage");
+    const offlineRow = document.getElementById("focus-usage-offline");
+    if (offlineRow) offlineRow.classList.add("hidden");
     updateFocusUsageRow("focus-usage-5h", "focus-usage-5h-fill", "focus-usage-5h-pct", usage.fiveHour);
     updateFocusUsageRow("focus-usage-7d", "focus-usage-7d-fill", "focus-usage-7d-pct", usage.sevenDay);
   } catch {
-    // Usage unavailable — hide rows
+    // Usage unavailable — Offline-Symbol anzeigen
     const row5h = document.getElementById("focus-usage-5h");
     const row7d = document.getElementById("focus-usage-7d");
     if (row5h) row5h.classList.add("hidden");
     if (row7d) row7d.classList.add("hidden");
+    const offlineRow = document.getElementById("focus-usage-offline");
+    if (offlineRow) offlineRow.classList.remove("hidden");
   }
 }
 

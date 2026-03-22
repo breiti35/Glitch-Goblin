@@ -376,6 +376,7 @@ export default {
   // Claude Usage
   usage: {
     title: "Claude Usage",
+    offline: "Offline",
   },
 
   // Search
