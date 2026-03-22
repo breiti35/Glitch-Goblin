@@ -6,7 +6,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 // ── Modules ──
 import { debounce, esc, withGuard, logError } from './utils.js';
 import { installErrorHandler } from './error-handler.js';
-import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog } from './board.js';
+import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog, loadArchiveView } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
 import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
 import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
@@ -182,6 +182,7 @@ function bindEvents() {
   // New task
   document.getElementById("btn-new-task").addEventListener("click", openNewTaskModal);
   document.getElementById("btn-backlog-add")?.addEventListener("click", openNewTaskModal);
+  document.getElementById("btn-archive-done")?.addEventListener("click", archiveAllDoneTickets);
   document.getElementById("btn-create-task").addEventListener("click", createTask);
   document.getElementById("new-task-type").addEventListener("change", updateTaskHelper);
   document.getElementById("new-task-desc").addEventListener("input", debounce(updateTaskHelper, 300));
@@ -415,9 +416,30 @@ export function switchView(name) {
   if (name === "git") loadGitView();
   if (name === "activity") loadActivityView();
   if (name === "dashboard") loadDashboard();
+  if (name === "archive") loadArchiveView();
 
   // Update git warnings when switching views
   updateGitWarnings();
+}
+
+// ── Archive ──
+async function archiveAllDoneTickets() {
+  const doneTickets = (state.board.tickets || []).filter(t => t.column === "done");
+  if (doneTickets.length === 0) {
+    showToast("Keine erledigten Tickets zum Archivieren", "info");
+    return;
+  }
+  if (!confirm(`${doneTickets.length} erledigte Tickets archivieren?`)) return;
+  try {
+    for (const t of doneTickets) {
+      await invoke("archive_ticket", { ticketId: t.id });
+    }
+    state.board = await invoke("get_board");
+    renderBoard();
+    showToast(`${doneTickets.length} Tickets archiviert`, "success");
+  } catch (err) {
+    appendLog("Archive error: " + err, true);
+  }
 }
 
 // ── Execution ──

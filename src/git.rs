@@ -956,6 +956,7 @@ mod tests {
             comments: None,
             portal_bug_id: None,
             portal_bug_url: None,
+            archived_at: None,
         };
         assert_eq!(branch_name(&ticket), "gg/GG-018-fix-login-bug");
     }
@@ -982,6 +983,7 @@ mod tests {
             comments: None,
             portal_bug_id: None,
             portal_bug_url: None,
+            archived_at: None,
         };
         assert_eq!(branch_name(&ticket), "gg/GG-001-add-auth");
     }
@@ -1125,6 +1127,7 @@ mod integration_tests {
             comments: None,
             portal_bug_id: None,
             portal_bug_url: None,
+            archived_at: None,
         }
     }
 

@@ -16,7 +16,7 @@ use crate::kanban::{Column, KanbanBoard, Ticket, TicketComment, TicketType};
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 
 const CREATE_SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -196,12 +196,10 @@ fn restore_from_backup(backup_path: &Path, db_path: &Path) -> Result<(), String>
 
 /// Apply incremental schema migrations from `from_version` to `SCHEMA_VERSION`.
 fn apply_schema_migrations(conn: &Connection, from_version: i64) -> Result<(), String> {
-    // Future migrations go here, guarded by version checks:
-    // if from_version < 2 {
-    //     conn.execute_batch("ALTER TABLE tickets ADD COLUMN ...;")
-    //         .map_err(|e| format!("Migration v1→v2: {e}"))?;
-    // }
-    let _ = (conn, from_version);
+    if from_version < 2 {
+        conn.execute_batch("ALTER TABLE tickets ADD COLUMN archived_at TEXT;")
+            .map_err(|e| format!("Migration v1→v2 (archived_at): {e}"))?;
+    }
     Ok(())
 }
 
@@ -217,55 +215,72 @@ pub fn load_board(conn: &Connection) -> Result<KanbanBoard, String> {
         )
         .unwrap_or_else(|_| (String::new(), 1));
 
-    // Tickets
+    // Tickets (excluding archived)
     let mut stmt = conn
         .prepare(
             "SELECT id, title, slug, ticket_type, col, description, prio,
                     created_at, started_at, review_at, done_at,
                     has_changes, branch, tokens_used, cost_usd, model_used,
-                    portal_bug_id, portal_bug_url
+                    portal_bug_id, portal_bug_url, archived_at
              FROM tickets
+             WHERE col != 'archived'
              ORDER BY sort_order, rowid",
         )
         .map_err(|e| format!("Tickets laden fehlgeschlagen: {e}"))?;
 
-    let mut tickets = Vec::new();
+    let tickets = read_ticket_rows(conn, &mut stmt, [])?;
+
+    Ok(KanbanBoard {
+        project_name,
+        tickets,
+        next_ticket_id,
+    })
+}
+
+/// Shared helper: reads ticket rows from a prepared statement with 19 columns
+/// (id..portal_bug_url + archived_at).
+fn read_ticket_rows<P: rusqlite::Params>(
+    conn: &Connection,
+    stmt: &mut rusqlite::Statement,
+    params: P,
+) -> Result<Vec<Ticket>, String> {
     let rows = stmt
-        .query_map([], |r| {
+        .query_map(params, |r| {
             Ok((
-                r.get::<_, String>(0)?,  // id
-                r.get::<_, String>(1)?,  // title
-                r.get::<_, String>(2)?,  // slug
-                r.get::<_, String>(3)?,  // ticket_type
-                r.get::<_, String>(4)?,  // col
-                r.get::<_, String>(5)?,  // description
-                r.get::<_, Option<String>>(6)?,  // prio
-                r.get::<_, Option<String>>(7)?,  // created_at
-                r.get::<_, Option<String>>(8)?,  // started_at
-                r.get::<_, Option<String>>(9)?,  // review_at
-                r.get::<_, Option<String>>(10)?, // done_at
-                r.get::<_, Option<i64>>(11)?,    // has_changes
-                r.get::<_, Option<String>>(12)?, // branch
-                r.get::<_, Option<i64>>(13)?,    // tokens_used
-                r.get::<_, Option<f64>>(14)?,    // cost_usd
-                r.get::<_, Option<String>>(15)?, // model_used
-                r.get::<_, Option<i64>>(16)?,    // portal_bug_id
-                r.get::<_, Option<String>>(17)?, // portal_bug_url
+                r.get::<_, String>(0)?,          // id
+                r.get::<_, String>(1)?,           // title
+                r.get::<_, String>(2)?,           // slug
+                r.get::<_, String>(3)?,           // ticket_type
+                r.get::<_, String>(4)?,           // col
+                r.get::<_, String>(5)?,           // description
+                r.get::<_, Option<String>>(6)?,   // prio
+                r.get::<_, Option<String>>(7)?,   // created_at
+                r.get::<_, Option<String>>(8)?,   // started_at
+                r.get::<_, Option<String>>(9)?,   // review_at
+                r.get::<_, Option<String>>(10)?,  // done_at
+                r.get::<_, Option<i64>>(11)?,     // has_changes
+                r.get::<_, Option<String>>(12)?,  // branch
+                r.get::<_, Option<i64>>(13)?,     // tokens_used
+                r.get::<_, Option<f64>>(14)?,     // cost_usd
+                r.get::<_, Option<String>>(15)?,  // model_used
+                r.get::<_, Option<i64>>(16)?,     // portal_bug_id
+                r.get::<_, Option<String>>(17)?,  // portal_bug_url
+                r.get::<_, Option<String>>(18)?,  // archived_at
             ))
         })
         .map_err(|e| format!("Ticket-Zeilen lesen fehlgeschlagen: {e}"))?;
 
+    let mut tickets = Vec::new();
     for row in rows {
         let (
             id, title, slug, ticket_type_str, col_str, description, prio,
             created_at, started_at, review_at, done_at, has_changes,
             branch, tokens_used, cost_usd, model_used, portal_bug_id, portal_bug_url,
+            archived_at,
         ) = row.map_err(|e| format!("Ticket-Zeile lesen fehlgeschlagen: {e}"))?;
 
         let ticket_type = parse_ticket_type(&ticket_type_str);
         let column = parse_column(&col_str);
-
-        // Load comments for this ticket
         let comments = load_comments(conn, &id).unwrap_or_default();
 
         tickets.push(Ticket {
@@ -280,6 +295,7 @@ pub fn load_board(conn: &Connection) -> Result<KanbanBoard, String> {
             started_at,
             review_at,
             done_at,
+            archived_at,
             has_changes: has_changes.map(|v| v != 0),
             branch,
             tokens_used: tokens_used.map(|v| v as u64),
@@ -290,12 +306,23 @@ pub fn load_board(conn: &Connection) -> Result<KanbanBoard, String> {
             portal_bug_url,
         });
     }
+    Ok(tickets)
+}
 
-    Ok(KanbanBoard {
-        project_name,
-        tickets,
-        next_ticket_id,
-    })
+/// Loads only archived tickets (col = 'archived'), newest first.
+pub fn load_archived_tickets(conn: &Connection) -> Result<Vec<Ticket>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, title, slug, ticket_type, col, description, prio,
+                    created_at, started_at, review_at, done_at,
+                    has_changes, branch, tokens_used, cost_usd, model_used,
+                    portal_bug_id, portal_bug_url, archived_at
+             FROM tickets
+             WHERE col = 'archived'
+             ORDER BY archived_at DESC, rowid DESC",
+        )
+        .map_err(|e| format!("Archivierte Tickets laden fehlgeschlagen: {e}"))?;
+    read_ticket_rows(conn, &mut stmt, [])
 }
 
 fn load_comments(conn: &Connection, ticket_id: &str) -> Result<Vec<TicketComment>, String> {
@@ -360,8 +387,8 @@ pub fn save_board(conn: &Connection, board: &KanbanBoard) -> Result<(), String> 
             "INSERT INTO tickets (id, title, slug, ticket_type, col, description, prio,
                                   created_at, started_at, review_at, done_at,
                                   has_changes, branch, tokens_used, cost_usd, model_used,
-                                  portal_bug_id, portal_bug_url, sort_order)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)
+                                  portal_bug_id, portal_bug_url, sort_order, archived_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20)
              ON CONFLICT(id) DO UPDATE SET
                title=excluded.title, slug=excluded.slug,
                ticket_type=excluded.ticket_type, col=excluded.col,
@@ -373,7 +400,8 @@ pub fn save_board(conn: &Connection, board: &KanbanBoard) -> Result<(), String> 
                model_used=excluded.model_used,
                portal_bug_id=excluded.portal_bug_id,
                portal_bug_url=excluded.portal_bug_url,
-               sort_order=excluded.sort_order",
+               sort_order=excluded.sort_order,
+               archived_at=excluded.archived_at",
             params![
                 ticket.id,
                 ticket.title,
@@ -394,6 +422,7 @@ pub fn save_board(conn: &Connection, board: &KanbanBoard) -> Result<(), String> 
                 ticket.portal_bug_id.map(|v| v as i64),
                 ticket.portal_bug_url,
                 sort_order as i64,
+                ticket.archived_at,
             ],
         )
         .map_err(|e| format!("Ticket '{}' speichern fehlgeschlagen: {e}", ticket.id))?;
@@ -812,6 +841,7 @@ fn column_str(c: &Column) -> &'static str {
         Column::Progress => "progress",
         Column::Review => "review",
         Column::Done => "done",
+        Column::Archived => "archived",
     }
 }
 
@@ -829,6 +859,7 @@ fn parse_column(s: &str) -> Column {
         "progress" => Column::Progress,
         "review" => Column::Review,
         "done" => Column::Done,
+        "archived" => Column::Archived,
         _ => Column::Backlog,
     }
 }
@@ -867,6 +898,7 @@ mod integration_tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
                 Ticket {
                     id: "GG-002".to_string(),
@@ -888,6 +920,7 @@ mod integration_tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
             ],
             next_ticket_id: 3,
@@ -1095,6 +1128,7 @@ mod integration_tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
                 Ticket {
                     id: "GG-002".into(),
@@ -1116,6 +1150,7 @@ mod integration_tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
                 Ticket {
                     id: "GG-003".into(),
@@ -1137,6 +1172,7 @@ mod integration_tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
                 Ticket {
                     id: "GG-004".into(),
@@ -1158,6 +1194,7 @@ mod integration_tests {
                     comments: None,
                     portal_bug_id: None,
                     portal_bug_url: None,
+                    archived_at: None,
                 },
             ],
             next_ticket_id: 5,
@@ -1205,6 +1242,7 @@ mod integration_tests {
                 comments: None,
                 portal_bug_id: Some(42),
                 portal_bug_url: Some("https://portal.example.com/bugs/42".to_string()),
+                archived_at: None,
             }],
             next_ticket_id: 2,
         };
@@ -1249,6 +1287,7 @@ mod integration_tests {
                 comments: None,
                 portal_bug_id: None,
                 portal_bug_url: None,
+                archived_at: None,
             }],
             next_ticket_id: 101,
         };
@@ -1338,6 +1377,7 @@ mod integration_tests {
                 comments: None,
                 portal_bug_id: None,
                 portal_bug_url: None,
+                archived_at: None,
             }],
             next_ticket_id: 103,
         };
