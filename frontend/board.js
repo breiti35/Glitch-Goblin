@@ -187,33 +187,30 @@ function createCard(ticket, col) {
       <button class="card-action merge" data-merge="${ticket.id}">\u2714 ${esc(t('board.merge'))}</button>`;
   }
 
-  // Extra badges (cost, comments, portal-bug)
-  let extraBadgesHTML = "";
-  const extraParts = [];
-  if (ticket.cost_usd) extraParts.push(`<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>`);
-  if (ticket.comments && ticket.comments.length > 0) extraParts.push(`<span class="comment-count-badge">\u{1F4AC} ${ticket.comments.length}</span>`);
-  if (ticket.portal_bug_id) extraParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
-  if (extraParts.length > 0) extraBadgesHTML = `<div class="card-badges">${extraParts.join("")}</div>`;
+  // Header right: Typ-Badge + Prio-Badge
+  const badgesRight = [];
+  if (ticket.ticket_type) badgesRight.push(`<span class="badge badge-${ticket.ticket_type}">${esc(ticket.ticket_type)}</span>`);
+  if (ticket.prio) badgesRight.push(`<span class="badge badge-${ticket.prio}">${esc(ticket.prio)}</span>`);
+  const badgesRightHTML = badgesRight.length > 0 ? `<div class="card-badges-right">${badgesRight.join("")}</div>` : "";
 
-  // Stitch card layout: ID+Prio top, title, bottom row, expandable, workflow bar
+  // Meta-Zeile: Branch, Kommentare, Kosten, Portal-Bug — nur wenn vorhanden
+  const metaParts = [];
+  if (ticket.branch) metaParts.push(`<span class="card-branch-badge">${esc(ticket.branch)}</span>`);
+  if (ticket.comments && ticket.comments.length > 0) metaParts.push(`<span class="card-comment-count"><span class="material-symbols-outlined" style="font-size:14px">chat_bubble</span> ${ticket.comments.length}</span>`);
+  if (ticket.cost_usd) metaParts.push(`<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>`);
+  if (ticket.portal_bug_id) metaParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
+  const metaRowHTML = metaParts.length > 0 ? `<div class="card-meta-row">${metaParts.join("")}</div>` : "";
+
+  // Karten-Layout: ID+Badges oben, Titel, Beschreibung, Meta — Actions im Expand
   card.innerHTML = `
     <div class="card-header-row">
       <span class="card-ticket-id">${esc(ticket.id)}</span>
-      ${ticket.prio ? `<span class="badge badge-${ticket.prio}">${ticket.prio.toUpperCase()}</span>` : ""}
+      ${badgesRightHTML}
     </div>
     <div class="card-title">${esc(ticket.title)}</div>
-    <div class="card-bottom-row">
-      <div class="card-meta-left">
-        ${ticket.comments && ticket.comments.length > 0
-          ? `<span class="card-comment-count"><span class="material-symbols-outlined" style="font-size:14px">chat_bubble</span> ${ticket.comments.length}</span>`
-          : ''}
-        ${ticket.cost_usd ? `<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>` : ''}
-      </div>
-    </div>
+    ${ticket.description ? `<div class="card-desc">${esc(ticket.description)}</div>` : ""}
+    ${metaRowHTML}
     <div class="card-expand">
-      ${ticket.description ? `<div class="card-desc">${esc(ticket.description)}</div>` : ""}
-      ${ticket.branch ? `<div class="card-meta-row"><span class="card-branch-badge">${esc(ticket.branch)}</span></div>` : ""}
-      ${extraBadgesHTML}
       ${actionHTML ? `<div class="card-action-row">${actionHTML}</div>` : ""}
     </div>
     <div class="card-workflow-bar"><div class="card-workflow-fill" style="width:${colProgress[col]}%"></div></div>
