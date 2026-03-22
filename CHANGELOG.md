@@ -5,6 +5,15 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.2.7] - 2026-03-22
+
+### Added
+- **Ticket-Sortierung:** Neues Setting `ticket_sort_mode` (Standard: Priorität). Zwei Modi: "Nach Priorität (High → Medium → Low, dann nach ID)" und "Nach ID aufsteigend". Einstellbar in den Settings unter "Ticket-Sortierung".
+- **Fortschrittsbalken pro Ticket:** Dünne Akzentfarb-Linie am unteren Rand jeder Ticket-Karte zeigt den Workflow-Fortschritt (Backlog=0%, Progress=33%, Review=66%, Done=100%). Done-Spalte nutzt `--success`-Farbe.
+
+### Fixed
+- **WIP-Limit-Balken entfernt:** Die Fortschrittsbalken unter den Spaltentiteln "In Arbeit" und "Review" wurden entfernt — bringen keinen Mehrwert für Solo-Entwickler.
+
 ## [0.2.6] - 2026-03-22
 
 ### Changed

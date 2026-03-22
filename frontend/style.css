@@ -606,8 +606,25 @@ code, pre, .commit-hash, .card-ticket-id, .system-status-bar, .git-current-name 
   transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
   user-select: none;
   position: relative;
+  overflow: hidden;
   box-shadow: 0 8px 40px var(--shadow-ambient);
 }
+
+/* Workflow progress bar — thin accent line at card bottom */
+.card-workflow-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--surface-hover);
+}
+.card-workflow-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+[data-column="done"] .card-workflow-fill { background: var(--success); }
 /* Type-colored left border */
 .ticket-card[data-ticket-type="feature"]  { border-left-color: #3B82F6; }
 .ticket-card[data-ticket-type="bugfix"]   { border-left-color: var(--accent); }
@@ -3324,37 +3341,6 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* ── WIP Limits ── */
-.wip-limit-label {
-  font-size: 9px;
-  color: var(--muted);
-  background: var(--bg);
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-}
-.column.wip-exceeded {
-  border-color: var(--warning) !important;
-  box-shadow: inset 0 0 0 1px var(--warning);
-}
-.column.wip-exceeded .column-header {
-  background: rgba(234, 179, 8, 0.08);
-}
-
-/* WIP progress bar */
-.column-wip-bar {
-  height: 3px;
-  background: var(--surface-hover);
-  overflow: hidden;
-}
-.column-wip-bar.hidden { display: none; }
-.wip-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.3s;
-}
-.column.wip-exceeded .wip-fill { background: var(--warning); }
 
 /* Column stats */
 .column-stat {

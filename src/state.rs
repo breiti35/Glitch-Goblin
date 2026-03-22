@@ -29,6 +29,10 @@ fn default_card_expand_mode() -> String {
     "click".to_string()
 }
 
+fn default_ticket_sort_mode() -> String {
+    "priority".to_string()
+}
+
 fn default_model() -> String {
     "claude-sonnet-4-6".to_string()
 }
@@ -100,6 +104,8 @@ pub struct Settings {
     pub language: String,
     #[serde(default = "default_card_expand_mode")]
     pub card_expand_mode: String,
+    #[serde(default = "default_ticket_sort_mode")]
+    pub ticket_sort_mode: String,
     #[serde(default)]
     pub auto_push_after_merge: bool,
     #[serde(default)]
@@ -125,6 +131,7 @@ impl Default for Settings {
             cost_per_output_mtok: 15.0,
             language: "de".into(),
             card_expand_mode: "click".into(),
+            ticket_sort_mode: "priority".into(),
             auto_push_after_merge: false,
             bug_sync: BugSyncSettings::default(),
         }
