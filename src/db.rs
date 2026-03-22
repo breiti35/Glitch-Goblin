@@ -5,7 +5,7 @@
 ///
 /// JSON files (settings.json, projects.json) are intentionally kept as-is
 /// because they are small, global, and user-editable.
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{params, types::ValueRef, Connection, Result as SqlResult};
 use std::path::Path;
 use tracing::info;
 
@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     model_used   TEXT,
     portal_bug_id  INTEGER,
     portal_bug_url TEXT,
-    sort_order   INTEGER NOT NULL DEFAULT 0
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    archived_at  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS ticket_comments (
@@ -203,6 +204,29 @@ fn apply_schema_migrations(conn: &Connection, from_version: i64) -> Result<(), S
     Ok(())
 }
 
+// ── UTF-8 Sanitization ────────────────────────────────────────────────────────
+
+/// Reads a TEXT column as owned String, replacing invalid UTF-8 bytes with U+FFFD.
+/// Prevents crashes when external tools write non-UTF-8 data (e.g. CP1252) into the DB.
+fn sanitize_utf8_col(r: &rusqlite::Row<'_>, idx: usize) -> rusqlite::Result<String> {
+    match r.get_ref(idx)? {
+        ValueRef::Text(b) | ValueRef::Blob(b) => Ok(String::from_utf8_lossy(b).into_owned()),
+        ValueRef::Null => Ok(String::new()),
+        _ => r.get(idx),
+    }
+}
+
+/// Like `sanitize_utf8_col` but returns `None` for NULL columns.
+fn sanitize_utf8_col_opt(r: &rusqlite::Row<'_>, idx: usize) -> rusqlite::Result<Option<String>> {
+    match r.get_ref(idx)? {
+        ValueRef::Null => Ok(None),
+        ValueRef::Text(b) | ValueRef::Blob(b) => {
+            Ok(Some(String::from_utf8_lossy(b).into_owned()))
+        }
+        _ => r.get(idx),
+    }
+}
+
 // ── Board R/W ─────────────────────────────────────────────────────────────────
 
 pub fn load_board(conn: &Connection) -> Result<KanbanBoard, String> {
@@ -211,7 +235,7 @@ pub fn load_board(conn: &Connection) -> Result<KanbanBoard, String> {
         .query_row(
             "SELECT project_name, next_ticket_id FROM board_meta WHERE id = 1",
             [],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((sanitize_utf8_col(r, 0)?, r.get(1)?)),
         )
         .unwrap_or_else(|_| (String::new(), 1));
 
@@ -247,25 +271,25 @@ fn read_ticket_rows<P: rusqlite::Params>(
     let rows = stmt
         .query_map(params, |r| {
             Ok((
-                r.get::<_, String>(0)?,          // id
-                r.get::<_, String>(1)?,           // title
-                r.get::<_, String>(2)?,           // slug
-                r.get::<_, String>(3)?,           // ticket_type
-                r.get::<_, String>(4)?,           // col
-                r.get::<_, String>(5)?,           // description
-                r.get::<_, Option<String>>(6)?,   // prio
-                r.get::<_, Option<String>>(7)?,   // created_at
-                r.get::<_, Option<String>>(8)?,   // started_at
-                r.get::<_, Option<String>>(9)?,   // review_at
-                r.get::<_, Option<String>>(10)?,  // done_at
-                r.get::<_, Option<i64>>(11)?,     // has_changes
-                r.get::<_, Option<String>>(12)?,  // branch
-                r.get::<_, Option<i64>>(13)?,     // tokens_used
-                r.get::<_, Option<f64>>(14)?,     // cost_usd
-                r.get::<_, Option<String>>(15)?,  // model_used
-                r.get::<_, Option<i64>>(16)?,     // portal_bug_id
-                r.get::<_, Option<String>>(17)?,  // portal_bug_url
-                r.get::<_, Option<String>>(18)?,  // archived_at
+                sanitize_utf8_col(r, 0)?,          // id
+                sanitize_utf8_col(r, 1)?,           // title
+                sanitize_utf8_col(r, 2)?,           // slug
+                sanitize_utf8_col(r, 3)?,           // ticket_type
+                sanitize_utf8_col(r, 4)?,           // col
+                sanitize_utf8_col(r, 5)?,           // description
+                sanitize_utf8_col_opt(r, 6)?,       // prio
+                sanitize_utf8_col_opt(r, 7)?,       // created_at
+                sanitize_utf8_col_opt(r, 8)?,       // started_at
+                sanitize_utf8_col_opt(r, 9)?,       // review_at
+                sanitize_utf8_col_opt(r, 10)?,      // done_at
+                r.get::<_, Option<i64>>(11)?,       // has_changes
+                sanitize_utf8_col_opt(r, 12)?,      // branch
+                r.get::<_, Option<i64>>(13)?,       // tokens_used
+                r.get::<_, Option<f64>>(14)?,       // cost_usd
+                sanitize_utf8_col_opt(r, 15)?,      // model_used
+                r.get::<_, Option<i64>>(16)?,       // portal_bug_id
+                sanitize_utf8_col_opt(r, 17)?,      // portal_bug_url
+                sanitize_utf8_col_opt(r, 18)?,      // archived_at
             ))
         })
         .map_err(|e| format!("Ticket-Zeilen lesen fehlgeschlagen: {e}"))?;
@@ -334,8 +358,8 @@ fn load_comments(conn: &Connection, ticket_id: &str) -> Result<Vec<TicketComment
     let rows = stmt
         .query_map(params![ticket_id], |r| {
             Ok(TicketComment {
-                timestamp: r.get(0)?,
-                text: r.get(1)?,
+                timestamp: sanitize_utf8_col(r, 0)?,
+                text: sanitize_utf8_col(r, 1)?,
             })
         })
         .map_err(|e| format!("Kommentar-Zeilen lesen: {e}"))?;
