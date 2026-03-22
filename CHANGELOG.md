@@ -5,10 +5,14 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [0.2.6] - 2026-03-22
 
 ### Changed
 - **Dead Code Cleanup:** Ungenutzte Re-Exports `renderBoard` und `updateSidebar`/`loadClaudeUsage` aus `app.js` entfernt (wurden nie von anderen Modulen ueber `app.js` importiert); 3 veraltete CSS-Kommentare (`removed — replaced by Stitch`) aus `style.css` geloescht
+- **Commands optimiert:** `cargo test` als Pflichtschritt in /bugfix, /new-feature, /security-audit, /kanban. code-reviewer und security-reviewer Agents werden gezielt aufgerufen. App-Name auf Glitch Goblin korrigiert.
+- **Agents verschlankt:** 5 ueberflüssige Agents geloescht (rust-backend, frontend-ui, terminal-pty, security-fixer, doc-updater). code-reviewer und security-reviewer auf ~15 Zeilen reduziert.
+- **Release-Workflow:** Linux AppImage und Windows NSIS-Installer werden jetzt als Release-Artefakte hochgeladen
+- **Kein Konsolenfenster:** Release-Build oeffnet kein separates Konsolenfenster mehr auf Windows (`windows_subsystem = "windows"`)
 
 ### Added
 - **1M-Context Modelle:** Modellauswahl um `claude-sonnet-4-6[1m]` (Sonnet 4.6 1M) und `claude-opus-4-6[1m]` (Opus 4.6 1M) erweitert — im Confirm-Dialog, in den Settings und bei Kosten-Presets

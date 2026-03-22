@@ -130,13 +130,16 @@ jobs:
         if: matrix.os == 'ubuntu-22.04'
         run: cargo tauri build --bundles appimage
 
-      - name: Prepare portable binaries
+      - name: Prepare release artifacts
         shell: bash
         run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cp target/release/glitch-goblin.exe "target/release/Glitch-Goblin-v${{ needs.create-release.outputs.version }}-windows-x64.exe"
+            cp target/release/glitch-goblin.exe "target/release/Glitch-Goblin-v${VERSION}-windows-x64.exe"
+            cp target/release/bundle/nsis/*.exe "target/release/Glitch-Goblin-v${VERSION}-windows-x64-setup.exe" 2>/dev/null || true
           else
-            cp target/release/glitch-goblin "target/release/Glitch-Goblin-v${{ needs.create-release.outputs.version }}-linux-amd64"
+            cp target/release/glitch-goblin "target/release/Glitch-Goblin-v${VERSION}-linux-amd64"
+            cp target/release/bundle/appimage/*.AppImage "target/release/Glitch-Goblin-v${VERSION}-linux-amd64.AppImage" 2>/dev/null || true
           fi
 
       - name: Upload artifacts
