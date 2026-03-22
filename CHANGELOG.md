@@ -11,6 +11,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - **Dead Code Cleanup:** Ungenutzte Re-Exports `renderBoard` und `updateSidebar`/`loadClaudeUsage` aus `app.js` entfernt (wurden nie von anderen Modulen ueber `app.js` importiert); 3 veraltete CSS-Kommentare (`removed — replaced by Stitch`) aus `style.css` geloescht
 
 ### Added
+- **1M-Context Modelle:** Modellauswahl um `claude-sonnet-4-6[1m]` (Sonnet 4.6 1M) und `claude-opus-4-6[1m]` (Opus 4.6 1M) erweitert — im Confirm-Dialog, in den Settings und bei Kosten-Presets
 - **Konfigurierbares Ticket-Prefix pro Projekt:** Jedes Projekt hat ein eigenes Ticket-Prefix (z.B. "GG", "VTC", "DCT") statt hartkodiertem "GG-". Das Prefix wird in der Projektkonfiguration gespeichert und im Projekt-Picker editiert. Commit-Prefix und Branch-Prefix werden automatisch abgeleitet (z.B. Prefix "VTC" → Ticket "VTC-001", Branch "vtc/VTC-001-slug", Commit "vtc:VTC-001: Titel"). Das separate Commit-Prefix-Feld wurde aus den Settings entfernt.
 - **Ticket-Archivierung:** Erledigte Tickets koennen einzeln (Kontextmenue/Archiv-Button) oder gesammelt (Button im Done-Header) archiviert werden. Archivierte Tickets verschwinden vom Board und sind ueber den neuen Archiv-View (Sidebar) mit Suche und Wiederherstellen-Funktion zugaenglich. Schema-Migration v1→v2 fuegt `archived_at`-Spalte hinzu.
 - **Board-Spalten scrollbar:** Spalten scrollen jetzt per Mausrad/Trackpad wenn sie mehr Karten enthalten als der sichtbare Bereich fasst. Scrollbar ist unsichtbar (scrollbar-width: none).
