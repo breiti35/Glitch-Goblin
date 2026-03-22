@@ -3584,8 +3584,16 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  overflow: hidden;
+}
+
+.focus-sidebar-scroll {
+  flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 4px;
 }
 
 .focus-ticket-header {
@@ -3664,7 +3672,9 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 }
 
 .focus-actions {
-  margin-top: auto;
+  background: var(--sidebar-bg);
+  padding-top: 8px;
+  flex-shrink: 0;
 }
 
 .focus-finish-btn {
@@ -3679,6 +3689,7 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: hidden;
 }
 
 .focus-terminal .terminal-instance {
