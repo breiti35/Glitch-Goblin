@@ -19,7 +19,7 @@ use state::AppState;
 use tauri::Emitter;
 use tauri::Manager;
 use tokio::sync::Mutex;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 fn init_logging() {
     use tracing_subscriber::{fmt, EnvFilter};
@@ -68,7 +68,7 @@ fn main() {
         .manage(Mutex::new(AppState::new()))
         .setup(|app| {
             // Load settings (decrypts API token on the fly)
-            let settings = config::load_settings().unwrap_or_default();
+            let mut settings = config::load_settings().unwrap_or_default();
 
             // One-time migration: if token is plain-text, re-save encrypted
             if !settings.bug_sync.api_token.is_empty() || !settings.github.token.is_empty() {
@@ -78,11 +78,35 @@ fn main() {
             }
 
             // Load projects config
-            let projects_config = config::load_projects().unwrap_or_default();
+            let mut projects_config = config::load_projects().unwrap_or_default();
+
+            // One-time migration: move global GitHub settings into the default project
+            if settings.github.enabled || !settings.github.owner.is_empty() {
+                if let Some(default_name) = &projects_config.default_project {
+                    if let Some(entry) = projects_config.projects.iter_mut().find(|p| &p.name == default_name) {
+                        if !entry.github.enabled && entry.github.owner.is_empty() {
+                            info!("Migrating global GitHub settings to project '{}'", entry.name);
+                            entry.github = settings.github.clone();
+                            if let Err(e) = config::save_projects(&projects_config) {
+                                error!(error = %e, "Failed to save migrated GitHub settings");
+                            }
+                            // Clear global GitHub settings
+                            settings.github = crate::state::GitHubSettings::default();
+                            if let Err(e) = config::save_settings_to_disk(&settings) {
+                                error!(error = %e, "Failed to clear global GitHub settings");
+                            }
+                        }
+                    }
+                }
+            }
+
             let projects = projects_config.projects.clone();
 
-            // Resolve default project
-            let project = config::resolve_default_project().unwrap_or(None);
+            // Resolve default project (re-read to pick up migrated github settings)
+            let project = projects_config.default_project.as_ref()
+                .and_then(|name| projects_config.projects.iter().find(|p| &p.name == name))
+                .cloned()
+                .or_else(|| config::resolve_default_project().unwrap_or(None));
 
             // Open SQLite DB — SQLite ist die einzige Datenquelle
             let (board, kanban_path, data_dir, db_conn) = match &project {

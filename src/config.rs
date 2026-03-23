@@ -22,6 +22,8 @@ pub struct ProjectEntry {
     pub path: PathBuf,
     #[serde(default = "default_ticket_prefix")]
     pub ticket_prefix: String,
+    #[serde(default)]
+    pub github: crate::state::GitHubSettings,
 }
 
 fn default_ticket_prefix() -> String {
@@ -121,8 +123,16 @@ pub fn load_projects() -> Result<ProjectsConfig, String> {
         path: path.display().to_string(),
         cause: e.to_string(),
     })?;
-    serde_json::from_str(&content)
-        .map_err(|e| AppError::Deserialize(format!("projects.json: {e}")).to_string())
+    let mut config: ProjectsConfig = serde_json::from_str(&content)
+        .map_err(|e| AppError::Deserialize(format!("projects.json: {e}")).to_string())?;
+    // Decrypt GitHub tokens for each project
+    for p in &mut config.projects {
+        if !p.github.token.is_empty() {
+            p.github.token = crate::crypto::decrypt_token(&p.github.token)
+                .unwrap_or_else(|_| p.github.token.clone());
+        }
+    }
+    Ok(config)
 }
 
 pub fn save_projects(config: &ProjectsConfig) -> Result<(), String> {
@@ -131,7 +141,15 @@ pub fn save_projects(config: &ProjectsConfig) -> Result<(), String> {
         std::fs::create_dir_all(parent)
             .map_err(|e| AppError::ConfigSave(format!("Verzeichnis erstellen: {e}")))?;
     }
-    let json = serde_json::to_string_pretty(config)
+    // Encrypt GitHub tokens before persisting
+    let mut config_to_save = config.clone();
+    for p in &mut config_to_save.projects {
+        if !p.github.token.is_empty() {
+            p.github.token = crate::crypto::encrypt_token(&p.github.token)
+                .unwrap_or_else(|_| p.github.token.clone());
+        }
+    }
+    let json = serde_json::to_string_pretty(&config_to_save)
         .map_err(|e| AppError::Serialize(e.to_string()))?;
     std::fs::write(&path, json).map_err(|e| AppError::FileWrite {
         path: path.display().to_string(),
@@ -175,6 +193,7 @@ pub fn add_project(name: &str, path: &str) -> Result<(), String> {
         name: name.to_string(),
         path: abs_path,
         ticket_prefix: default_ticket_prefix(),
+        github: crate::state::GitHubSettings::default(),
     });
 
     if config.default_project.is_none() {
@@ -465,6 +484,7 @@ mod tests {
                     name: "my-project".into(),
                     path: PathBuf::from("/home/user/project"),
                     ticket_prefix: "GG".into(),
+                    github: crate::state::GitHubSettings::default(),
                 },
             ],
             default_project: Some("my-project".into()),
