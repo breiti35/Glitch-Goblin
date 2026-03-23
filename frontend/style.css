@@ -3220,6 +3220,7 @@ details.git-merged-group[open] > .git-group-collapsible::before {
                      border-radius: 50%; color: var(--text-muted);
                      transition: background 0.2s; }
 .header-icon-btn:hover { background: var(--surface-hover); }
+.header-icon-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
 .header-icon-btn .material-symbols-outlined { font-size: 22px; }
 .header-notif-badge { position: absolute; top: 2px; right: 2px;
                       background: var(--danger); color: #fff;

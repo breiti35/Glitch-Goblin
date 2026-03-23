@@ -426,4 +426,10 @@ export default {
     none: "None",
     version: "Version",
   },
+  undo: {
+    undo: "Undo",
+    redo: "Redo",
+    undone: "Action undone",
+    redone: "Action restored",
+  },
 };

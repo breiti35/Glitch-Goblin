@@ -12,6 +12,7 @@ mod git;
 mod kanban;
 mod state;
 mod terminal;
+mod undo;
 
 use std::sync::atomic::Ordering;
 use state::AppState;
@@ -227,6 +228,10 @@ fn main() {
             commands::archive_ticket,
             commands::unarchive_ticket,
             commands::get_archived_tickets,
+            // Undo/Redo
+            commands::undo_action,
+            commands::redo_action,
+            commands::get_undo_state,
             commands::start_ticket,
             commands::finish_ticket,
             commands::merge_ticket,

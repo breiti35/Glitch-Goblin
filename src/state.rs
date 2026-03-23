@@ -7,6 +7,7 @@ use tracing::error;
 
 use crate::config::ProjectEntry;
 use crate::kanban::{self, KanbanBoard};
+use crate::undo::UndoManager;
 use crate::terminal::{self, TerminalSession};
 
 fn default_true() -> bool {
@@ -184,6 +185,7 @@ pub struct AppState {
     pub terminals: HashMap<String, TerminalSession>,
     /// SQLite connection for the active project. `None` when no project is open.
     pub db: Option<rusqlite::Connection>,
+    pub undo_manager: UndoManager,
 }
 
 impl AppState {
@@ -204,6 +206,7 @@ impl AppState {
             watcher_stop: Arc::new(AtomicBool::new(false)),
             terminals: HashMap::new(),
             db: None,
+            undo_manager: UndoManager::new(),
         }
     }
 
