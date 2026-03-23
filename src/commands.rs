@@ -335,7 +335,7 @@ pub async fn move_ticket(
         Column::Archived => {
             s.board.tickets[idx].archived_at = Some(kanban::now_iso());
         }
-        _ => {}
+        Column::Backlog => {}
     }
 
     s.board.tickets[idx].column = target_column.clone();
