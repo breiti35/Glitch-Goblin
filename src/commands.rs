@@ -769,6 +769,8 @@ pub async fn start_ticket(
 #[tauri::command]
 pub async fn finish_ticket(
     ticket_id: String,
+    tokens_used: Option<u64>,
+    cost_usd: Option<f64>,
     state: State<'_>,
     app: AppHandle,
 ) -> Result<(), String> {
@@ -804,6 +806,12 @@ pub async fn finish_ticket(
             s.board.tickets[idx].column = Column::Review;
             s.board.tickets[idx].review_at = Some(kanban::now_iso());
             s.board.tickets[idx].has_changes = Some(committed);
+            if tokens_used.is_some() {
+                s.board.tickets[idx].tokens_used = tokens_used;
+            }
+            if cost_usd.is_some() {
+                s.board.tickets[idx].cost_usd = cost_usd;
+            }
             s.running_ticket = None;
             s.save_and_backup()?;
             s.log(format!(

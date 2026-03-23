@@ -2659,6 +2659,25 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   margin: 0;
 }
 
+.review-usage-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  font-size: 13px;
+}
+
+.review-usage-inputs input[type="number"] {
+  width: 110px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input-bg, var(--bg-secondary));
+  color: var(--text);
+  font-size: 13px;
+}
+
 .review-actions {
   display: flex;
   gap: 8px;
