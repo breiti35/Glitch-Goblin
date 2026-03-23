@@ -616,6 +616,45 @@ pub async fn delete_branch(
     Ok(())
 }
 
+/// Löscht alle lokalen Branches die bereits in den Default-Branch gemergt wurden.
+/// Gibt die Namen der gelöschten Branches zurück.
+pub async fn cleanup_merged_branches(project_path: &Path) -> Result<Vec<String>, String> {
+    let clean_project = strip_unc_prefix(project_path);
+    let default = default_branch(project_path).await;
+
+    // Get current branch to avoid deleting it
+    let current = current_branch(project_path).await.unwrap_or_default();
+
+    // Get merged branches
+    let output = git_cmd()
+        .args(["branch", "--merged", &default])
+        .current_dir(&clean_project)
+        .output()
+        .await
+        .map_err(|e| AppError::GitCommand(format!("branch --merged: {e}")))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AppError::GitCommand(format!("branch --merged: {}", stderr.trim())).into());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let candidates: Vec<String> = stdout
+        .lines()
+        .map(|l| l.trim().trim_start_matches("* ").to_string())
+        .filter(|n| !n.is_empty() && n != &default && n != &current)
+        .collect();
+
+    let mut deleted = Vec::new();
+    for branch in &candidates {
+        if delete_branch(&clean_project, branch, false).await.is_ok() {
+            deleted.push(branch.clone());
+        }
+    }
+
+    Ok(deleted)
+}
+
 /// Gibt die Commit-Historie eines Branches zurück (begrenzt auf `limit` Einträge).
 pub async fn get_commit_log(
     project_path: &Path,

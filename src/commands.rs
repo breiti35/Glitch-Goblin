@@ -1260,6 +1260,16 @@ pub async fn delete_branch_cmd(
     git::delete_branch(&project_path, &branch, force).await
 }
 
+/// Löscht alle lokalen Branches die bereits in den Default-Branch gemergt wurden.
+/// Gibt die Namen der gelöschten Branches zurück.
+#[tauri::command]
+pub async fn cleanup_merged_branches(state: State<'_>) -> Result<Vec<String>, String> {
+    let s = state.lock().await;
+    let project_path = s.project_path().ok_or("No project selected")?;
+    drop(s);
+    git::cleanup_merged_branches(&project_path).await
+}
+
 /// Gibt die Commit-Historie eines Branches zurück (begrenzt auf `limit` Einträge).
 #[tauri::command]
 pub async fn get_commit_log(

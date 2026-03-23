@@ -144,6 +144,12 @@ export default {
     operationInProgress: "{op} in Arbeit \u2014 bitte zuerst abschlie\u00dfen oder abbrechen",
     abortMerge: "Merge abbrechen",
     mergeAborted: "Merge abgebrochen",
+    cleanupMerged: "Alle aufr\u00e4umen",
+    cleanupMergedTitle: "Alle gemergten Branches l\u00f6schen",
+    confirmCleanup: "Alle gemergten Branches l\u00f6schen?\nSie sind bereits im Hauptbranch enthalten.",
+    noMergedToClean: "Keine gemergten Branches zum Aufr\u00e4umen",
+    cleanupSuccess: "{count} gemergte(n) Branch(es) gel\u00f6scht",
+    cleanupFailed: "Aufr\u00e4umen fehlgeschlagen",
   },
 
   // Settings

@@ -153,6 +153,10 @@ export async function loadGitView() {
         <div class="git-merged-section-title">
           <span class="material-symbols-outlined">verified</span>
           ERLEDIGTE BRANCHES (BEREITS IN MASTER EINGEBAUT)
+          <button class="btn-cleanup-merged" id="btn-cleanup-merged" title="${esc(t('git.cleanupMergedTitle'))}">
+            <span class="material-symbols-outlined" style="font-size:16px">cleaning_services</span>
+            ${esc(t('git.cleanupMerged'))}
+          </button>
         </div>
         <div class="git-merged-list">
           ${mergedBranches.map(b => renderMergedBranchRow(b)).join("")}
@@ -168,6 +172,9 @@ export async function loadGitView() {
 
     // Event delegation on container
     container.addEventListener("click", handleCardClick);
+
+    // Cleanup merged branches button
+    document.getElementById("btn-cleanup-merged")?.addEventListener("click", cleanupMergedBranches);
   } catch (e) {
     container.innerHTML = `<p class="empty-state">Error: ${esc(String(e))}</p>`;
   }
@@ -441,6 +448,23 @@ async function pushBranch(branch) {
   } catch (e) {
     appendLog("Push failed: " + e, true);
     showToast(t('git.pushFailed'), "error");
+  }
+}
+
+async function cleanupMergedBranches() {
+  if (!confirm(t('git.confirmCleanup'))) return;
+  try {
+    const deleted = await invoke("cleanup_merged_branches");
+    if (deleted.length === 0) {
+      showToast(t('git.noMergedToClean'), "info");
+    } else {
+      appendLog(`Cleaned up ${deleted.length} merged branch(es): ${deleted.join(", ")}`);
+      showToast(t('git.cleanupSuccess', {count: deleted.length}), "success");
+    }
+    loadGitView();
+  } catch (e) {
+    appendLog("Cleanup failed: " + e, true);
+    showToast(t('git.cleanupFailed'), "error");
   }
 }
 
