@@ -32,10 +32,10 @@ export function openDetailPanel(ticket) {
     costInfo.classList.add("hidden");
   }
 
-  // Portal Bug info
+  // Portal Bug info (only when bug_sync is enabled)
   const portalInfo = document.getElementById("detail-portal-info");
   if (portalInfo) {
-    if (ticket.portal_bug_id) {
+    if (state.settings.bug_sync?.enabled && ticket.portal_bug_id) {
       portalInfo.classList.remove("hidden");
       document.getElementById("detail-portal-id").textContent = "#" + ticket.portal_bug_id;
       const urlEl = document.getElementById("detail-portal-url");
