@@ -246,21 +246,25 @@ export async function uploadProjectLogo() {
 
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml";
+  input.accept = "image/png";
   input.addEventListener("change", async () => {
     const file = input.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast(t('avatar.invalidType'), "error");
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
-      showToast("Logo zu groß (max. 2 MB)", "error");
+      showToast(t('avatar.logoTooLarge'), "error");
       return;
     }
     try {
       const dataUrl = await fileToDataUrl(file);
       await invoke("set_project_logo", { projectName: state.project.name, data: dataUrl });
       await updateAvatar();
-      showToast("Logo gespeichert", "success");
+      showToast(t('avatar.logoSaved'), "success");
     } catch (err) {
-      showToast("Logo-Upload fehlgeschlagen: " + err, "error");
+      showToast(t('avatar.logoUploadFailed') + ": " + err, "error");
     }
   });
   input.click();
@@ -272,9 +276,9 @@ export async function removeProjectLogo() {
   try {
     await invoke("remove_project_logo", { projectName: state.project.name });
     await updateAvatar();
-    showToast("Logo entfernt", "success");
+    showToast(t('avatar.logoRemoved'), "success");
   } catch (err) {
-    showToast("Logo entfernen fehlgeschlagen: " + err, "error");
+    showToast(t('avatar.logoRemoveFailed') + ": " + err, "error");
   }
 }
 

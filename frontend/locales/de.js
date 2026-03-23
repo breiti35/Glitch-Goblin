@@ -318,6 +318,12 @@ export default {
     uploadLogo: "Logo hochladen",
     removeLogo: "Logo entfernen",
     projectSettings: "Projekt-Einstellungen",
+    logoSaved: "Logo gespeichert",
+    logoRemoved: "Logo entfernt",
+    logoTooLarge: "Logo zu gro\u00df (max. 2 MB)",
+    invalidType: "Nur Bilddateien erlaubt",
+    logoUploadFailed: "Logo-Upload fehlgeschlagen",
+    logoRemoveFailed: "Logo entfernen fehlgeschlagen",
   },
 
   // Detail Panel
