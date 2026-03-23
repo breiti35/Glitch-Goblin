@@ -51,6 +51,10 @@ fn default_sync_interval() -> u64 {
     300
 }
 
+fn default_github_poll_interval() -> u64 {
+    60
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BugSyncSettings {
     #[serde(default)]
@@ -61,6 +65,32 @@ pub struct BugSyncSettings {
     pub api_token: String,
     #[serde(default = "default_sync_interval")]
     pub interval_secs: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub token: String,
+    #[serde(default)]
+    pub owner: String,
+    #[serde(default)]
+    pub repo: String,
+    #[serde(default = "default_github_poll_interval")]
+    pub poll_interval_secs: u64,
+}
+
+impl Default for GitHubSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            token: String::new(),
+            owner: String::new(),
+            repo: String::new(),
+            poll_interval_secs: 60,
+        }
+    }
 }
 
 impl Default for BugSyncSettings {
@@ -110,6 +140,8 @@ pub struct Settings {
     pub auto_push_after_merge: bool,
     #[serde(default)]
     pub bug_sync: BugSyncSettings,
+    #[serde(default)]
+    pub github: GitHubSettings,
 }
 
 impl Default for Settings {
@@ -134,6 +166,7 @@ impl Default for Settings {
             ticket_sort_mode: "priority".into(),
             auto_push_after_merge: false,
             bug_sync: BugSyncSettings::default(),
+            github: GitHubSettings::default(),
         }
     }
 }
@@ -345,6 +378,59 @@ mod tests {
         assert_eq!(parsed.api_url, "https://api.example.com");
         assert_eq!(parsed.api_token, "secret-token");
         assert_eq!(parsed.interval_secs, 600);
+    }
+
+    #[test]
+    fn github_settings_default() {
+        let gh = GitHubSettings::default();
+        assert!(!gh.enabled);
+        assert!(gh.token.is_empty());
+        assert!(gh.owner.is_empty());
+        assert!(gh.repo.is_empty());
+        assert_eq!(gh.poll_interval_secs, 60);
+    }
+
+    #[test]
+    fn github_settings_serde_with_defaults() {
+        let json = r#"{}"#;
+        let gh: GitHubSettings = serde_json::from_str(json).unwrap();
+        assert!(!gh.enabled);
+        assert!(gh.owner.is_empty());
+        assert_eq!(gh.poll_interval_secs, 60);
+    }
+
+    #[test]
+    fn github_settings_serde_roundtrip() {
+        let gh = GitHubSettings {
+            enabled: true,
+            token: "ghp_test123".into(),
+            owner: "myorg".into(),
+            repo: "myrepo".into(),
+            poll_interval_secs: 120,
+        };
+        let json = serde_json::to_string(&gh).unwrap();
+        let parsed: GitHubSettings = serde_json::from_str(&json).unwrap();
+        assert!(parsed.enabled);
+        assert_eq!(parsed.token, "ghp_test123");
+        assert_eq!(parsed.owner, "myorg");
+        assert_eq!(parsed.repo, "myrepo");
+        assert_eq!(parsed.poll_interval_secs, 120);
+    }
+
+    #[test]
+    fn settings_with_github_defaults_from_old_json() {
+        // Simulate loading an old settings file without github field
+        let json = r##"{
+            "auto_execute_types": ["docs"],
+            "commit_prefix": "",
+            "claude_cli_path": "claude",
+            "accent_color": "#F97316",
+            "theme": "dark"
+        }"##;
+        let s: Settings = serde_json::from_str(json).unwrap();
+        assert!(!s.github.enabled);
+        assert!(s.github.token.is_empty());
+        assert_eq!(s.github.poll_interval_secs, 60);
     }
 
     #[test]

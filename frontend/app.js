@@ -12,7 +12,7 @@ import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
 import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
 import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener, setupSettingsTabs } from './settings.js';
 import { loadStatistics } from './statistics.js';
-import { loadDashboard, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
+import { loadDashboard, stopBuildPoll, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
 import { loadActivityView, setupActivityListeners } from './activity.js';
 import { loadAgents, loadCommands, newAgentFlow, saveAgentEditor, deleteAgentEditor, setupAgentEditorClose, newCommandFlow, saveCommandEditor, deleteCommandEditor, setupCommandEditorClose } from './editors.js';
 import { setupDeployListeners, loadDeployConfig } from './deploy.js';
@@ -93,7 +93,11 @@ async function loadInitialState() {
     state.settings = await invoke("get_settings");
     if (state.settings.bug_sync) {
       state.settings.bug_sync.api_token_set = !!state.settings.bug_sync.api_token;
-      state.settings.bug_sync.api_token = "";
+      state.settings.bug_sync.api_token = ""; // clear sentinel from backend
+    }
+    if (state.settings.github) {
+      state.settings.github.token_set = !!state.settings.github.token;
+      state.settings.github.token = ""; // clear sentinel from backend
     }
     state.runningTicket = await invoke("get_running_ticket");
 
@@ -237,6 +241,9 @@ function bindEvents() {
   document.getElementById("set-bugsync-interval")?.addEventListener("input", (e) => {
     const v = parseInt(e.target.value);
     document.getElementById("bugsync-interval-label").textContent = v >= 60 ? Math.round(v / 60) + " min" : v + " s";
+  });
+  document.getElementById("set-github-interval")?.addEventListener("input", (e) => {
+    document.getElementById("github-interval-label").textContent = e.target.value + "s";
   });
   document.getElementById("btn-open-backups").addEventListener("click", openBackupModal);
 
@@ -407,6 +414,9 @@ export function switchView(name) {
   document.querySelectorAll(".nav-item[data-view]").forEach(b => b.classList.remove("active"));
   const nav = document.querySelector(`.nav-item[data-view="${name}"]`);
   if (nav) nav.classList.add("active");
+
+  // Stop build polling when leaving dashboard
+  if (name !== "dashboard") stopBuildPoll();
 
   // Lazy-load view content
   if (name === "agents") loadAgents();

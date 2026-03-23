@@ -219,6 +219,13 @@ pub fn load_settings() -> Result<Settings, String> {
                 settings.bug_sync.api_token.clone()
             });
     }
+    // Decrypt GitHub token
+    if !settings.github.token.is_empty() {
+        settings.github.token =
+            crate::crypto::decrypt_token(&settings.github.token).unwrap_or_else(|_| {
+                settings.github.token.clone()
+            });
+    }
     Ok(settings)
 }
 
@@ -228,12 +235,17 @@ pub fn save_settings_to_disk(settings: &Settings) -> Result<(), String> {
         std::fs::create_dir_all(parent)
             .map_err(|e| AppError::ConfigSave(format!("Verzeichnis erstellen: {e}")))?;
     }
-    // Encrypt the API token before persisting
+    // Encrypt tokens before persisting
     let mut settings_to_save = settings.clone();
     if !settings.bug_sync.api_token.is_empty() {
         settings_to_save.bug_sync.api_token =
             crate::crypto::encrypt_token(&settings.bug_sync.api_token)
                 .unwrap_or_else(|_| settings.bug_sync.api_token.clone());
+    }
+    if !settings.github.token.is_empty() {
+        settings_to_save.github.token =
+            crate::crypto::encrypt_token(&settings.github.token)
+                .unwrap_or_else(|_| settings.github.token.clone());
     }
     let json = serde_json::to_string_pretty(&settings_to_save)
         .map_err(|e| AppError::Serialize(e.to_string()))?;

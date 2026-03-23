@@ -5,6 +5,11 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Added
+- **GitHub Actions Build-Status:** Neue KPI-Karte im Dashboard zeigt den Live-Status des letzten GitHub Actions Workflow-Runs (success/failure/pending) mit farbigem Badge, Commit-Hash und Laufzeit. Polling-Intervall konfigurierbar (Standard: 60s). GitHub Token (PAT) wird verschluesselt in den Settings gespeichert. Neuer Settings-Tab "GitHub" fuer Owner, Repo, Token und Poll-Intervall.
+
 ## [0.2.7] - 2026-03-22
 
 ### Fixed

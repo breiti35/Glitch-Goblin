@@ -1,11 +1,13 @@
 // ── Dashboard Module ──
-// Dashboard view, templates, import/export.
+// Dashboard view, templates, import/export, build status.
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, timeAgo, formatDuration, logError } from './utils.js';
 import { state, appendLog, switchView, confirmExecute } from './app.js';
 import { renderBoard } from './board.js';
 import { t } from './i18n.js';
+
+let buildPollTimer = null;
 
 // ── Dashboard ──
 
@@ -27,6 +29,10 @@ export async function loadDashboard() {
 
   // Render action cards
   renderDashActions();
+
+  // Build status (async, non-blocking)
+  loadBuildStatus();
+  startBuildPoll();
 
   try {
     const info = await invoke("get_project_info");
@@ -109,6 +115,78 @@ export async function loadDashboard() {
 
   } catch (e) {
     logError("Dashboard error", e);
+  }
+}
+
+// ── Build Status ──
+
+async function loadBuildStatus() {
+  const card = document.getElementById("dash-build-status");
+  const valueEl = document.getElementById("dash-build-value");
+  const metaEl = document.getElementById("dash-build-meta");
+  if (!card || !valueEl) return;
+
+  try {
+    const bs = await invoke("get_build_status");
+
+    if (bs.status === "unconfigured") {
+      valueEl.innerHTML = `<span class="material-symbols-outlined">settings</span> <span>${esc(t('dashboard.buildUnconfigured'))}</span>`;
+      card.className = "dash-kpi dash-kpi-surface";
+      if (metaEl) metaEl.innerHTML = "";
+      return;
+    }
+    if (bs.status === "no_runs") {
+      valueEl.innerHTML = `<span class="material-symbols-outlined">info</span> <span>${esc(t('dashboard.buildNoRuns'))}</span>`;
+      card.className = "dash-kpi dash-kpi-surface";
+      if (metaEl) metaEl.innerHTML = "";
+      return;
+    }
+
+    // Determine display state from status + conclusion
+    let icon, label, kpiClass;
+    if (bs.status === "completed") {
+      if (bs.conclusion === "success") {
+        icon = "check_circle"; label = t('dashboard.buildSuccess'); kpiClass = "dash-kpi dash-kpi-build-success";
+      } else if (bs.conclusion === "failure") {
+        icon = "cancel"; label = t('dashboard.buildFailure'); kpiClass = "dash-kpi dash-kpi-build-failure";
+      } else {
+        icon = "help"; label = bs.conclusion || "unknown"; kpiClass = "dash-kpi dash-kpi-surface";
+      }
+    } else if (bs.status === "in_progress" || bs.status === "queued" || bs.status === "waiting" || bs.status === "pending") {
+      icon = "pending"; label = t('dashboard.buildPending'); kpiClass = "dash-kpi dash-kpi-build-pending";
+    } else {
+      icon = "help"; label = bs.status; kpiClass = "dash-kpi dash-kpi-surface";
+    }
+
+    valueEl.innerHTML = `<span class="material-symbols-outlined">${icon}</span> <span>${esc(label)}</span>`;
+    card.className = kpiClass;
+
+    // Meta: commit, duration, workflow
+    if (metaEl) {
+      const parts = [];
+      if (bs.commitSha) parts.push(`<span class="mono">${esc(bs.commitSha)}</span>`);
+      if (bs.durationSecs != null && bs.durationSecs > 0) parts.push(formatDuration(bs.durationSecs * 1000));
+      if (bs.workflowName) parts.push(esc(bs.workflowName));
+      metaEl.innerHTML = parts.join(" &middot; ");
+    }
+  } catch (e) {
+    valueEl.innerHTML = `<span class="material-symbols-outlined">cloud_off</span> <span>${esc(t('dashboard.buildError'))}</span>`;
+    card.className = "dash-kpi dash-kpi-surface";
+    if (metaEl) metaEl.innerHTML = "";
+    logError("Build status error", e);
+  }
+}
+
+function startBuildPoll() {
+  stopBuildPoll();
+  const interval = (state.settings?.github?.poll_interval_secs || 60) * 1000;
+  buildPollTimer = setInterval(loadBuildStatus, interval);
+}
+
+export function stopBuildPoll() {
+  if (buildPollTimer) {
+    clearInterval(buildPollTimer);
+    buildPollTimer = null;
   }
 }
 
