@@ -298,6 +298,11 @@ export function showContextMenu(e, ticket) {
   mergeItem.classList.toggle("hidden", ticket.column !== "review");
   if (archiveItem) archiveItem.classList.toggle("hidden", ticket.column !== "done");
 
+  // Hide current column in move submenu
+  menu.querySelectorAll("[data-move]").forEach(item => {
+    item.classList.toggle("hidden", item.dataset.move === ticket.column);
+  });
+
   // Populate project submenu
   const projSub = document.getElementById("ctx-project-submenu");
   projSub.innerHTML = "";
