@@ -432,6 +432,11 @@ export function applyFilters() {
   const activeTypes = Array.from(document.querySelectorAll("[data-filter-type].active")).map(b => b.dataset.filterType);
   const activePrios = Array.from(document.querySelectorAll("[data-filter-prio].active")).map(b => b.dataset.filterPrio);
 
+  // Persist filter state to localStorage
+  try {
+    localStorage.setItem("gg-filter-state", JSON.stringify({ text, types: activeTypes, prios: activePrios }));
+  } catch (_) { /* quota exceeded or private mode — ignore */ }
+
   let filteredCount = 0;
   document.querySelectorAll(".ticket-card").forEach(card => {
     const title = card.querySelector(".card-title")?.textContent.toLowerCase() || "";
@@ -457,10 +462,37 @@ export function applyFilters() {
   }
 }
 
+/** Stellt den gespeicherten Filter-State aus localStorage wieder her (DOM-Elemente setzen). */
+export function restoreFilters() {
+  try {
+    const raw = localStorage.getItem("gg-filter-state");
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.text) {
+      document.getElementById("filter-input").value = saved.text;
+    }
+    if (saved.types && saved.types.length > 0) {
+      document.querySelectorAll("[data-filter-type]").forEach(btn => {
+        btn.classList.toggle("active", saved.types.includes(btn.dataset.filterType));
+      });
+    }
+    if (saved.prios && saved.prios.length > 0) {
+      document.querySelectorAll("[data-filter-prio]").forEach(btn => {
+        btn.classList.toggle("active", saved.prios.includes(btn.dataset.filterPrio));
+      });
+    }
+    // Show filter bar if any filter is active
+    if (saved.text || (saved.types && saved.types.length > 0) || (saved.prios && saved.prios.length > 0)) {
+      document.getElementById("filter-bar").classList.remove("hidden");
+    }
+  } catch (_) { /* corrupt data — ignore */ }
+}
+
 /** Setzt alle aktiven Filter (Text, Typ, Priorität) zurück und aktualisiert die Karten-Anzeige. */
 export function clearFilters() {
   document.getElementById("filter-input").value = "";
   document.querySelectorAll(".filter-toggle.active").forEach(b => b.classList.remove("active"));
+  try { localStorage.removeItem("gg-filter-state"); } catch (_) { /* ignore */ }
   applyFilters();
 }
 

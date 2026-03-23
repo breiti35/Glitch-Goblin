@@ -6,7 +6,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 // ── Modules ──
 import { debounce, esc, withGuard, logError } from './utils.js';
 import { installErrorHandler } from './error-handler.js';
-import { renderBoard, applyFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog, loadArchiveView } from './board.js';
+import { renderBoard, applyFilters, restoreFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog, loadArchiveView } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
 import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
 import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
@@ -39,7 +39,6 @@ export const state = {
   runningTicket: null,
   detailTicket: null,
   progressLines: {},
-  filters: { text: "", types: [], prios: [] },
   editingAgent: null,
   editingCommand: null,
   // Terminal
@@ -73,6 +72,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupDeployListeners();
   setupBugSyncListeners();
   loadDeployConfig();
+  restoreFilters();
   renderBoard();
   refreshUndoState();
   updateSidebar();
