@@ -23,6 +23,7 @@ import { t, setLocale, onLocaleChange, translateDOM } from './i18n.js';
 import { notifyDesktop, playSound, showToast, setupNotifCenter } from './notifications.js';
 import { openProjectPicker, switchProject, addProjectFlow, updateSidebar, loadClaudeUsage } from './projects.js';
 import { enterFocusMode, exitFocusMode } from './focus-mode.js';
+import { loadNotesView } from './notes.js';
 import { checkTicketRecovery } from './recovery.js';
 import { openSearchSpotlight, closeSearchSpotlight, globalSearch } from './search.js';
 
@@ -454,6 +455,7 @@ export function switchView(name) {
   if (name === "activity") loadActivityView();
   if (name === "dashboard") loadDashboard();
   if (name === "archive") loadArchiveView();
+  if (name === "notes") loadNotesView();
   if (name === "terminal") refitPageTerminal();
 
   // Update git warnings when switching views

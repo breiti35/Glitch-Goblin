@@ -2830,6 +2830,111 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   flex-wrap: wrap;
 }
 
+/* ── Notes View ── */
+.notes-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.note-card {
+  background: var(--surface-low);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: box-shadow 0.15s;
+}
+
+.note-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.note-card-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.note-card-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-card-date {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.note-card-ticket {
+  margin-top: 8px;
+}
+
+.note-card-ticket-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  padding: 4px 0;
+}
+
+.note-card-ticket-summary::-webkit-details-marker {
+  display: none;
+}
+
+.note-card-ticket-summary::before {
+  content: "\25B6";
+  font-size: 8px;
+  transition: transform 0.15s;
+}
+
+.note-card-ticket[open] .note-card-ticket-summary::before {
+  transform: rotate(90deg);
+}
+
+.note-ticket-id {
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.note-ticket-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-card-ticket-actions {
+  padding: 8px 0 4px 14px;
+}
+
+.note-card-ticket-actions .btn-secondary {
+  font-size: 11px;
+  padding: 2px 10px;
+}
+
+.badge-archived {
+  background: var(--muted);
+  color: var(--bg);
+}
+
+.badge-col {
+  background: var(--surface-high, var(--surface-low));
+  color: var(--text);
+  font-size: 10px;
+}
+
 /* ── Dashboard (Phase 3 - Block D) ── */
 /* ── Dashboard Action Cards ── */
 .dash-actions {
