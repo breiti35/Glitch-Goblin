@@ -170,7 +170,8 @@ export async function loadGitView() {
 
     container.innerHTML = html;
 
-    // Event delegation on container
+    // Event delegation on container (remove first to prevent accumulation on repeated loads)
+    container.removeEventListener("click", handleCardClick);
     container.addEventListener("click", handleCardClick);
 
     // Cleanup merged branches button
@@ -429,14 +430,17 @@ function gitConfirm(message) {
       yesBtn.removeEventListener("click", onYes);
       noBtn.removeEventListener("click", onNo);
       backdrop.removeEventListener("click", onNo);
+      document.removeEventListener("keydown", onKey);
       resolve(result);
     }
     function onYes() { finish(true); }
     function onNo() { finish(false); }
+    function onKey(e) { if (e.key === "Escape") finish(false); }
 
     yesBtn.addEventListener("click", onYes);
     noBtn.addEventListener("click", onNo);
     backdrop.addEventListener("click", onNo);
+    document.addEventListener("keydown", onKey);
   });
 }
 
