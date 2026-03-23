@@ -310,6 +310,14 @@ export default {
     copy: "Copy",
     moveProject: "Move to project",
     delete: "Delete",
+    archive: "Archive",
+  },
+
+  // Avatar Context Menu
+  avatar: {
+    uploadLogo: "Upload logo",
+    removeLogo: "Remove logo",
+    projectSettings: "Project settings",
   },
 
   // Detail Panel

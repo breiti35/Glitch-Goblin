@@ -79,6 +79,7 @@ export async function switchProject(name) {
     clearFilters();
     renderBoard();
     updateSidebar();
+    updateAvatar();
     checkGitStatus();
     updateGitWarnings();
     loadDeployConfig();
@@ -199,4 +200,133 @@ function usageColor(pct) {
   if (pct >= 90) return "usage-red";
   if (pct >= 70) return "usage-yellow";
   return "usage-green";
+}
+
+// ── Project Avatar ──
+
+/** Erzeugt Initialen aus dem Projektnamen (max. 2 Zeichen). */
+function projectInitials(name) {
+  if (!name) return "?";
+  const words = name.trim().split(/[\s\-_]+/);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+/** Aktualisiert den Header-Avatar mit Logo oder Initialen. */
+export async function updateAvatar() {
+  const el = document.getElementById("header-avatar");
+  if (!el) return;
+
+  const name = state.project?.name;
+  if (!name) {
+    el.textContent = "?";
+    el.style.backgroundImage = "";
+    el.classList.remove("has-logo");
+    return;
+  }
+
+  try {
+    const dataUrl = await invoke("get_project_logo", { projectName: name });
+    if (dataUrl) {
+      el.textContent = "";
+      el.style.backgroundImage = `url(${dataUrl})`;
+      el.classList.add("has-logo");
+      return;
+    }
+  } catch (_) { /* kein Logo vorhanden */ }
+
+  el.textContent = projectInitials(name);
+  el.style.backgroundImage = "";
+  el.classList.remove("has-logo");
+}
+
+/** Oeffnet ein verstecktes File-Input um ein Logo hochzuladen. */
+export async function uploadProjectLogo() {
+  if (!state.project?.name) return;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml";
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Logo zu groß (max. 2 MB)", "error");
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await invoke("set_project_logo", { projectName: state.project.name, data: dataUrl });
+      await updateAvatar();
+      showToast("Logo gespeichert", "success");
+    } catch (err) {
+      showToast("Logo-Upload fehlgeschlagen: " + err, "error");
+    }
+  });
+  input.click();
+}
+
+/** Entfernt das Projekt-Logo. */
+export async function removeProjectLogo() {
+  if (!state.project?.name) return;
+  try {
+    await invoke("remove_project_logo", { projectName: state.project.name });
+    await updateAvatar();
+    showToast("Logo entfernt", "success");
+  } catch (err) {
+    showToast("Logo entfernen fehlgeschlagen: " + err, "error");
+  }
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Richtet das Rechtsklick-Kontextmenü für den Avatar ein. */
+export function setupAvatarContextMenu() {
+  const avatar = document.getElementById("header-avatar");
+  const menu = document.getElementById("avatar-context-menu");
+  if (!avatar || !menu) return;
+
+  avatar.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    if (!state.project) return;
+    menu.style.top = e.clientY + "px";
+    menu.style.left = Math.min(e.clientX, window.innerWidth - 200) + "px";
+    menu.classList.remove("hidden");
+  });
+
+  // Linksklick auf Avatar öffnet ebenfalls das Menü
+  avatar.addEventListener("click", (e) => {
+    if (!state.project) return;
+    const rect = avatar.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 4) + "px";
+    menu.style.left = Math.min(rect.left, window.innerWidth - 200) + "px";
+    menu.classList.remove("hidden");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#avatar-context-menu") && !e.target.closest("#header-avatar")) {
+      menu.classList.add("hidden");
+    }
+  });
+
+  menu.addEventListener("click", (e) => {
+    const item = e.target.closest(".ctx-item");
+    if (!item) return;
+    menu.classList.add("hidden");
+    const action = item.dataset.action;
+    if (action === "upload-logo") uploadProjectLogo();
+    else if (action === "remove-logo") removeProjectLogo();
+    else if (action === "project-settings") {
+      // Navigiere zum Settings-View
+      const nav = document.querySelector('[data-view="settings"]');
+      if (nav) nav.click();
+    }
+  });
 }
