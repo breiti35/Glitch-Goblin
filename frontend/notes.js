@@ -52,7 +52,7 @@ function renderNotes(notes) {
           <span class="note-ticket-id">${esc(n.ticketId)}</span>
           <span class="note-ticket-title">${esc(n.ticketTitle)}</span>
           <span class="badge badge-${esc(n.ticketType)}">${esc(n.ticketType)}</span>
-          ${n.ticketColumn === 'archived' ? '<span class="badge badge-archived">Archiv</span>' : ''}
+          ${n.ticketColumn === 'archived' ? `<span class="badge badge-archived">${esc(t('nav.archive') || 'Archiv')}</span>` : ''}
           ${colLabel && n.ticketColumn !== 'archived' ? `<span class="badge badge-col">${esc(colLabel)}</span>` : ''}
         </summary>
         <div class="note-card-ticket-actions">
@@ -67,12 +67,12 @@ function renderNotes(notes) {
     btn.addEventListener("click", async () => {
       const ticketId = btn.dataset.ticketId;
       // Search in board tickets first
-      let ticket = (state.board.tickets || []).find(t => t.id === ticketId);
+      let ticket = (state.board.tickets || []).find(tk => tk.id === ticketId);
       if (!ticket) {
         // Try archived tickets
         try {
           const archived = await invoke("get_archived_tickets");
-          ticket = archived.find(t => t.id === ticketId);
+          ticket = archived.find(tk => tk.id === ticketId);
         } catch (_) { /* ignore */ }
       }
       if (ticket) {
@@ -108,11 +108,11 @@ function setupNotesSearch(allNotes) {
 
 function columnLabel(col) {
   switch (col) {
-    case 'backlog': return 'Backlog';
-    case 'progress': return 'In Progress';
-    case 'review': return 'Review';
-    case 'done': return 'Done';
-    case 'archived': return 'Archiv';
+    case 'backlog': return t('board.backlog');
+    case 'progress': return t('board.progress');
+    case 'review': return t('board.review');
+    case 'done': return t('board.done');
+    case 'archived': return t('nav.archive') || 'Archiv';
     default: return '';
   }
 }
