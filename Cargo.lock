@@ -1490,7 +1490,7 @@ dependencies = [
 
 [[package]]
 name = "glitch-goblin"
-version = "0.2.7"
+version = "0.2.8-alpha"
 dependencies = [
  "chacha20poly1305",
  "chrono",

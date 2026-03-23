@@ -5,7 +5,7 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [0.2.8-alpha] - 2026-03-23
 
 ### Added
 - **Terminal-Seite (Vollbild Multi-Tab):** Neuer Sidebar-Eintrag "Terminal" öffnet eine eigene Vollbild-Ansicht mit Multi-Tab-Support für mehrere unabhängige Terminal-Sessions. Das eingeklappte Terminal-Panel wird auf der Terminal-Seite automatisch ausgeblendet und bei Wechsel zu anderen Views wieder eingeblendet. Alle drei Terminal-Bereiche (Ticket-Terminal, Panel, Terminal-Seite) sind komplett unabhängig voneinander. Sessions laufen im Hintergrund weiter beim View-Wechsel.
