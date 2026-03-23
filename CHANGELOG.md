@@ -5,6 +5,22 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.2.9-alpha] - 2026-03-23
+
+### Added
+- **Notizen-View:** Neuer Sidebar-View zeigt alle Notizen pro Projekt (auch archivierte). Ticket-ID + Titel als klickbarer Header, Badges, Suchfeld. "Kommentare" und "Notizen" vereinheitlicht.
+- **Projekt-Logo/Avatar:** Upload pro Projekt, Rechtsklick-Menue fuer Projekt-Einstellungen, Fallback auf Initialen
+- **GitHub Build-Status projektspezifisch:** GitHub-Settings (Owner/Repo/Token) pro Projekt statt global
+
+### Fixed
+- **GG-034 Branches aufraeumen:** Dialog wartete nicht auf Bestaetigung, Branches wurden sofort geloescht
+- **GG-035 Modell/Tokens/Kosten:** Felder werden jetzt korrekt im Ticket-Detail angezeigt
+- **GG-036 Leere Felder:** Werden ausgeblendet wenn keine Werte vorhanden
+- **GG-037 Bug-Sync Felder:** Portal-Bug/URL nur sichtbar wenn Bug-Sync aktiviert
+- **GG-038 Ticket-Verschiebung:** Rechtsklick, Drag&Drop und Start-Button funktionieren wieder
+- **GG-039 Usage-Anzeige:** Kein Offline mehr bei 429 Rate-Limit, zentraler Polling-Timer, Datei-Cache
+- **GG-044 Notizen-View Scrollbar:** Unsichtbar per scrollbar-width: none auf #view-notes
+
 ## [0.2.8-alpha] - 2026-03-23
 
 ### Fixed
