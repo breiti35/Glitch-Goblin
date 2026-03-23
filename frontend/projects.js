@@ -150,10 +150,14 @@ export function updateSidebar() {
 }
 
 // ── Claude Usage ──
+/** Letzter erfolgreich geladener Usage-Wert (fuer Focus-Mode u.a.) */
+export let lastUsage = null;
+
 /** Laedt die Claude-Usage-Daten vom Backend und zeigt sie in der Sidebar an. */
 export async function loadClaudeUsage() {
   try {
     const usage = await invoke("get_claude_usage");
+    lastUsage = usage;
     updateUsageDisplay(usage);
   } catch (e) {
     // Usage unavailable (no credentials, offline, etc.) — Offline-Symbol anzeigen
