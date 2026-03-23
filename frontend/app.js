@@ -39,7 +39,6 @@ export const state = {
   runningTicket: null,
   detailTicket: null,
   progressLines: {},
-  filters: { text: "", types: [], prios: [] },
   editingAgent: null,
   editingCommand: null,
   // Terminal

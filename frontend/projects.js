@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { esc } from './utils.js';
 import { t } from './i18n.js';
 import { state, openModal, closeModal, appendLog } from './app.js';
-import { renderBoard } from './board.js';
+import { renderBoard, clearFilters } from './board.js';
 import { showToast } from './notifications.js';
 import { checkGitStatus } from './git.js';
 import { updateGitWarnings } from './app.js';
@@ -76,6 +76,7 @@ export async function switchProject(name) {
     state.projects = await invoke("get_projects");
     state.runningTicket = await invoke("get_running_ticket");
     closeModal("modal-picker");
+    clearFilters();
     renderBoard();
     updateSidebar();
     checkGitStatus();
