@@ -7,6 +7,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [0.2.8-alpha] - 2026-03-23
 
+### Fixed
+- **Branches aufräumen: Sofortiges Löschen ohne Bestätigung abzuwarten:** `window.confirm()` in Tauri/WebView2 blockiert die JavaScript-Ausführung nicht zuverlässig — der Dialog erschien, aber die Branches wurden sofort gelöscht. Ersetzt durch einen eigenen asynchronen Bestätigungs-Modal. Betrifft auch "Branch mergen" und "Branch löschen" (selbes Problem).
+
 ### Added
 - **Terminal-Seite (Vollbild Multi-Tab):** Neuer Sidebar-Eintrag "Terminal" öffnet eine eigene Vollbild-Ansicht mit Multi-Tab-Support für mehrere unabhängige Terminal-Sessions. Das eingeklappte Terminal-Panel wird auf der Terminal-Seite automatisch ausgeblendet und bei Wechsel zu anderen Views wieder eingeblendet. Alle drei Terminal-Bereiche (Ticket-Terminal, Panel, Terminal-Seite) sind komplett unabhängig voneinander. Sessions laufen im Hintergrund weiter beim View-Wechsel.
 - **Filter-Persistenz:** Filter-State (Suchtext, Typ-Filter, Prioritäts-Filter) wird in localStorage gespeichert und beim nächsten Start automatisch wiederhergestellt. Filter-Leiste öffnet sich automatisch wenn gespeicherte Filter aktiv sind. "Filter löschen" entfernt auch den gespeicherten State.
