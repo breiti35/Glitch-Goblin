@@ -2838,6 +2838,13 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 }
 
 /* ── Notes View ── */
+#view-notes {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+#view-notes::-webkit-scrollbar {
+  display: none;
+}
 .notes-body {
   display: flex;
   flex-direction: column;
