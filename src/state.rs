@@ -486,6 +486,7 @@ mod tests {
             name: "test".into(),
             path: PathBuf::from("/home/user/project"),
             ticket_prefix: "GG".into(),
+            github: GitHubSettings::default(),
         });
         assert_eq!(state.project_path(), Some(PathBuf::from("/home/user/project")));
     }

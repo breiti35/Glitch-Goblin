@@ -17,7 +17,7 @@ use crate::deploy;
 use crate::error::AppError;
 use crate::git;
 use crate::kanban::{self, Column, KanbanBoard, Ticket, TicketType};
-use crate::state::{AppState, Settings};
+use crate::state::{AppState, GitHubSettings, Settings};
 use crate::terminal;
 use crate::undo::UndoAction;
 
@@ -91,14 +91,24 @@ pub async fn get_board(state: State<'_>) -> Result<KanbanBoard, String> {
 #[tauri::command]
 pub async fn get_projects(state: State<'_>) -> Result<Vec<ProjectEntry>, String> {
     let s = state.lock().await;
-    Ok(s.projects.clone())
+    let mut projects = s.projects.clone();
+    // Never send plaintext GitHub tokens to the frontend
+    for p in &mut projects {
+        p.github.token = String::new();
+    }
+    Ok(projects)
 }
 
 /// Gibt das aktuell ausgewählte Projekt zurück.
 #[tauri::command]
 pub async fn get_current_project(state: State<'_>) -> Result<Option<ProjectEntry>, String> {
     let s = state.lock().await;
-    Ok(s.project.clone())
+    let mut project = s.project.clone();
+    // Never send plaintext GitHub token to the frontend
+    if let Some(ref mut p) = project {
+        p.github.token = String::new();
+    }
+    Ok(project)
 }
 
 /// Wechselt zu einem anderen Projekt und lädt dessen Board.
@@ -1006,6 +1016,10 @@ pub async fn get_settings(state: State<'_>) -> Result<Settings, String> {
     } else {
         "__set__".into()
     };
+    // Overlay project-specific GitHub settings onto the response
+    if let Some(p) = &s.project {
+        settings.github = p.github.clone();
+    }
     settings.github.token = if settings.github.token.is_empty() {
         String::new()
     } else {
@@ -1033,18 +1047,50 @@ pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(
         settings.github.poll_interval_secs = 30;
     }
 
+    // Extract project-specific GitHub settings before saving global settings
+    let mut project_github = settings.github.clone();
+
     // Preserve existing tokens if the frontend sends empty ones
     {
         let s = state.lock().await;
         if settings.bug_sync.api_token.is_empty() && !s.settings.bug_sync.api_token.is_empty() {
             settings.bug_sync.api_token = s.settings.bug_sync.api_token.clone();
         }
-        if settings.github.token.is_empty() && !s.settings.github.token.is_empty() {
-            settings.github.token = s.settings.github.token.clone();
+        // Preserve project-specific GitHub token
+        if project_github.token.is_empty() {
+            if let Some(p) = &s.project {
+                if !p.github.token.is_empty() {
+                    project_github.token = p.github.token.clone();
+                }
+            }
         }
     }
+
+    // Save GitHub settings to the current project (not global)
+    {
+        let mut s = state.lock().await;
+        if let Some(ref mut p) = s.project {
+            let project_name = p.name.clone();
+            p.github = project_github.clone();
+            // Also update in the projects list
+            if let Some(entry) = s.projects.iter_mut().find(|e| e.name == project_name) {
+                entry.github = project_github.clone();
+            }
+            // Persist to projects.json
+            let mut cfg = config::load_projects()?;
+            if let Some(entry) = cfg.projects.iter_mut().find(|e| e.name == project_name) {
+                entry.github = project_github;
+            }
+            config::save_projects(&cfg)?;
+        }
+    }
+
+    // Save global settings without GitHub (cleared to default)
+    settings.github = GitHubSettings::default();
     config::save_settings_to_disk(&settings)?;
+    // Restore the default github in state so it doesn't interfere
     let mut s = state.lock().await;
+    settings.github = GitHubSettings::default();
     s.settings = settings;
     Ok(())
 }
@@ -2520,10 +2566,24 @@ pub struct BuildStatus {
 }
 
 /// Ruft den Status des letzten GitHub Actions Workflow-Runs ab.
+/// Liest die GitHub-Settings aus dem aktuellen Projekt (nicht global).
 #[tauri::command]
 pub async fn get_build_status(state: State<'_>) -> Result<BuildStatus, String> {
     let s = state.lock().await;
-    let gh = &s.settings.github;
+    let gh = match &s.project {
+        Some(p) => &p.github,
+        None => {
+            return Ok(BuildStatus {
+                status: "unconfigured".into(),
+                conclusion: None,
+                workflow_name: None,
+                commit_sha: None,
+                duration_secs: None,
+                run_url: None,
+                updated_at: None,
+            });
+        }
+    };
     if !gh.enabled || gh.owner.is_empty() || gh.repo.is_empty() {
         return Ok(BuildStatus {
             status: "unconfigured".into(),
