@@ -301,16 +301,17 @@ pub async fn move_ticket(
     let old_ticket = s.board.tickets[idx].clone();
     let current = s.board.tickets[idx].column.clone();
 
-    // Validate allowed transitions
-    let allowed = matches!(
-        (&current, &target_column),
-        (Column::Review, Column::Done)
-            | (Column::Review, Column::Backlog)
-            | (Column::Done, Column::Review)
-            | (Column::Done, Column::Archived)
-            | (Column::Backlog, Column::Review)
-            | (Column::Backlog, Column::Progress)
-    );
+    // Same column: no-op
+    if current == target_column {
+        return Ok(());
+    }
+
+    // Validate: all moves between board columns allowed; Archived only from Done
+    let allowed = match (&current, &target_column) {
+        (Column::Archived, _) => false,
+        (_, Column::Archived) => current == Column::Done,
+        _ => true,
+    };
 
     if !allowed {
         return Err(format!(
@@ -320,21 +321,21 @@ pub async fn move_ticket(
         ));
     }
 
-    // Set timestamps based on transitions
-    match (&current, &target_column) {
-        (Column::Backlog, Column::Progress) => {
+    // Set timestamps based on target column
+    match &target_column {
+        Column::Progress => {
             s.board.tickets[idx].started_at = Some(kanban::now_iso());
         }
-        (_, Column::Review) => {
+        Column::Review => {
             s.board.tickets[idx].review_at = Some(kanban::now_iso());
         }
-        (_, Column::Done) => {
+        Column::Done => {
             s.board.tickets[idx].done_at = Some(kanban::now_iso());
         }
-        (_, Column::Archived) => {
+        Column::Archived => {
             s.board.tickets[idx].archived_at = Some(kanban::now_iso());
         }
-        _ => {}
+        Column::Backlog => {}
     }
 
     s.board.tickets[idx].column = target_column.clone();
