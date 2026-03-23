@@ -449,6 +449,8 @@ export default {
     empty: "No notes yet",
     noResults: "No notes found",
     showTicket: "Show ticket",
+    showMore: "Show more",
+    showLess: "Show less",
   },
   undo: {
     undo: "Undo",

@@ -40,36 +40,47 @@ function renderNotes(notes) {
     return;
   }
 
+  const NOTE_TRUNCATE = 200;
+
   body.innerHTML = notes.map((n, i) => {
     const colLabel = columnLabel(n.ticketColumn);
+    const needsTruncate = n.text.length > NOTE_TRUNCATE;
+    const displayText = needsTruncate ? n.text.slice(0, NOTE_TRUNCATE) + '\u2026' : n.text;
     return `<div class="note-card" data-note-index="${i}">
-      <div class="note-card-main">
-        <div class="note-card-text">${esc(n.text)}</div>
-        <div class="note-card-date">${timeAgo(n.timestamp)}</div>
-      </div>
-      <details class="note-card-ticket">
-        <summary class="note-card-ticket-summary">
-          <span class="note-ticket-id">${esc(n.ticketId)}</span>
-          <span class="note-ticket-title">${esc(n.ticketTitle)}</span>
+      <div class="note-card-header note-open-ticket" data-ticket-id="${esc(n.ticketId)}">
+        <span class="note-ticket-id">${esc(n.ticketId)}</span>
+        <span class="note-ticket-title">${esc(n.ticketTitle)}</span>
+        <div class="note-card-badges">
           <span class="badge badge-${esc(n.ticketType)}">${esc(n.ticketType)}</span>
           ${n.ticketColumn === 'archived' ? `<span class="badge badge-archived">${esc(t('nav.archive') || 'Archiv')}</span>` : ''}
           ${colLabel && n.ticketColumn !== 'archived' ? `<span class="badge badge-col">${esc(colLabel)}</span>` : ''}
-        </summary>
-        <div class="note-card-ticket-actions">
-          <button class="btn-secondary note-open-ticket" data-ticket-id="${esc(n.ticketId)}">${esc(t('notes.showTicket'))}</button>
         </div>
-      </details>
+      </div>
+      <div class="note-card-body">
+        <div class="note-card-text${needsTruncate ? ' note-truncated' : ''}">${esc(displayText)}</div>
+        ${needsTruncate ? `<button class="note-show-more">${esc(t('notes.showMore') || 'Mehr anzeigen')}</button>` : ''}
+      </div>
+      <div class="note-card-footer">
+        <span class="note-card-date">${timeAgo(n.timestamp)}</span>
+      </div>
     </div>`;
   }).join("");
+
+  // Set data attributes via JS to avoid XSS from unescaped quotes in data-attributes
+  body.querySelectorAll(".note-show-more").forEach(btn => {
+    const card = btn.closest(".note-card");
+    const idx = parseInt(card.dataset.noteIndex);
+    const n = notes[idx];
+    btn.dataset.fullText = n.text;
+    btn.dataset.shortText = n.text.slice(0, NOTE_TRUNCATE) + '\u2026';
+  });
 
   // Click handlers: open ticket detail
   body.querySelectorAll(".note-open-ticket").forEach(btn => {
     btn.addEventListener("click", async () => {
       const ticketId = btn.dataset.ticketId;
-      // Search in board tickets first
       let ticket = (state.board.tickets || []).find(tk => tk.id === ticketId);
       if (!ticket) {
-        // Try archived tickets
         try {
           const archived = await invoke("get_archived_tickets");
           ticket = archived.find(tk => tk.id === ticketId);
@@ -78,6 +89,25 @@ function renderNotes(notes) {
       if (ticket) {
         switchView("board");
         openDetailPanel(ticket);
+      }
+    });
+  });
+
+  // Show more / show less toggle
+  body.querySelectorAll(".note-show-more").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const textEl = btn.previousElementSibling;
+      const isExpanded = btn.dataset.expanded === "true";
+      if (isExpanded) {
+        textEl.textContent = btn.dataset.shortText;
+        btn.textContent = t('notes.showMore') || 'Mehr anzeigen';
+        btn.dataset.expanded = "false";
+        textEl.classList.add("note-truncated");
+      } else {
+        textEl.textContent = btn.dataset.fullText;
+        btn.textContent = t('notes.showLess') || 'Weniger anzeigen';
+        btn.dataset.expanded = "true";
+        textEl.classList.remove("note-truncated");
       }
     });
   });

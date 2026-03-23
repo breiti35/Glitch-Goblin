@@ -449,6 +449,8 @@ export default {
     empty: "Keine Notizen vorhanden",
     noResults: "Keine Notizen gefunden",
     showTicket: "Ticket anzeigen",
+    showMore: "Mehr anzeigen",
+    showLess: "Weniger anzeigen",
   },
   undo: {
     undo: "R\u00fcckg\u00e4ngig",
