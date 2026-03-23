@@ -741,10 +741,23 @@ pub async fn list_commands_available(state: State<'_>) -> Result<Vec<String>, St
 // ── Settings ──
 
 /// Gibt die aktuellen App-Einstellungen zurück.
+/// Tokens werden vor dem Senden entfernt — das Frontend nutzt `token_set`-Flags.
 #[tauri::command]
 pub async fn get_settings(state: State<'_>) -> Result<Settings, String> {
     let s = state.lock().await;
-    Ok(s.settings.clone())
+    let mut settings = s.settings.clone();
+    // Never send plaintext tokens to the frontend
+    settings.bug_sync.api_token = if settings.bug_sync.api_token.is_empty() {
+        String::new()
+    } else {
+        "__set__".into()
+    };
+    settings.github.token = if settings.github.token.is_empty() {
+        String::new()
+    } else {
+        "__set__".into()
+    };
+    Ok(settings)
 }
 
 /// Speichert die App-Einstellungen dauerhaft auf der Festplatte.
