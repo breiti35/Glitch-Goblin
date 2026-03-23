@@ -1088,9 +1088,7 @@ pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(
     // Save global settings without GitHub (cleared to default)
     settings.github = GitHubSettings::default();
     config::save_settings_to_disk(&settings)?;
-    // Restore the default github in state so it doesn't interfere
     let mut s = state.lock().await;
-    settings.github = GitHubSettings::default();
     s.settings = settings;
     Ok(())
 }
