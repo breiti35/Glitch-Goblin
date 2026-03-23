@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { state, appendLog } from './app.js';
 import { showToast } from './notifications.js';
 import { t } from './i18n.js';
+import { lastUsage } from './projects.js';
 
 let focusElapsedInterval = null;
 let focusUsageInterval = null;
@@ -78,25 +79,23 @@ export function enterFocusMode(ticket, branch, model, finishTicketFn) {
   // Exit button
   document.getElementById("btn-focus-exit").onclick = () => exitFocusMode();
 
-  // Load Claude usage into focus sidebar
-  loadFocusUsage();
+  // Load Claude usage into focus sidebar (reads cached value from central poll)
+  updateFocusFromCache();
   if (focusUsageInterval) clearInterval(focusUsageInterval);
-  focusUsageInterval = setInterval(loadFocusUsage, 60_000);
+  focusUsageInterval = setInterval(updateFocusFromCache, 10_000);
 
   focus.classList.remove("hidden");
 }
 
-/** Laedt Claude-Usage-Daten und zeigt sie im Focus-Sidebar an. */
-async function loadFocusUsage() {
-  try {
-    const usage = await invoke("get_claude_usage");
+/** Liest den gecachten Usage-Wert vom zentralen Polling-Timer und aktualisiert das Focus-Sidebar. */
+function updateFocusFromCache() {
+  const usage = lastUsage;
+  if (usage) {
     const offlineRow = document.getElementById("focus-usage-offline");
     if (offlineRow) offlineRow.classList.add("hidden");
     updateFocusUsageRow("focus-usage-5h", "focus-usage-5h-fill", "focus-usage-5h-pct", usage.fiveHour);
     updateFocusUsageRow("focus-usage-7d", "focus-usage-7d-fill", "focus-usage-7d-pct", usage.sevenDay);
-  } catch (e) {
-    // Usage unavailable — Offline-Symbol anzeigen
-    appendLog("Focus usage unavailable: " + e);
+  } else {
     const row5h = document.getElementById("focus-usage-5h");
     const row7d = document.getElementById("focus-usage-7d");
     if (row5h) row5h.classList.add("hidden");

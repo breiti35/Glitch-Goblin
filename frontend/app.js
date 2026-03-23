@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   checkGitStatus();
   updateGitWarnings();
   loadClaudeUsage();
-  setInterval(loadClaudeUsage, 120000);
+  setInterval(loadClaudeUsage, 60_000);
   setInterval(updateStatusBar, 30000);
 
   // Check for interrupted ticket (crash recovery)

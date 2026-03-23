@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::Manager;
@@ -2597,7 +2597,7 @@ pub async fn get_log_file_path() -> Result<String, String> {
 
 // ── Claude Usage (OAuth API) ──
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeUsage {
     pub five_hour: f64,
@@ -2607,24 +2607,93 @@ pub struct ClaudeUsage {
     pub available: bool,
 }
 
-/// Cached usage result to avoid hammering the API.
-static USAGE_CACHE: std::sync::LazyLock<tokio::sync::Mutex<Option<(std::time::Instant, ClaudeUsage)>>> =
+/// In-memory cache: (timestamp, usage, backoff_until).
+/// `backoff_until` is set after a 429 to avoid retrying too quickly.
+struct UsageCacheEntry {
+    ts: std::time::Instant,
+    usage: ClaudeUsage,
+    backoff_until: Option<std::time::Instant>,
+}
+
+static USAGE_CACHE: std::sync::LazyLock<tokio::sync::Mutex<Option<UsageCacheEntry>>> =
     std::sync::LazyLock::new(|| tokio::sync::Mutex::new(None));
 
-/// Ruft Claude-Nutzungsstatistiken via OAuth-API ab (gecacht für 60 Sekunden).
+/// Versucht, Usage aus dem Statusline-Datei-Cache zu lesen (%TEMP%/claude/statusline-usage-cache.json).
+/// Gibt `Some(ClaudeUsage)` zurueck wenn die Datei existiert und juenger als 120s ist.
+fn read_file_cache() -> Option<ClaudeUsage> {
+    let temp = std::env::temp_dir();
+    let cache_path = temp.join("claude").join("statusline-usage-cache.json");
+    let meta = std::fs::metadata(&cache_path).ok()?;
+    let age = meta.modified().ok()?.elapsed().ok()?;
+    if age.as_secs() >= 120 {
+        return None;
+    }
+    let content = std::fs::read_to_string(&cache_path).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+    // The statusline cache uses snake_case keys
+    Some(ClaudeUsage {
+        five_hour: v.pointer("/five_hour/utilization")
+            .or_else(|| v.get("five_hour_utilization"))
+            .and_then(|x| x.as_f64())
+            .unwrap_or(0.0),
+        seven_day: v.pointer("/seven_day/utilization")
+            .or_else(|| v.get("seven_day_utilization"))
+            .and_then(|x| x.as_f64())
+            .unwrap_or(0.0),
+        five_hour_resets_at: v.pointer("/five_hour/resets_at")
+            .or_else(|| v.get("five_hour_resets_at"))
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string(),
+        seven_day_resets_at: v.pointer("/seven_day/resets_at")
+            .or_else(|| v.get("seven_day_resets_at"))
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string(),
+        available: true,
+    })
+}
+
+/// Ruft Claude-Nutzungsstatistiken ab.
+/// Strategie: 1) In-Memory-Cache  2) Datei-Cache  3) API (mit 429-Backoff)
 #[tauri::command]
 pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
-    // Check cache (60 seconds)
+    // 1) In-memory cache (60 seconds)
     {
         let cache = USAGE_CACHE.lock().await;
-        if let Some((ts, ref usage)) = *cache {
-            if ts.elapsed().as_secs() < 60 {
-                return Ok(usage.clone());
+        if let Some(ref entry) = *cache {
+            if entry.ts.elapsed().as_secs() < 60 {
+                return Ok(entry.usage.clone());
             }
         }
     }
 
-    // Read OAuth token from ~/.claude/.credentials.json
+    // 2) File cache from statusline script (%TEMP%/claude/statusline-usage-cache.json)
+    if let Some(usage) = read_file_cache() {
+        let mut cache = USAGE_CACHE.lock().await;
+        *cache = Some(UsageCacheEntry {
+            ts: std::time::Instant::now(),
+            usage: usage.clone(),
+            backoff_until: cache.as_ref().and_then(|e| e.backoff_until),
+        });
+        return Ok(usage);
+    }
+
+    // 3) Check backoff — if we got a 429 recently, return stale cache or error
+    {
+        let cache = USAGE_CACHE.lock().await;
+        if let Some(ref entry) = *cache {
+            if let Some(until) = entry.backoff_until {
+                if std::time::Instant::now() < until {
+                    // Still in backoff period — return stale data if available
+                    return Ok(entry.usage.clone());
+                }
+            }
+        }
+    }
+
+    // 4) Call API
     let home = dirs::home_dir().ok_or("Home directory not found")?;
     let creds_path = home.join(".claude").join(".credentials.json");
     let creds_content = tokio::fs::read_to_string(&creds_path)
@@ -2637,7 +2706,6 @@ pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
         .and_then(|v| v.as_str())
         .ok_or("OAuth access token not found in credentials")?;
 
-    // Call Anthropic OAuth usage API
     let client = reqwest::Client::new();
     let resp = client
         .get("https://api.anthropic.com/api/oauth/usage")
@@ -2647,6 +2715,17 @@ pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
         .send()
         .await
         .map_err(|e| format!("Usage API request failed: {e}"))?;
+
+    if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        // 429 — activate backoff (5 minutes)
+        let mut cache = USAGE_CACHE.lock().await;
+        let backoff_until = std::time::Instant::now() + std::time::Duration::from_secs(300);
+        if let Some(ref mut entry) = *cache {
+            entry.backoff_until = Some(backoff_until);
+            return Ok(entry.usage.clone());
+        }
+        return Err("Usage API rate limited (429)".to_string());
+    }
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -2681,10 +2760,14 @@ pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
         available: true,
     };
 
-    // Update cache
+    // Update cache, clear backoff on success
     {
         let mut cache = USAGE_CACHE.lock().await;
-        *cache = Some((std::time::Instant::now(), usage.clone()));
+        *cache = Some(UsageCacheEntry {
+            ts: std::time::Instant::now(),
+            usage: usage.clone(),
+            backoff_until: None,
+        });
     }
 
     Ok(usage)
