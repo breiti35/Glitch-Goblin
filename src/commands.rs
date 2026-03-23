@@ -1711,6 +1711,67 @@ pub async fn delete_comment(
     Ok(())
 }
 
+/// Einzelne Notiz mit Ticket-Kontext fuer den Notizen-View.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteEntry {
+    pub text: String,
+    pub timestamp: String,
+    pub ticket_id: String,
+    pub ticket_title: String,
+    pub ticket_type: TicketType,
+    pub ticket_column: Column,
+}
+
+/// Gibt alle Notizen des aktuellen Projekts zurueck (Board + Archiv), sortiert nach Datum (neueste zuerst).
+#[tauri::command]
+pub async fn get_all_notes(state: State<'_>) -> Result<Vec<NoteEntry>, String> {
+    let s = state.lock().await;
+
+    let mut entries = Vec::new();
+
+    // Board-Tickets
+    for ticket in &s.board.tickets {
+        if let Some(comments) = &ticket.comments {
+            for c in comments {
+                entries.push(NoteEntry {
+                    text: c.text.clone(),
+                    timestamp: c.timestamp.clone(),
+                    ticket_id: ticket.id.clone(),
+                    ticket_title: ticket.title.clone(),
+                    ticket_type: ticket.ticket_type.clone(),
+                    ticket_column: ticket.column.clone(),
+                });
+            }
+        }
+    }
+
+    // Archivierte Tickets aus DB
+    if let Some(conn) = &s.db {
+        if let Ok(archived) = db::load_archived_tickets(conn) {
+            for ticket in &archived {
+                if let Some(comments) = &ticket.comments {
+                    for c in comments {
+                        entries.push(NoteEntry {
+                            text: c.text.clone(),
+                            timestamp: c.timestamp.clone(),
+                            ticket_id: ticket.id.clone(),
+                            ticket_title: ticket.title.clone(),
+                            ticket_type: ticket.ticket_type.clone(),
+                            ticket_column: ticket.column.clone(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Sortierung: neueste zuerst
+    entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+
+    Ok(entries)
+}
+
 // ── Dashboard (Phase 3 - Block D) ──
 
 #[derive(Clone, Serialize)]

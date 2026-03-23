@@ -283,10 +283,11 @@ fn main() {
             commands::get_working_file_diff,
             // Git Status & Safety
             commands::get_git_status,
-            // Activity & Comments (Block C - Phase 3)
+            // Activity & Notes (Block C - Phase 3)
             commands::get_activity,
             commands::add_comment,
             commands::delete_comment,
+            commands::get_all_notes,
             // Dashboard, Templates, Import/Export (Block D - Phase 3)
             commands::get_project_info,
             commands::list_templates,
