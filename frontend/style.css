@@ -2819,6 +2819,7 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 }
 
 /* ── Cost Info in Detail Panel ── */
+.panel-cost-info.hidden { display: none; }
 .panel-cost-info {
   background: var(--surface-low);
   border-radius: 10px;
