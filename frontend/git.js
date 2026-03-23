@@ -408,10 +408,42 @@ async function showCommitDiff(commitHash) {
   }
 }
 
+// ── Git Confirm Dialog ──
+
+/**
+ * Zeigt einen modalen Bestätigungsdialog und gibt eine Promise zurück.
+ * Ersatz für window.confirm(), das in Tauri/WebView2 nicht zuverlässig blockiert.
+ */
+function gitConfirm(message) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("modal-git-confirm");
+    document.getElementById("git-confirm-message").textContent = message;
+    modal.classList.remove("hidden");
+
+    const yesBtn = document.getElementById("btn-git-confirm-yes");
+    const noBtn = document.getElementById("btn-git-confirm-no");
+    const backdrop = modal.querySelector(".modal-backdrop");
+
+    function finish(result) {
+      modal.classList.add("hidden");
+      yesBtn.removeEventListener("click", onYes);
+      noBtn.removeEventListener("click", onNo);
+      backdrop.removeEventListener("click", onNo);
+      resolve(result);
+    }
+    function onYes() { finish(true); }
+    function onNo() { finish(false); }
+
+    yesBtn.addEventListener("click", onYes);
+    noBtn.addEventListener("click", onNo);
+    backdrop.addEventListener("click", onNo);
+  });
+}
+
 // ── Branch Actions ──
 
 async function mergeBranch(branch) {
-  if (!confirm(t('git.confirmMerge', {branch}))) return;
+  if (!await gitConfirm(t('git.confirmMerge', {branch}))) return;
   try {
     const ticket = state.board.tickets.find(tk => tk.branch === branch);
     if (ticket) {
@@ -428,7 +460,7 @@ async function mergeBranch(branch) {
 }
 
 async function deleteBranch(branch) {
-  if (!confirm(t('git.confirmDelete', {branch}))) return;
+  if (!await gitConfirm(t('git.confirmDelete', {branch}))) return;
   try {
     await invoke("delete_branch_cmd", { branch, force: true });
     appendLog(`Deleted branch: ${branch}`);
@@ -452,7 +484,7 @@ async function pushBranch(branch) {
 }
 
 async function cleanupMergedBranches() {
-  if (!confirm(t('git.confirmCleanup'))) return;
+  if (!await gitConfirm(t('git.confirmCleanup'))) return;
   try {
     const deleted = await invoke("cleanup_merged_branches");
     if (deleted.length === 0) {
