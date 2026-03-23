@@ -70,7 +70,13 @@ export async function closeTerminalById(terminalId) {
 // ── Board Terminal Panel ──
 
 export function toggleTerminalView() {
-  toggleBoardTerminalPanel();
+  // Ctrl+` toggles: if on terminal page, go back to board; otherwise open terminal page
+  const terminalView = document.getElementById("view-terminal");
+  if (terminalView && terminalView.classList.contains("active")) {
+    switchView("board");
+  } else {
+    switchView("terminal");
+  }
 }
 
 export function toggleBoardTerminalPanel() {
@@ -302,17 +308,146 @@ function switchBoardTerminalTab(terminalId) {
   inst.term.focus();
 }
 
+// ── Terminal Page (Fullscreen Multi-Tab) ──
+
+function createPageTerminalInstance(terminalId, name) {
+  const term = new Terminal({
+    cursorBlink: true,
+    fontSize: state.settings.terminal_font_size || 14,
+    fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
+    scrollback: 10000,
+    scrollOnOutput: true,
+  });
+  const fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+
+  const container = document.createElement("div");
+  container.className = "terminal-instance";
+  container.dataset.terminalId = terminalId;
+
+  const emptyState = document.getElementById("terminal-page-empty");
+  if (emptyState) emptyState.style.display = "none";
+  document.querySelectorAll("#terminal-page-instances .terminal-instance").forEach(c => c.style.display = "none");
+  document.getElementById("terminal-page-instances").appendChild(container);
+  container.style.display = "block";
+
+  const tab = document.createElement("button");
+  tab.className = "terminal-tab active";
+  tab.dataset.terminalId = terminalId;
+  tab.innerHTML = `${esc(name)} <span class="tab-close" data-terminal-id="${terminalId}">&times;</span>`;
+  document.querySelectorAll("#terminal-page-tabs .terminal-tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("terminal-page-tabs").appendChild(tab);
+
+  void container.offsetHeight;
+  term.open(container);
+  fitAddon.fit();
+  const { cols, rows } = term;
+  invoke("resize_terminal", { terminalId, cols, rows }).catch(e => logError("terminal: resize", e));
+  term.focus();
+
+  term.onData(data => {
+    invoke("write_terminal", { terminalId, data }).catch(e => logError("terminal: write", e));
+  });
+
+  state.pageTerminals[terminalId] = { term, fitAddon, tabEl: tab, containerEl: container, name };
+  state.activePageTerminal = terminalId;
+}
+
+export function cleanupPageTerminal(terminalId) {
+  const inst = state.pageTerminals[terminalId];
+  if (inst) {
+    if (inst._checkInterval) clearInterval(inst._checkInterval);
+    if (inst._fallbackTimeout) clearTimeout(inst._fallbackTimeout);
+    inst.onOutput = null;
+    inst.term.dispose();
+    if (inst.tabEl) inst.tabEl.remove();
+    inst.containerEl.remove();
+    delete state.pageTerminals[terminalId];
+  }
+
+  const remaining = Object.keys(state.pageTerminals);
+  if (remaining.length > 0) {
+    const nextId = remaining[remaining.length - 1];
+    const nextInst = state.pageTerminals[nextId];
+    if (nextInst) {
+      document.querySelectorAll("#terminal-page-tabs .terminal-tab").forEach(t => t.classList.remove("active"));
+      if (nextInst.tabEl) nextInst.tabEl.classList.add("active");
+      document.querySelectorAll("#terminal-page-instances .terminal-instance").forEach(c => c.style.display = "none");
+      nextInst.containerEl.style.display = "block";
+      state.activePageTerminal = nextId;
+      requestAnimationFrame(() => {
+        nextInst.fitAddon.fit();
+        nextInst.term.focus();
+      });
+    }
+  } else {
+    state.activePageTerminal = null;
+    const emptyState = document.getElementById("terminal-page-empty");
+    if (emptyState) emptyState.style.display = "";
+  }
+}
+
+async function closePageTerminalById(terminalId) {
+  try {
+    await invoke("close_terminal", { terminalId });
+  } catch (e) {
+    logError("terminal: close failed", e);
+  }
+  cleanupPageTerminal(terminalId);
+}
+
+async function openPageTerminal(shell) {
+  if (!state.project) return;
+
+  const cwd = state.project.path;
+  if (!shell) {
+    const select = document.getElementById("terminal-page-shell-select");
+    shell = select?.value || state.settings.default_shell || "";
+  }
+  if (!shell) {
+    try {
+      const shells = await invoke("list_available_shells");
+      if (shells.length > 0) shell = shells[0].path;
+    } catch (e) { return; }
+  }
+  if (!shell) return;
+
+  try {
+    const terminalId = await invoke("spawn_terminal", { shell, cwd });
+    state.pageTerminalCounter++;
+    const name = "Terminal " + state.pageTerminalCounter;
+    createPageTerminalInstance(terminalId, name);
+  } catch (e) {
+    appendLog("Failed to open terminal: " + e, true);
+  }
+}
+
+export function refitPageTerminal() {
+  if (!state.activePageTerminal || !state.pageTerminals[state.activePageTerminal]) return;
+  const inst = state.pageTerminals[state.activePageTerminal];
+  requestAnimationFrame(() => {
+    inst.fitAddon.fit();
+    const { cols, rows } = inst.term;
+    invoke("resize_terminal", { terminalId: state.activePageTerminal, cols, rows }).catch(e => logError("terminal: resize", e));
+  });
+}
+
+function switchPageTerminalTab(terminalId) {
+  if (!state.pageTerminals[terminalId]) return;
+  document.querySelectorAll("#terminal-page-tabs .terminal-tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll("#terminal-page-instances .terminal-instance").forEach(c => c.style.display = "none");
+
+  const inst = state.pageTerminals[terminalId];
+  if (inst.tabEl) inst.tabEl.classList.add("active");
+  inst.containerEl.style.display = "block";
+  state.activePageTerminal = terminalId;
+  refitPageTerminal();
+  inst.term.focus();
+}
+
 // ── Setup Listeners ──
 
 export function setupTerminalListeners() {
-  // Sidebar "Terminal" button
-  document.getElementById("nav-terminal")?.addEventListener("click", () => {
-    switchView("board");
-    const panel = document.getElementById("board-terminal-panel");
-    if (panel && panel.classList.contains("collapsed")) {
-      toggleBoardTerminalPanel();
-    }
-  });
 
   // Board-panel tab clicks
   document.getElementById("board-terminal-tabs")?.addEventListener("click", e => {
@@ -382,5 +517,44 @@ export function setupTerminalListeners() {
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     });
+  }
+
+  // ── Terminal Page Listeners ──
+
+  // Page tab clicks
+  document.getElementById("terminal-page-tabs")?.addEventListener("click", e => {
+    const closeBtn = e.target.closest(".tab-close");
+    if (closeBtn) {
+      e.stopPropagation();
+      closePageTerminalById(closeBtn.dataset.terminalId);
+      return;
+    }
+    const tab = e.target.closest(".terminal-tab");
+    if (tab) switchPageTerminalTab(tab.dataset.terminalId);
+  });
+
+  // Page new terminal
+  document.getElementById("terminal-page-new")?.addEventListener("click", () => openPageTerminal());
+
+  // Page shell dropdown
+  const pageShellSelect = document.getElementById("terminal-page-shell-select");
+  if (pageShellSelect) {
+    let pageShellsLoaded = false;
+    pageShellSelect.addEventListener("focus", async () => {
+      if (pageShellsLoaded) return;
+      pageShellsLoaded = true;
+      await loadShellOptions("terminal-page-shell-select", state.settings.default_shell || "");
+    });
+    loadShellOptions("terminal-page-shell-select", state.settings.default_shell || "");
+  }
+
+  // Resize observer — terminal page
+  const pageBody = document.getElementById("terminal-page-instances");
+  if (pageBody) {
+    let pageResizeTimeout;
+    new ResizeObserver(() => {
+      clearTimeout(pageResizeTimeout);
+      pageResizeTimeout = setTimeout(() => refitPageTerminal(), 100);
+    }).observe(pageBody);
   }
 }

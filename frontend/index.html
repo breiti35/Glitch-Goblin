@@ -95,7 +95,7 @@
           <span class="material-symbols-outlined nav-icon">analytics</span> <span data-i18n="nav.statistics">Statistiken</span>
           <span class="nav-badge hidden" id="stats-badge">-</span>
         </button>
-        <button id="nav-terminal" class="nav-item">
+        <button id="nav-terminal" data-view="terminal" class="nav-item">
           <span class="material-symbols-outlined nav-icon">terminal</span> <span data-i18n="nav.terminal">Terminal</span>
         </button>
         <button data-view="git" class="nav-item">
@@ -713,6 +713,25 @@
           </div>
         </div>
       </section>
+
+      <!-- View: Terminal Page (fullscreen multi-tab terminal) -->
+      <section id="view-terminal" class="view">
+        <div class="terminal-page">
+          <div class="terminal-page-bar">
+            <div class="terminal-page-tabs" id="terminal-page-tabs"></div>
+            <div class="terminal-page-actions">
+              <select id="terminal-page-shell-select" class="settings-input terminal-shell-select"></select>
+              <button id="terminal-page-new" class="btn-primary" style="padding:3px 10px;font-size:12px" data-i18n="terminal.newTab">+ New</button>
+            </div>
+          </div>
+          <div class="terminal-page-body" id="terminal-page-instances">
+            <div class="terminal-empty-state" id="terminal-page-empty">
+              <p data-i18n-html="terminal.pageEmpty">Klicke <strong>+ Neu</strong> um eine Terminal-Session zu starten</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Focus Mode (visible when ticket is running) -->
       <div id="focus-mode" class="focus-mode hidden">
         <div class="focus-sidebar">
