@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::Manager;
@@ -2597,7 +2597,7 @@ pub async fn get_log_file_path() -> Result<String, String> {
 
 // ── Claude Usage (OAuth API) ──
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeUsage {
     pub five_hour: f64,
