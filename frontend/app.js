@@ -9,7 +9,7 @@ import { installErrorHandler } from './error-handler.js';
 import { renderBoard, applyFilters, restoreFilters, toggleFilterBar, clearFilters, closeContextMenu, handleContextMenuAction, exportCurrentLog, loadArchiveView } from './board.js';
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
 import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
-import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal } from './terminal.js';
+import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal, cleanupPageTerminal, refitPageTerminal } from './terminal.js';
 import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener, setupSettingsTabs } from './settings.js';
 import { loadStatistics } from './statistics.js';
 import { loadDashboard, stopBuildPoll, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
@@ -41,10 +41,14 @@ export const state = {
   progressLines: {},
   editingAgent: null,
   editingCommand: null,
-  // Terminal
+  // Terminal (board panel)
   terminals: {},
   activeTerminal: null,
   terminalCounter: 0,
+  // Terminal (page view)
+  pageTerminals: {},
+  activePageTerminal: null,
+  pageTerminalCounter: 0,
   // Deploy
   deployConfig: null,
   deployingLocal: false,
@@ -396,7 +400,7 @@ async function setupListeners() {
 
   await listen("terminal-output", (event) => {
     const { terminalId, data } = event.payload;
-    const inst = state.terminals[terminalId];
+    const inst = state.terminals[terminalId] || state.pageTerminals[terminalId];
     if (inst) {
       inst.term.write(data);
       if (inst.onOutput) inst.onOutput(data);
@@ -405,7 +409,11 @@ async function setupListeners() {
 
   await listen("terminal-closed", (event) => {
     const { terminalId } = event.payload;
-    cleanupTerminal(terminalId);
+    if (state.pageTerminals[terminalId]) {
+      cleanupPageTerminal(terminalId);
+    } else {
+      cleanupTerminal(terminalId);
+    }
   });
 
   await listen("bug-sync-available", (event) => {
@@ -431,6 +439,12 @@ export function switchView(name) {
   // Stop build polling when leaving dashboard
   if (name !== "dashboard") stopBuildPoll();
 
+  // Hide board terminal panel on Terminal page (would be redundant)
+  const boardPanel = document.getElementById("board-terminal-panel");
+  if (boardPanel) {
+    boardPanel.style.display = name === "terminal" ? "none" : "";
+  }
+
   // Lazy-load view content
   if (name === "agents") loadAgents();
   if (name === "commands") loadCommands();
@@ -440,6 +454,7 @@ export function switchView(name) {
   if (name === "activity") loadActivityView();
   if (name === "dashboard") loadDashboard();
   if (name === "archive") loadArchiveView();
+  if (name === "terminal") refitPageTerminal();
 
   // Update git warnings when switching views
   updateGitWarnings();

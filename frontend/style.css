@@ -1983,6 +1983,106 @@ kbd {
   border: none;
 }
 
+/* ── Terminal Page (Fullscreen View) ── */
+.terminal-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--terminal-bg);
+}
+
+.terminal-page-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--surface-low);
+  flex-shrink: 0;
+  min-height: 36px;
+  border-bottom: 1px solid var(--ghost-border);
+}
+
+.terminal-page-tabs {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.terminal-page-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.terminal-page-tabs .terminal-tab {
+  border-radius: 8px;
+  border: none;
+  background: var(--surface-hover);
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.terminal-page-tabs .terminal-tab.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.terminal-page-tabs .terminal-tab .tab-close {
+  margin-left: 6px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.terminal-page-tabs .terminal-tab .tab-close:hover {
+  opacity: 1;
+}
+
+.terminal-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.terminal-page-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--terminal-bg);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.terminal-page-body .terminal-instance {
+  flex: 1;
+  padding: 4px;
+  min-height: 0;
+}
+
+.terminal-page-body .terminal-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+#view-terminal {
+  padding: 0;
+}
+
+#view-terminal.active {
+  display: flex;
+  flex-direction: column;
+}
+
 .settings-section-title {
   font-size: 14px;
   font-weight: 600;
