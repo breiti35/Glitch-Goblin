@@ -467,12 +467,13 @@ pub async fn get_undo_state(state: State<'_>) -> Result<UndoState, String> {
 #[tauri::command]
 pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
     let mut s = state.lock().await;
-    let action = match s.undo_manager.pop_undo() {
-        Some(a) => a,
+    let entry = match s.undo_manager.pop_undo() {
+        Some(e) => e,
         None => return Err("Nichts zum Rückgängigmachen".to_string()),
     };
+    let label = entry.label.clone();
 
-    match action {
+    match entry.action {
         UndoAction::CreateTicket { ref ticket_id } => {
             // Undo create = delete the ticket
             let idx = s
@@ -483,10 +484,13 @@ pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
                 .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
             let removed = s.board.tickets.remove(idx);
             s.save_and_backup()?;
-            s.undo_manager.record_for_redo(UndoAction::DeleteTicket {
-                ticket: removed,
-                index: idx,
-            });
+            s.undo_manager.record_for_redo(
+                UndoAction::DeleteTicket {
+                    ticket: removed,
+                    index: idx,
+                },
+                label,
+            );
         }
         UndoAction::DeleteTicket { ticket, index } => {
             // Undo delete = re-insert the ticket
@@ -494,8 +498,10 @@ pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
             let id = ticket.id.clone();
             s.board.tickets.insert(insert_at, ticket);
             s.save_and_backup()?;
-            s.undo_manager
-                .record_for_redo(UndoAction::CreateTicket { ticket_id: id });
+            s.undo_manager.record_for_redo(
+                UndoAction::CreateTicket { ticket_id: id },
+                label,
+            );
         }
         UndoAction::MoveTicket { old_ticket } => {
             // Undo move = restore old ticket state
@@ -508,9 +514,12 @@ pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
             let current_ticket = s.board.tickets[idx].clone();
             s.board.tickets[idx] = old_ticket;
             s.save_and_backup()?;
-            s.undo_manager.record_for_redo(UndoAction::MoveTicket {
-                old_ticket: current_ticket,
-            });
+            s.undo_manager.record_for_redo(
+                UndoAction::MoveTicket {
+                    old_ticket: current_ticket,
+                },
+                label,
+            );
         }
         UndoAction::UpdateTicket { old_ticket } => {
             // Undo update = restore old ticket state
@@ -523,9 +532,12 @@ pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
             let current_ticket = s.board.tickets[idx].clone();
             s.board.tickets[idx] = old_ticket;
             s.save_and_backup()?;
-            s.undo_manager.record_for_redo(UndoAction::UpdateTicket {
-                old_ticket: current_ticket,
-            });
+            s.undo_manager.record_for_redo(
+                UndoAction::UpdateTicket {
+                    old_ticket: current_ticket,
+                },
+                label,
+            );
         }
         UndoAction::ArchiveTicket { old_ticket } => {
             // Undo archive = restore old ticket state (back to Done)
@@ -538,9 +550,12 @@ pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
             let current_ticket = s.board.tickets[idx].clone();
             s.board.tickets[idx] = old_ticket;
             s.save_and_backup()?;
-            s.undo_manager.record_for_redo(UndoAction::ArchiveTicket {
-                old_ticket: current_ticket,
-            });
+            s.undo_manager.record_for_redo(
+                UndoAction::ArchiveTicket {
+                    old_ticket: current_ticket,
+                },
+                label,
+            );
         }
     }
 
@@ -557,12 +572,13 @@ pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
 #[tauri::command]
 pub async fn redo_action(state: State<'_>) -> Result<UndoState, String> {
     let mut s = state.lock().await;
-    let action = match s.undo_manager.pop_redo() {
-        Some(a) => a,
+    let entry = match s.undo_manager.pop_redo() {
+        Some(e) => e,
         None => return Err("Nichts zum Wiederherstellen".to_string()),
     };
+    let label = entry.label.clone();
 
-    match action {
+    match entry.action {
         UndoAction::CreateTicket { ref ticket_id } => {
             // Redo of a "delete undo" = delete the ticket again
             let idx = s
@@ -573,11 +589,13 @@ pub async fn redo_action(state: State<'_>) -> Result<UndoState, String> {
                 .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
             let removed = s.board.tickets.remove(idx);
             s.save_and_backup()?;
-            s.undo_manager
-                .record_for_undo_only(UndoAction::DeleteTicket {
+            s.undo_manager.record_for_undo_only(
+                UndoAction::DeleteTicket {
                     ticket: removed,
                     index: idx,
-                });
+                },
+                label,
+            );
         }
         UndoAction::DeleteTicket { ticket, index } => {
             // Redo of a "create undo" = re-insert the ticket
@@ -585,11 +603,12 @@ pub async fn redo_action(state: State<'_>) -> Result<UndoState, String> {
             let id = ticket.id.clone();
             s.board.tickets.insert(insert_at, ticket);
             s.save_and_backup()?;
-            s.undo_manager
-                .record_for_undo_only(UndoAction::CreateTicket { ticket_id: id });
+            s.undo_manager.record_for_undo_only(
+                UndoAction::CreateTicket { ticket_id: id },
+                label,
+            );
         }
         UndoAction::MoveTicket { old_ticket } => {
-            // Redo of a "move undo" = restore the state that was undone
             let idx = s
                 .board
                 .tickets
@@ -599,10 +618,12 @@ pub async fn redo_action(state: State<'_>) -> Result<UndoState, String> {
             let current_ticket = s.board.tickets[idx].clone();
             s.board.tickets[idx] = old_ticket;
             s.save_and_backup()?;
-            s.undo_manager
-                .record_for_undo_only(UndoAction::MoveTicket {
+            s.undo_manager.record_for_undo_only(
+                UndoAction::MoveTicket {
                     old_ticket: current_ticket,
-                });
+                },
+                label,
+            );
         }
         UndoAction::UpdateTicket { old_ticket } => {
             let idx = s
@@ -614,10 +635,12 @@ pub async fn redo_action(state: State<'_>) -> Result<UndoState, String> {
             let current_ticket = s.board.tickets[idx].clone();
             s.board.tickets[idx] = old_ticket;
             s.save_and_backup()?;
-            s.undo_manager
-                .record_for_undo_only(UndoAction::UpdateTicket {
+            s.undo_manager.record_for_undo_only(
+                UndoAction::UpdateTicket {
                     old_ticket: current_ticket,
-                });
+                },
+                label,
+            );
         }
         UndoAction::ArchiveTicket { old_ticket } => {
             let idx = s
@@ -629,10 +652,12 @@ pub async fn redo_action(state: State<'_>) -> Result<UndoState, String> {
             let current_ticket = s.board.tickets[idx].clone();
             s.board.tickets[idx] = old_ticket;
             s.save_and_backup()?;
-            s.undo_manager
-                .record_for_undo_only(UndoAction::ArchiveTicket {
+            s.undo_manager.record_for_undo_only(
+                UndoAction::ArchiveTicket {
                     old_ticket: current_ticket,
-                });
+                },
+                label,
+            );
         }
     }
 

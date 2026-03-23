@@ -40,11 +40,20 @@ impl UndoAction {
     }
 }
 
+/// Eintrag im Undo/Redo-Stack. Speichert die technische Aktion und eine
+/// menschenlesbare Beschreibung der *ursprünglichen* Aktion, damit der
+/// Redo-Tooltip nicht invertiert angezeigt wird.
+#[derive(Debug, Clone)]
+pub struct UndoEntry {
+    pub action: UndoAction,
+    pub label: String,
+}
+
 /// Verwaltet Undo- und Redo-Stacks für Ticket-Aktionen.
 #[derive(Debug, Default)]
 pub struct UndoManager {
-    undo_stack: Vec<UndoAction>,
-    redo_stack: Vec<UndoAction>,
+    undo_stack: Vec<UndoEntry>,
+    redo_stack: Vec<UndoEntry>,
 }
 
 impl UndoManager {
@@ -57,39 +66,42 @@ impl UndoManager {
 
     /// Fügt eine Aktion zum Undo-Stack hinzu und leert den Redo-Stack.
     pub fn push(&mut self, action: UndoAction) {
-        self.undo_stack.push(action);
+        let label = action.description();
+        self.undo_stack.push(UndoEntry { action, label });
         if self.undo_stack.len() > MAX_UNDO_STACK {
             self.undo_stack.remove(0);
         }
         self.redo_stack.clear();
     }
 
-    /// Fügt eine Aktion zum Redo-Stack hinzu (intern, beim Undo).
-    fn push_redo(&mut self, action: UndoAction) {
-        self.redo_stack.push(action);
+    /// Nimmt den letzten Eintrag vom Undo-Stack.
+    pub fn pop_undo(&mut self) -> Option<UndoEntry> {
+        self.undo_stack.pop()
+    }
+
+    /// Nimmt den letzten Eintrag vom Redo-Stack.
+    pub fn pop_redo(&mut self) -> Option<UndoEntry> {
+        self.redo_stack.pop()
+    }
+
+    /// Schiebt einen Eintrag auf den Redo-Stack (nach einem Undo).
+    /// Das Label bleibt erhalten, damit der Tooltip korrekt ist.
+    pub fn record_for_redo(&mut self, reverse_action: UndoAction, original_label: String) {
+        self.redo_stack.push(UndoEntry {
+            action: reverse_action,
+            label: original_label,
+        });
         if self.redo_stack.len() > MAX_UNDO_STACK {
             self.redo_stack.remove(0);
         }
     }
 
-    /// Nimmt die letzte Aktion vom Undo-Stack.
-    pub fn pop_undo(&mut self) -> Option<UndoAction> {
-        self.undo_stack.pop()
-    }
-
-    /// Nimmt die letzte Aktion vom Redo-Stack.
-    pub fn pop_redo(&mut self) -> Option<UndoAction> {
-        self.redo_stack.pop()
-    }
-
-    /// Schiebt eine Aktion auf den Redo-Stack (nach einem Undo).
-    pub fn record_for_redo(&mut self, action: UndoAction) {
-        self.push_redo(action);
-    }
-
-    /// Schiebt eine Aktion auf den Undo-Stack ohne Redo zu leeren (nach einem Redo).
-    pub fn record_for_undo_only(&mut self, action: UndoAction) {
-        self.undo_stack.push(action);
+    /// Schiebt einen Eintrag auf den Undo-Stack ohne Redo zu leeren (nach einem Redo).
+    pub fn record_for_undo_only(&mut self, reverse_action: UndoAction, original_label: String) {
+        self.undo_stack.push(UndoEntry {
+            action: reverse_action,
+            label: original_label,
+        });
         if self.undo_stack.len() > MAX_UNDO_STACK {
             self.undo_stack.remove(0);
         }
@@ -105,12 +117,12 @@ impl UndoManager {
 
     /// Beschreibung der nächsten rückgängig machbaren Aktion.
     pub fn undo_description(&self) -> Option<String> {
-        self.undo_stack.last().map(|a| a.description())
+        self.undo_stack.last().map(|e| e.label.clone())
     }
 
     /// Beschreibung der nächsten wiederherstellbaren Aktion.
     pub fn redo_description(&self) -> Option<String> {
-        self.redo_stack.last().map(|a| a.description())
+        self.redo_stack.last().map(|e| e.label.clone())
     }
 
     /// Leert beide Stacks (z.B. bei Projektwechsel).
@@ -161,8 +173,9 @@ mod tests {
         assert!(mgr.can_undo());
         assert!(!mgr.can_redo());
 
-        let action = mgr.pop_undo().unwrap();
-        assert!(matches!(action, UndoAction::CreateTicket { .. }));
+        let entry = mgr.pop_undo().unwrap();
+        assert!(matches!(entry.action, UndoAction::CreateTicket { .. }));
+        assert_eq!(entry.label, "Ticket GG-001 erstellt");
         assert!(!mgr.can_undo());
     }
 
@@ -172,8 +185,8 @@ mod tests {
         mgr.push(UndoAction::CreateTicket {
             ticket_id: "GG-001".into(),
         });
-        let action = mgr.pop_undo().unwrap();
-        mgr.record_for_redo(action);
+        let entry = mgr.pop_undo().unwrap();
+        mgr.record_for_redo(entry.action, entry.label);
         assert!(mgr.can_redo());
 
         // New action should clear redo
@@ -192,6 +205,27 @@ mod tests {
         assert_eq!(
             mgr.undo_description(),
             Some("Ticket GG-005 verschoben".to_string())
+        );
+    }
+
+    #[test]
+    fn redo_keeps_original_label() {
+        let mut mgr = UndoManager::new();
+        mgr.push(UndoAction::CreateTicket {
+            ticket_id: "GG-001".into(),
+        });
+        let entry = mgr.pop_undo().unwrap();
+        // Redo action is DeleteTicket (the reverse), but label stays "erstellt"
+        mgr.record_for_redo(
+            UndoAction::DeleteTicket {
+                ticket: test_ticket("GG-001"),
+                index: 0,
+            },
+            entry.label,
+        );
+        assert_eq!(
+            mgr.redo_description(),
+            Some("Ticket GG-001 erstellt".to_string())
         );
     }
 
@@ -217,8 +251,8 @@ mod tests {
         mgr.push(UndoAction::CreateTicket {
             ticket_id: "GG-001".into(),
         });
-        let action = mgr.pop_undo().unwrap();
-        mgr.record_for_redo(action);
+        let entry = mgr.pop_undo().unwrap();
+        mgr.record_for_redo(entry.action, entry.label);
         mgr.push(UndoAction::CreateTicket {
             ticket_id: "GG-002".into(),
         });
@@ -230,11 +264,11 @@ mod tests {
 
     #[test]
     fn delete_ticket_undo_description() {
-        let mgr_action = UndoAction::DeleteTicket {
+        let action = UndoAction::DeleteTicket {
             ticket: test_ticket("GG-010"),
             index: 3,
         };
-        assert_eq!(mgr_action.description(), "Ticket GG-010 gelöscht");
+        assert_eq!(action.description(), "Ticket GG-010 gelöscht");
     }
 
     #[test]
@@ -243,14 +277,17 @@ mod tests {
         mgr.push(UndoAction::CreateTicket {
             ticket_id: "GG-001".into(),
         });
-        let action = mgr.pop_undo().unwrap();
-        mgr.record_for_redo(action);
+        let entry = mgr.pop_undo().unwrap();
+        mgr.record_for_redo(entry.action, entry.label);
         assert!(mgr.can_redo());
 
         // record_for_undo_only should NOT clear redo
-        mgr.record_for_undo_only(UndoAction::CreateTicket {
-            ticket_id: "GG-002".into(),
-        });
+        mgr.record_for_undo_only(
+            UndoAction::CreateTicket {
+                ticket_id: "GG-002".into(),
+            },
+            "Ticket GG-002 erstellt".into(),
+        );
         assert!(mgr.can_redo());
         assert!(mgr.can_undo());
     }

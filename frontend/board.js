@@ -4,7 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { esc, formatDuration } from './utils.js';
 import { t } from './i18n.js';
-import { state, appendLog, showToast, openModal, closeModal, confirmExecute, finishTicket, mergeTicket, refreshBoard } from './app.js';
+import { state, appendLog, showToast, openModal, closeModal, confirmExecute, finishTicket, mergeTicket, refreshBoard, refreshUndoState } from './app.js';
 import { openDetailPanel } from './detail.js';
 
 let contextTicket = null;
@@ -91,6 +91,7 @@ function renderBoardImpl() {
   updateHealthBar(tickets);
   setupDragDrop();
   applyFilters();
+  refreshUndoState();
   // Update header username from current project
   const _projName = state.project?.name || "";
   const _usernameEl = document.getElementById("header-username");
