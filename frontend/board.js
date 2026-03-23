@@ -199,7 +199,7 @@ function createCard(ticket, col) {
   if (ticket.branch) metaParts.push(`<span class="card-branch-badge">${esc(ticket.branch)}</span>`);
   if (ticket.comments && ticket.comments.length > 0) metaParts.push(`<span class="card-comment-count"><span class="material-symbols-outlined" style="font-size:14px">chat_bubble</span> ${ticket.comments.length}</span>`);
   if (ticket.cost_usd) metaParts.push(`<span class="cost-badge">$${ticket.cost_usd.toFixed(2)}</span>`);
-  if (ticket.portal_bug_id) metaParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
+  if (state.settings.bug_sync?.enabled && ticket.portal_bug_id) metaParts.push(`<span class="badge badge-portal-bug" title="Portal-Bug #${esc(ticket.portal_bug_id)}${ticket.portal_bug_url ? ' - ' + esc(ticket.portal_bug_url) : ''}">\u{1F41B} Portal-Bug</span>`);
   const metaRowHTML = metaParts.length > 0 ? `<div class="card-meta-row">${metaParts.join("")}</div>` : "";
 
   // Karten-Layout: ID+Badges oben, Titel, Beschreibung, Meta — Actions im Expand
