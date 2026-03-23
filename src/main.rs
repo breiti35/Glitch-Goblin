@@ -332,6 +332,10 @@ fn main() {
             commands::get_bug_sync_settings,
             // GitHub Actions
             commands::get_build_status,
+            // Project Logo
+            commands::set_project_logo,
+            commands::get_project_logo,
+            commands::remove_project_logo,
             // Version / Utilities
             commands::get_version,
             commands::get_log_file_path,

@@ -21,7 +21,7 @@ import { t, setLocale, onLocaleChange, translateDOM } from './i18n.js';
 
 // ── Extracted Modules ──
 import { notifyDesktop, playSound, showToast, setupNotifCenter } from './notifications.js';
-import { openProjectPicker, switchProject, addProjectFlow, updateSidebar, loadClaudeUsage } from './projects.js';
+import { openProjectPicker, switchProject, addProjectFlow, updateSidebar, loadClaudeUsage, updateAvatar, setupAvatarContextMenu } from './projects.js';
 import { enterFocusMode, exitFocusMode } from './focus-mode.js';
 import { loadNotesView } from './notes.js';
 import { checkTicketRecovery } from './recovery.js';
@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupImportExportListeners();
   setupDeployListeners();
   setupBugSyncListeners();
+  setupAvatarContextMenu();
   loadDeployConfig();
   restoreFilters();
   renderBoard();
@@ -125,14 +126,8 @@ async function loadInitialState() {
     // Apply accent color
     applyAccentColor(state.settings.accent_color || state.settings.accentColor);
 
-    // Username in header
-    const projectName = state.project?.name || "";
-    const initial = (projectName[0] || "U").toUpperCase();
-    const displayName = projectName || "User";
-    const usernameEl = document.getElementById("header-username");
-    const avatarEl   = document.getElementById("header-avatar");
-    if (usernameEl) usernameEl.textContent = displayName;
-    if (avatarEl)   avatarEl.textContent = initial;
+    // Project avatar in header (logo or initials)
+    updateAvatar();
 
     // App version
     try {

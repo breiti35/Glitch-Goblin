@@ -3435,7 +3435,9 @@ details.git-merged-group[open] > .git-group-collapsible::before {
                      display: flex; align-items: center; justify-content: center;
                      font-weight: 700; font-size: 14px; flex-shrink: 0;
                      border: 2px solid var(--primary-fixed); cursor: pointer;
-                     overflow: hidden; }
+                     overflow: hidden; background-size: cover; background-position: center; }
+.header-avatar.has-logo { background-color: transparent; }
+.header-avatar:hover { filter: brightness(1.15); }
 .header-text-btn   { color: var(--accent); font-weight: 700; font-size: 14px;
                      padding: 8px 16px; border-radius: 12px; white-space: nowrap;
                      transition: background 0.2s; }

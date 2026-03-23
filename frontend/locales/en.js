@@ -310,6 +310,20 @@ export default {
     copy: "Copy",
     moveProject: "Move to project",
     delete: "Delete",
+    archive: "Archive",
+  },
+
+  // Avatar Context Menu
+  avatar: {
+    uploadLogo: "Upload logo",
+    removeLogo: "Remove logo",
+    projectSettings: "Project settings",
+    logoSaved: "Logo saved",
+    logoRemoved: "Logo removed",
+    logoTooLarge: "Logo too large (max. 2 MB)",
+    invalidType: "Only image files allowed",
+    logoUploadFailed: "Logo upload failed",
+    logoRemoveFailed: "Failed to remove logo",
   },
 
   // Detail Panel

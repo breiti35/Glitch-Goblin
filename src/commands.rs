@@ -2685,6 +2685,98 @@ pub fn get_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+// ── Project Logo ──
+
+/// Maximale Logo-Dateigröße: 2 MiB (Base64-kodiert ≈ 2.7 MiB).
+const MAX_LOGO_BYTES: usize = 2 * 1024 * 1024;
+
+/// Speichert ein Projekt-Logo (Base64-kodiertes Bild) im Data-Dir.
+#[tauri::command]
+pub async fn set_project_logo(
+    project_name: String,
+    data: String,
+    state: State<'_>,
+) -> Result<(), String> {
+    let s = state.lock().await;
+    // Verify project exists
+    if !s.projects.iter().any(|p| p.name == project_name) {
+        return Err(AppError::ProjectNotFound(project_name).to_string());
+    }
+    drop(s);
+
+    // Validate and decode base64 data (may have data-URL prefix)
+    let raw_b64 = data
+        .strip_prefix("data:")
+        .and_then(|s| s.split_once(','))
+        .map(|(_, b)| b)
+        .unwrap_or(&data);
+
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(raw_b64)
+        .map_err(|e| format!("Ungültige Base64-Daten: {e}"))?;
+
+    if bytes.len() > MAX_LOGO_BYTES {
+        return Err(format!(
+            "Logo zu groß ({} KB, max {} KB)",
+            bytes.len() / 1024,
+            MAX_LOGO_BYTES / 1024
+        ));
+    }
+
+    let data_dir = config::project_data_dir(&project_name)?;
+    let logo_path = data_dir.join("logo.png");
+    std::fs::write(&logo_path, &bytes).map_err(|e| format!("Logo speichern fehlgeschlagen: {e}"))?;
+    info!(project = %project_name, "Project logo saved");
+    Ok(())
+}
+
+/// Gibt das Projekt-Logo als Base64-Data-URL zurück, oder null wenn keins gesetzt.
+#[tauri::command]
+pub async fn get_project_logo(
+    project_name: String,
+    state: State<'_>,
+) -> Result<Option<String>, String> {
+    let s = state.lock().await;
+    if !s.projects.iter().any(|p| p.name == project_name) {
+        return Err(AppError::ProjectNotFound(project_name).to_string());
+    }
+    drop(s);
+
+    let data_dir = config::project_data_dir(&project_name)?;
+    let logo_path = data_dir.join("logo.png");
+    if !logo_path.exists() {
+        return Ok(None);
+    }
+    let bytes =
+        std::fs::read(&logo_path).map_err(|e| format!("Logo lesen fehlgeschlagen: {e}"))?;
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    Ok(Some(format!("data:image/png;base64,{b64}")))
+}
+
+/// Entfernt das Projekt-Logo.
+#[tauri::command]
+pub async fn remove_project_logo(
+    project_name: String,
+    state: State<'_>,
+) -> Result<(), String> {
+    let s = state.lock().await;
+    if !s.projects.iter().any(|p| p.name == project_name) {
+        return Err(AppError::ProjectNotFound(project_name).to_string());
+    }
+    drop(s);
+
+    let data_dir = config::project_data_dir(&project_name)?;
+    let logo_path = data_dir.join("logo.png");
+    if logo_path.exists() {
+        std::fs::remove_file(&logo_path)
+            .map_err(|e| format!("Logo löschen fehlgeschlagen: {e}"))?;
+        info!(project = %project_name, "Project logo removed");
+    }
+    Ok(())
+}
+
 /// Gibt den Pfad zur aktuellsten Log-Datei der App zurück.
 #[tauri::command]
 pub async fn get_log_file_path() -> Result<String, String> {
