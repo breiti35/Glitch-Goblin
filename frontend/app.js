@@ -585,6 +585,11 @@ async function openReviewModal(ticketId) {
   fileList.innerHTML = '<p class="empty-state">Loading...</p>';
   diffPreview.innerHTML = '<p class="empty-state">Datei anklicken f\u00FCr Diff-Vorschau</p>';
 
+  const tokensInput = document.getElementById("review-tokens-input");
+  const costInput = document.getElementById("review-cost-input");
+  if (tokensInput) tokensInput.value = "";
+  if (costInput) costInput.value = "";
+
   openModal("modal-review");
 
   try {
@@ -636,10 +641,14 @@ async function openReviewModal(ticketId) {
   confirmBtn.onclick = async () => {
     if (confirmBtn.disabled) return;
     confirmBtn.disabled = true;
+    const tokensVal = document.getElementById("review-tokens-input")?.value;
+    const costVal = document.getElementById("review-cost-input")?.value;
+    const tokensUsed = tokensVal && tokensVal.trim() !== "" ? Math.round(parseFloat(tokensVal)) : null;
+    const costUsd = costVal && costVal.trim() !== "" ? parseFloat(costVal) : null;
     closeModal("modal-review");
     try {
       appendLog(`Finishing ${ticketId}...`);
-      await invoke("finish_ticket", { ticketId });
+      await invoke("finish_ticket", { ticketId, tokensUsed, costUsd });
       state.runningTicket = null;
       appendLog(`\u2713 ${ticketId} -> Done`);
       showToast(t('toast.ticketDone', {id: ticketId}), "success");

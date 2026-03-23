@@ -8,6 +8,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [0.2.8-alpha] - 2026-03-23
 
 ### Fixed
+- **Ticket-Detail: Modell/Tokens/Kosten wurden nicht angezeigt:** `finish_ticket` akzeptierte keine `tokens_used`/`cost_usd`-Parameter — die Felder blieben immer leer. Review-Modal erhält jetzt optionale Eingabefelder für Tokens und Kosten (USD), die beim Abschließen in der DB gespeichert werden. Außerdem wurde `model_used` (wird beim Start eines Tickets gesetzt) nie im Detail-Panel angezeigt, weil die Sichtbarkeitsbedingung nur auf `tokens_used || cost_usd` prüfte — jetzt genügt auch ein gesetztes `model_used`.
 - **Branches aufräumen: Sofortiges Löschen ohne Bestätigung abzuwarten:** `window.confirm()` in Tauri/WebView2 blockiert die JavaScript-Ausführung nicht zuverlässig — der Dialog erschien, aber die Branches wurden sofort gelöscht. Ersetzt durch einen eigenen asynchronen Bestätigungs-Modal. Betrifft auch "Branch mergen" und "Branch löschen" (selbes Problem).
 
 ### Added

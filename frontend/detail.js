@@ -23,7 +23,7 @@ export function openDetailPanel(ticket) {
 
   // Cost info
   const costInfo = document.getElementById("detail-cost-info");
-  if (ticket.tokens_used || ticket.cost_usd) {
+  if (ticket.tokens_used || ticket.cost_usd || ticket.model_used) {
     costInfo.classList.remove("hidden");
     document.getElementById("detail-model").textContent = ticket.model_used || "-";
     document.getElementById("detail-tokens").textContent = ticket.tokens_used ? ticket.tokens_used.toLocaleString() : "-";
