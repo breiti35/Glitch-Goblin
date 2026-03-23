@@ -271,6 +271,7 @@ fn main() {
             commands::get_commit_diff,
             commands::get_commit_file_diff,
             commands::delete_branch_cmd,
+            commands::cleanup_merged_branches,
             commands::get_commit_log,
             // Working Tree Diff (Review)
             commands::get_working_diff,

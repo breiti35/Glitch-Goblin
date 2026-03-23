@@ -9,6 +9,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Added
 - **GitHub Actions Build-Status:** Neue KPI-Karte im Dashboard zeigt den Live-Status des letzten GitHub Actions Workflow-Runs (success/failure/pending) mit farbigem Badge, Commit-Hash und Laufzeit. Polling-Intervall konfigurierbar (Standard: 60s). GitHub Token (PAT) wird verschluesselt in den Settings gespeichert. Neuer Settings-Tab "GitHub" fuer Owner, Repo, Token und Poll-Intervall.
+- **Merged Branches aufraeumen:** Neuer "Alle aufräumen"-Button in der Git-Ansicht bei den erledigten Branches. Löscht alle lokalen Branches die bereits im Default-Branch enthalten sind (mit Bestätigungsdialog). Aktueller und Default-Branch werden nie gelöscht.
 
 ## [0.2.7] - 2026-03-22
 

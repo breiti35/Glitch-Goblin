@@ -144,6 +144,12 @@ export default {
     operationInProgress: "{op} in progress \u2014 please complete or abort first",
     abortMerge: "Abort merge",
     mergeAborted: "Merge aborted",
+    cleanupMerged: "Clean up all",
+    cleanupMergedTitle: "Delete all merged branches",
+    confirmCleanup: "Delete all merged branches?\nThey are already integrated into the main branch.",
+    noMergedToClean: "No merged branches to clean up",
+    cleanupSuccess: "{count} merged branch(es) deleted",
+    cleanupFailed: "Cleanup failed",
   },
 
   // Settings

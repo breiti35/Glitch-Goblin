@@ -4442,6 +4442,29 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   transition: opacity 0.15s;
 }
 .git-merged-card:hover .git-merged-delete { opacity: 1; }
+/* Cleanup merged branches button */
+.btn-cleanup-merged {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-cleanup-merged:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
 /* Active branch group title */
 .git-group-title {
   font-family: 'Space Grotesk', sans-serif;
