@@ -4108,6 +4108,16 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   font-weight: 700;
 }
 .dash-kpi-success { color: var(--success); }
+.dash-kpi-build-success { background: var(--success); }
+.dash-kpi-build-success .dash-kpi-label { color: rgba(255,255,255,0.8); }
+.dash-kpi-build-success .dash-kpi-value { color: #fff; display: flex; align-items: center; gap: 8px; }
+.dash-kpi-build-failure { background: var(--danger); }
+.dash-kpi-build-failure .dash-kpi-label { color: rgba(255,255,255,0.8); }
+.dash-kpi-build-failure .dash-kpi-value { color: #fff; display: flex; align-items: center; gap: 8px; }
+.dash-kpi-build-pending { background: var(--warning); }
+.dash-kpi-build-pending .dash-kpi-label { color: rgba(0,0,0,0.7); }
+.dash-kpi-build-pending .dash-kpi-value { color: rgba(0,0,0,0.9); display: flex; align-items: center; gap: 8px; }
+.dash-build-meta { font-size: 11px; margin-top: 4px; opacity: 0.8; }
 .dash-card-readme {
   border-left: 4px solid var(--accent);
   position: relative;

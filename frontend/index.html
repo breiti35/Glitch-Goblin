@@ -189,11 +189,12 @@
             </div>
             <!-- KPI Row: Build Status + Coverage -->
             <div class="dash-kpi-row">
-              <div class="dash-kpi dash-kpi-primary">
+              <div class="dash-kpi dash-kpi-primary" id="dash-build-status">
                 <div class="dash-kpi-label">BUILD STATUS</div>
-                <div class="dash-kpi-value">
-                  <span class="material-symbols-outlined">check_circle</span> Passing
+                <div class="dash-kpi-value" id="dash-build-value">
+                  <span class="material-symbols-outlined">hourglass_empty</span> <span data-i18n="dashboard.buildLoading">&hellip;</span>
                 </div>
+                <div class="dash-build-meta" id="dash-build-meta"></div>
               </div>
               <div class="dash-kpi dash-kpi-tertiary">
                 <div class="dash-kpi-label">COVERAGE</div>
@@ -359,6 +360,7 @@
           <button class="settings-tab" data-settings-tab="terminal" data-i18n="settings.terminal">Terminal</button>
           <button class="settings-tab" data-settings-tab="deploy" data-i18n="settings.deploy">Deploy</button>
           <button class="settings-tab" data-settings-tab="bugsync" data-i18n="settings.bugSync">Bug-Sync</button>
+          <button class="settings-tab" data-settings-tab="github" data-i18n="settings.github">GitHub</button>
         </div>
         <div class="settings-bento">
           <!-- ═══ GENERAL TAB ═══ -->
@@ -474,6 +476,19 @@
               </label>
               <button id="btn-bugsync-test" class="btn-secondary" style="margin-top:8px">Jetzt synchronisieren</button>
               <div id="bugsync-status" class="deploy-detection-info hidden"></div>
+            </div>
+          </div>
+          <!-- ═══ GITHUB TAB ═══ -->
+          <div class="settings-tab-content" data-tab-content="github">
+            <div class="settings-card">
+              <div class="settings-card-title"><span class="material-symbols-outlined">code</span> GitHub Actions</div>
+              <label class="settings-label"><span class="toggle-row"><span data-i18n="settings.githubEnable">Build-Status aktivieren</span><label class="toggle-switch"><input type="checkbox" id="set-github-enabled"><span class="toggle-slider"></span></label></span></label>
+              <label class="settings-label"><span>OWNER</span><input type="text" id="set-github-owner" class="settings-input" placeholder="username-or-org"></label>
+              <label class="settings-label"><span>REPOSITORY</span><input type="text" id="set-github-repo" class="settings-input" placeholder="repo-name"></label>
+              <label class="settings-label"><span>TOKEN (PAT)</span><input type="password" id="set-github-token" class="settings-input" placeholder="ghp_... oder gho_..."></label>
+              <label class="settings-label"><span data-i18n="settings.githubPollInterval">POLL-INTERVALL</span>
+                <div class="settings-range-row"><input type="range" id="set-github-interval" class="settings-range" min="30" max="300" step="10" value="60"><span id="github-interval-label">60s</span></div>
+              </label>
             </div>
           </div>
           <!-- ═══ DEPLOY TAB ═══ -->

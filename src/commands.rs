@@ -762,12 +762,18 @@ pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(
     if settings.bug_sync.interval_secs < 60 {
         settings.bug_sync.interval_secs = 60;
     }
+    if settings.github.poll_interval_secs < 30 {
+        settings.github.poll_interval_secs = 30;
+    }
 
-    // Preserve existing API token if the frontend sends an empty one
+    // Preserve existing tokens if the frontend sends empty ones
     {
         let s = state.lock().await;
         if settings.bug_sync.api_token.is_empty() && !s.settings.bug_sync.api_token.is_empty() {
             settings.bug_sync.api_token = s.settings.bug_sync.api_token.clone();
+        }
+        if settings.github.token.is_empty() && !s.settings.github.token.is_empty() {
+            settings.github.token = s.settings.github.token.clone();
         }
     }
     config::save_settings_to_disk(&settings)?;
@@ -2158,6 +2164,122 @@ pub async fn get_bug_sync_settings(
         api_url: bs.api_url.clone(),
         api_token_set: !bs.api_token.is_empty(),
         interval_secs: bs.interval_secs,
+    })
+}
+
+// ── GitHub Actions Build Status ──
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildStatus {
+    pub status: String,
+    pub conclusion: Option<String>,
+    pub workflow_name: Option<String>,
+    pub commit_sha: Option<String>,
+    pub duration_secs: Option<i64>,
+    pub run_url: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+/// Ruft den Status des letzten GitHub Actions Workflow-Runs ab.
+#[tauri::command]
+pub async fn get_build_status(state: State<'_>) -> Result<BuildStatus, String> {
+    let s = state.lock().await;
+    let gh = &s.settings.github;
+    if !gh.enabled || gh.owner.is_empty() || gh.repo.is_empty() {
+        return Ok(BuildStatus {
+            status: "unconfigured".into(),
+            conclusion: None,
+            workflow_name: None,
+            commit_sha: None,
+            duration_secs: None,
+            run_url: None,
+            updated_at: None,
+        });
+    }
+    let owner = gh.owner.clone();
+    let repo = gh.repo.clone();
+    let token = gh.token.clone();
+    drop(s);
+
+    let url = format!(
+        "https://api.github.com/repos/{}/{}/actions/runs?per_page=1",
+        owner, repo
+    );
+
+    let client = reqwest::Client::new();
+    let mut request = client
+        .get(&url)
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "glitch-goblin")
+        .timeout(std::time::Duration::from_secs(10));
+
+    if !token.is_empty() {
+        request = request.header("Authorization", format!("Bearer {token}"));
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|e| format!("GitHub API request failed: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "GitHub API returned status {}",
+            response.status()
+        ));
+    }
+
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("GitHub API: failed to parse response: {e}"))?;
+
+    let runs = body["workflow_runs"]
+        .as_array()
+        .ok_or("GitHub API: unexpected response format")?;
+
+    if runs.is_empty() {
+        return Ok(BuildStatus {
+            status: "no_runs".into(),
+            conclusion: None,
+            workflow_name: None,
+            commit_sha: None,
+            duration_secs: None,
+            run_url: None,
+            updated_at: None,
+        });
+    }
+
+    let run = &runs[0];
+    let status = run["status"].as_str().unwrap_or("unknown").to_string();
+    let conclusion = run["conclusion"].as_str().map(String::from);
+    let workflow_name = run["name"].as_str().map(String::from);
+    let commit_sha = run["head_sha"]
+        .as_str()
+        .map(|s| s.chars().take(7).collect());
+    let run_url = run["html_url"].as_str().map(String::from);
+    let updated_at = run["updated_at"].as_str().map(String::from);
+
+    // Calculate duration from created_at to updated_at
+    let duration_secs = run["created_at"]
+        .as_str()
+        .and_then(|created| {
+            run["updated_at"].as_str().and_then(|updated| {
+                let c = chrono::DateTime::parse_from_rfc3339(created).ok()?;
+                let u = chrono::DateTime::parse_from_rfc3339(updated).ok()?;
+                Some((u - c).num_seconds())
+            })
+        });
+
+    Ok(BuildStatus {
+        status,
+        conclusion,
+        workflow_name,
+        commit_sha,
+        duration_secs,
+        run_url,
+        updated_at,
     })
 }
 

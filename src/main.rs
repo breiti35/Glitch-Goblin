@@ -70,7 +70,7 @@ fn main() {
             let settings = config::load_settings().unwrap_or_default();
 
             // One-time migration: if token is plain-text, re-save encrypted
-            if !settings.bug_sync.api_token.is_empty() {
+            if !settings.bug_sync.api_token.is_empty() || !settings.github.token.is_empty() {
                 if let Err(e) = config::save_settings_to_disk(&settings) {
                     error!(error = %e, "Settings save error");
                 }
@@ -299,6 +299,8 @@ fn main() {
             // Bug-Sync (Portal Bug-Tracker)
             commands::sync_portal_bugs,
             commands::get_bug_sync_settings,
+            // GitHub Actions
+            commands::get_build_status,
             // Version / Utilities
             commands::get_version,
             commands::get_log_file_path,

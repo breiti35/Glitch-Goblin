@@ -95,6 +95,10 @@ async function loadInitialState() {
       state.settings.bug_sync.api_token_set = !!state.settings.bug_sync.api_token;
       state.settings.bug_sync.api_token = "";
     }
+    if (state.settings.github) {
+      state.settings.github.token_set = !!state.settings.github.token;
+      state.settings.github.token = "";
+    }
     state.runningTicket = await invoke("get_running_ticket");
 
     // Apply theme from settings
@@ -237,6 +241,9 @@ function bindEvents() {
   document.getElementById("set-bugsync-interval")?.addEventListener("input", (e) => {
     const v = parseInt(e.target.value);
     document.getElementById("bugsync-interval-label").textContent = v >= 60 ? Math.round(v / 60) + " min" : v + " s";
+  });
+  document.getElementById("set-github-interval")?.addEventListener("input", (e) => {
+    document.getElementById("github-interval-label").textContent = e.target.value + "s";
   });
   document.getElementById("btn-open-backups").addEventListener("click", openBackupModal);
 

@@ -47,6 +47,15 @@ export function loadSettingsForm() {
   document.getElementById("set-bugsync-interval").value = bs.interval_secs || 300;
   const bsInterval = bs.interval_secs || 300;
   document.getElementById("bugsync-interval-label").textContent = bsInterval >= 60 ? Math.round(bsInterval / 60) + " min" : bsInterval + " s";
+  // GitHub settings
+  const gh = s.github || {};
+  document.getElementById("set-github-enabled").checked = !!gh.enabled;
+  document.getElementById("set-github-owner").value = gh.owner || "";
+  document.getElementById("set-github-repo").value = gh.repo || "";
+  document.getElementById("set-github-token").value = "";
+  document.getElementById("set-github-token").placeholder = gh.token_set ? "(Token gesetzt)" : "ghp_... oder gho_...";
+  document.getElementById("set-github-interval").value = gh.poll_interval_secs || 60;
+  document.getElementById("github-interval-label").textContent = (gh.poll_interval_secs || 60) + "s";
 }
 
 /** Liest das Einstellungsformular aus, speichert die Werte via Tauri-Command und aktualisiert Theme, Farbe und Board. */
@@ -75,14 +84,24 @@ export async function saveSettingsForm() {
       api_token: document.getElementById("set-bugsync-token").value.trim(),
       interval_secs: parseInt(document.getElementById("set-bugsync-interval").value) || 300,
     },
+    github: {
+      enabled: document.getElementById("set-github-enabled").checked,
+      owner: document.getElementById("set-github-owner").value.trim(),
+      repo: document.getElementById("set-github-repo").value.trim(),
+      token: document.getElementById("set-github-token").value.trim(),
+      poll_interval_secs: parseInt(document.getElementById("set-github-interval").value) || 60,
+    },
   };
 
   try {
     await invoke("save_settings", { settings });
     const prevTokenSet = state.settings.bug_sync?.api_token_set ?? false;
+    const prevGhTokenSet = state.settings.github?.token_set ?? false;
     state.settings = settings;
     state.settings.bug_sync.api_token_set = settings.bug_sync.api_token ? true : prevTokenSet;
     state.settings.bug_sync.api_token = "";
+    state.settings.github.token_set = settings.github.token ? true : prevGhTokenSet;
+    state.settings.github.token = "";
     document.body.dataset.theme = settings.theme;
     updateThemeUI();
     applyAccentColor(settings.accent_color);

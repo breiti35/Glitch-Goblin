@@ -98,6 +98,13 @@ export default {
     unknown: "Unknown",
     replaceBoard: "Replace entire board? OK = Replace, Cancel = Append to Backlog",
     exportFormat: "Export as JSON? OK = JSON, Cancel = CSV",
+    buildLoading: "Loading...",
+    buildUnconfigured: "Not configured",
+    buildNoRuns: "No runs",
+    buildSuccess: "Passing",
+    buildFailure: "Failing",
+    buildPending: "Running...",
+    buildError: "Error",
   },
 
   // Git
@@ -146,6 +153,9 @@ export default {
     terminal: "Terminal",
     deploy: "Deploy",
     bugSync: "Bug Sync",
+    github: "GitHub",
+    githubEnable: "Enable build status",
+    githubPollInterval: "Poll interval",
     claudeCliPath: "Claude CLI Path",
     commitPrefix: "Commit Prefix",
     autoExecuteTypes: "Auto-Execute Types (comma-separated)",
