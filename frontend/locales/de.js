@@ -242,6 +242,7 @@ export default {
     newTab: "+ Neu",
     autoDetect: "Auto-detect",
     pressToOpen: "Dr\u00fccke {key} oder klicke {button}",
+    pageEmpty: "Klicke <strong>+ Neu</strong> um eine Terminal-Session zu starten",
   },
 
   // Modals

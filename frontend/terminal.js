@@ -356,6 +356,9 @@ function createPageTerminalInstance(terminalId, name) {
 export function cleanupPageTerminal(terminalId) {
   const inst = state.pageTerminals[terminalId];
   if (inst) {
+    if (inst._checkInterval) clearInterval(inst._checkInterval);
+    if (inst._fallbackTimeout) clearTimeout(inst._fallbackTimeout);
+    inst.onOutput = null;
     inst.term.dispose();
     if (inst.tabEl) inst.tabEl.remove();
     inst.containerEl.remove();
