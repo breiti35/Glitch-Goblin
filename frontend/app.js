@@ -74,6 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBugSyncListeners();
   loadDeployConfig();
   renderBoard();
+  refreshUndoState();
   updateSidebar();
   checkGitStatus();
   updateGitWarnings();
@@ -182,6 +183,10 @@ function bindEvents() {
 
   // Project selector
   document.getElementById("project-selector").addEventListener("click", openProjectPicker);
+
+  // Undo / Redo
+  document.getElementById("btn-undo").addEventListener("click", performUndo);
+  document.getElementById("btn-redo").addEventListener("click", performRedo);
 
   // New task
   document.getElementById("btn-new-task").addEventListener("click", openNewTaskModal);
@@ -335,6 +340,14 @@ function bindKeyboardShortcuts() {
         case "`":
           e.preventDefault();
           toggleTerminalView();
+          break;
+        case "z":
+          e.preventDefault();
+          performUndo();
+          break;
+        case "y":
+          e.preventDefault();
+          performRedo();
           break;
       }
       return;
@@ -667,11 +680,63 @@ export async function refreshBoard() {
     state.board = await invoke("get_board");
     state.runningTicket = await invoke("get_running_ticket");
     renderBoard();
+    refreshUndoState();
     // Exit focus mode if ticket no longer running
     if (!state.runningTicket) exitFocusMode();
   } catch (e) {
     logError("Failed to refresh board", e);
   }
+}
+
+// ── Undo / Redo ──
+
+async function performUndo() {
+  try {
+    const result = await invoke("undo_action");
+    state.board = await invoke("get_board");
+    renderBoard();
+    updateUndoButtons(result);
+    showToast(t('undo.undone') || "Rückgängig gemacht", "success");
+  } catch (err) {
+    if (!String(err).includes("Nichts")) appendLog("Undo: " + err, true);
+  }
+}
+
+async function performRedo() {
+  try {
+    const result = await invoke("redo_action");
+    state.board = await invoke("get_board");
+    renderBoard();
+    updateUndoButtons(result);
+    showToast(t('undo.redone') || "Wiederhergestellt", "success");
+  } catch (err) {
+    if (!String(err).includes("Nichts")) appendLog("Redo: " + err, true);
+  }
+}
+
+function updateUndoButtons(undoState) {
+  const undoBtn = document.getElementById("btn-undo");
+  const redoBtn = document.getElementById("btn-redo");
+  if (undoBtn) {
+    undoBtn.disabled = !undoState.canUndo;
+    undoBtn.title = undoState.undoDescription
+      ? (t('undo.undo') || "Rückgängig") + ": " + undoState.undoDescription
+      : (t('undo.undo') || "Rückgängig") + " (Ctrl+Z)";
+  }
+  if (redoBtn) {
+    redoBtn.disabled = !undoState.canRedo;
+    redoBtn.title = undoState.redoDescription
+      ? (t('undo.redo') || "Wiederherstellen") + ": " + undoState.redoDescription
+      : (t('undo.redo') || "Wiederherstellen") + " (Ctrl+Y)";
+  }
+}
+
+/** Aktualisiert Undo/Redo-Buttons nach Board-Aktionen. */
+export async function refreshUndoState() {
+  try {
+    const result = await invoke("get_undo_state");
+    updateUndoButtons(result);
+  } catch (_) { /* non-critical */ }
 }
 
 // ── Log Panel ──

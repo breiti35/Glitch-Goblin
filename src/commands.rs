@@ -19,6 +19,7 @@ use crate::git;
 use crate::kanban::{self, Column, KanbanBoard, Ticket, TicketType};
 use crate::state::{AppState, Settings};
 use crate::terminal;
+use crate::undo::UndoAction;
 
 // ── Input Validation Helpers ──
 
@@ -148,6 +149,7 @@ pub async fn switch_project(
     s.kanban_path = data_dir.join("kanban.json");
     s.data_dir = data_dir;
     s.project = Some(project);
+    s.undo_manager.clear();
     s.log("Project switched".to_string());
 
     Ok(board)
@@ -256,6 +258,9 @@ pub async fn create_ticket(
     };
     s.board.tickets.push(ticket.clone());
     s.save_and_backup()?;
+    s.undo_manager.push(UndoAction::CreateTicket {
+        ticket_id: id.clone(),
+    });
     s.log(format!("Created ticket {id}"));
     s.log_activity("ticket_created", Some(&ticket.id), Some(&ticket.title), None);
     Ok(ticket)
@@ -271,8 +276,10 @@ pub async fn update_ticket(ticket: Ticket, state: State<'_>) -> Result<(), Strin
         .iter()
         .position(|t| t.id == ticket.id)
         .ok_or_else(|| AppError::TicketNotFound(ticket.id.clone()))?;
+    let old_ticket = s.board.tickets[idx].clone();
     s.board.tickets[idx] = ticket;
     s.save_and_backup()?;
+    s.undo_manager.push(UndoAction::UpdateTicket { old_ticket });
     Ok(())
 }
 
@@ -291,6 +298,7 @@ pub async fn move_ticket(
         .position(|t| t.id == ticket_id)
         .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
 
+    let old_ticket = s.board.tickets[idx].clone();
     let current = s.board.tickets[idx].column.clone();
 
     // Validate allowed transitions
@@ -331,6 +339,7 @@ pub async fn move_ticket(
 
     s.board.tickets[idx].column = target_column.clone();
     s.save_and_backup()?;
+    s.undo_manager.push(UndoAction::MoveTicket { old_ticket });
     let detail = format!("{} -> {}", current.label(), target_column.label());
     s.log_activity("ticket_moved", Some(&ticket_id), None, Some(&detail));
     Ok(())
@@ -346,9 +355,13 @@ pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), St
         .iter()
         .position(|t| t.id == ticket_id)
         .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
-    let title = s.board.tickets[idx].title.clone();
-    s.board.tickets.remove(idx);
+    let removed_ticket = s.board.tickets.remove(idx);
+    let title = removed_ticket.title.clone();
     s.save_and_backup()?;
+    s.undo_manager.push(UndoAction::DeleteTicket {
+        ticket: removed_ticket,
+        index: idx,
+    });
     s.log_activity("ticket_deleted", Some(&ticket_id), Some(&title), None);
     Ok(())
 }
@@ -370,10 +383,12 @@ pub async fn archive_ticket(ticket_id: String, state: State<'_>) -> Result<(), S
         return Err("Nur erledigte Tickets können archiviert werden".to_string());
     }
 
+    let old_ticket = s.board.tickets[idx].clone();
     s.board.tickets[idx].column = Column::Archived;
     s.board.tickets[idx].archived_at = Some(kanban::now_iso());
     let title = s.board.tickets[idx].title.clone();
     s.save_and_backup()?;
+    s.undo_manager.push(UndoAction::ArchiveTicket { old_ticket });
     s.log_activity("ticket_archived", Some(&ticket_id), Some(&title), None);
     Ok(())
 }
@@ -423,6 +438,211 @@ pub async fn get_archived_tickets(state: State<'_>) -> Result<Vec<Ticket>, Strin
     } else {
         Ok(Vec::new())
     }
+}
+
+// ── Undo / Redo ──
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UndoState {
+    pub can_undo: bool,
+    pub can_redo: bool,
+    pub undo_description: Option<String>,
+    pub redo_description: Option<String>,
+}
+
+/// Gibt den aktuellen Undo/Redo-Zustand zurück.
+#[tauri::command]
+pub async fn get_undo_state(state: State<'_>) -> Result<UndoState, String> {
+    let s = state.lock().await;
+    Ok(UndoState {
+        can_undo: s.undo_manager.can_undo(),
+        can_redo: s.undo_manager.can_redo(),
+        undo_description: s.undo_manager.undo_description(),
+        redo_description: s.undo_manager.redo_description(),
+    })
+}
+
+/// Macht die letzte Ticket-Aktion rückgängig.
+#[tauri::command]
+pub async fn undo_action(state: State<'_>) -> Result<UndoState, String> {
+    let mut s = state.lock().await;
+    let action = match s.undo_manager.pop_undo() {
+        Some(a) => a,
+        None => return Err("Nichts zum Rückgängigmachen".to_string()),
+    };
+
+    match action {
+        UndoAction::CreateTicket { ref ticket_id } => {
+            // Undo create = delete the ticket
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == *ticket_id)
+                .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
+            let removed = s.board.tickets.remove(idx);
+            s.save_and_backup()?;
+            s.undo_manager.record_for_redo(UndoAction::DeleteTicket {
+                ticket: removed,
+                index: idx,
+            });
+        }
+        UndoAction::DeleteTicket { ticket, index } => {
+            // Undo delete = re-insert the ticket
+            let insert_at = index.min(s.board.tickets.len());
+            let id = ticket.id.clone();
+            s.board.tickets.insert(insert_at, ticket);
+            s.save_and_backup()?;
+            s.undo_manager
+                .record_for_redo(UndoAction::CreateTicket { ticket_id: id });
+        }
+        UndoAction::MoveTicket { old_ticket } => {
+            // Undo move = restore old ticket state
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == old_ticket.id)
+                .ok_or_else(|| AppError::TicketNotFound(old_ticket.id.clone()))?;
+            let current_ticket = s.board.tickets[idx].clone();
+            s.board.tickets[idx] = old_ticket;
+            s.save_and_backup()?;
+            s.undo_manager.record_for_redo(UndoAction::MoveTicket {
+                old_ticket: current_ticket,
+            });
+        }
+        UndoAction::UpdateTicket { old_ticket } => {
+            // Undo update = restore old ticket state
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == old_ticket.id)
+                .ok_or_else(|| AppError::TicketNotFound(old_ticket.id.clone()))?;
+            let current_ticket = s.board.tickets[idx].clone();
+            s.board.tickets[idx] = old_ticket;
+            s.save_and_backup()?;
+            s.undo_manager.record_for_redo(UndoAction::UpdateTicket {
+                old_ticket: current_ticket,
+            });
+        }
+        UndoAction::ArchiveTicket { old_ticket } => {
+            // Undo archive = restore old ticket state (back to Done)
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == old_ticket.id)
+                .ok_or_else(|| AppError::TicketNotFound(old_ticket.id.clone()))?;
+            let current_ticket = s.board.tickets[idx].clone();
+            s.board.tickets[idx] = old_ticket;
+            s.save_and_backup()?;
+            s.undo_manager.record_for_redo(UndoAction::ArchiveTicket {
+                old_ticket: current_ticket,
+            });
+        }
+    }
+
+    s.log_activity("undo", None, None, None);
+    Ok(UndoState {
+        can_undo: s.undo_manager.can_undo(),
+        can_redo: s.undo_manager.can_redo(),
+        undo_description: s.undo_manager.undo_description(),
+        redo_description: s.undo_manager.redo_description(),
+    })
+}
+
+/// Stellt die letzte rückgängig gemachte Aktion wieder her.
+#[tauri::command]
+pub async fn redo_action(state: State<'_>) -> Result<UndoState, String> {
+    let mut s = state.lock().await;
+    let action = match s.undo_manager.pop_redo() {
+        Some(a) => a,
+        None => return Err("Nichts zum Wiederherstellen".to_string()),
+    };
+
+    match action {
+        UndoAction::CreateTicket { ref ticket_id } => {
+            // Redo of a "delete undo" = delete the ticket again
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == *ticket_id)
+                .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
+            let removed = s.board.tickets.remove(idx);
+            s.save_and_backup()?;
+            s.undo_manager
+                .record_for_undo_only(UndoAction::DeleteTicket {
+                    ticket: removed,
+                    index: idx,
+                });
+        }
+        UndoAction::DeleteTicket { ticket, index } => {
+            // Redo of a "create undo" = re-insert the ticket
+            let insert_at = index.min(s.board.tickets.len());
+            let id = ticket.id.clone();
+            s.board.tickets.insert(insert_at, ticket);
+            s.save_and_backup()?;
+            s.undo_manager
+                .record_for_undo_only(UndoAction::CreateTicket { ticket_id: id });
+        }
+        UndoAction::MoveTicket { old_ticket } => {
+            // Redo of a "move undo" = restore the state that was undone
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == old_ticket.id)
+                .ok_or_else(|| AppError::TicketNotFound(old_ticket.id.clone()))?;
+            let current_ticket = s.board.tickets[idx].clone();
+            s.board.tickets[idx] = old_ticket;
+            s.save_and_backup()?;
+            s.undo_manager
+                .record_for_undo_only(UndoAction::MoveTicket {
+                    old_ticket: current_ticket,
+                });
+        }
+        UndoAction::UpdateTicket { old_ticket } => {
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == old_ticket.id)
+                .ok_or_else(|| AppError::TicketNotFound(old_ticket.id.clone()))?;
+            let current_ticket = s.board.tickets[idx].clone();
+            s.board.tickets[idx] = old_ticket;
+            s.save_and_backup()?;
+            s.undo_manager
+                .record_for_undo_only(UndoAction::UpdateTicket {
+                    old_ticket: current_ticket,
+                });
+        }
+        UndoAction::ArchiveTicket { old_ticket } => {
+            let idx = s
+                .board
+                .tickets
+                .iter()
+                .position(|t| t.id == old_ticket.id)
+                .ok_or_else(|| AppError::TicketNotFound(old_ticket.id.clone()))?;
+            let current_ticket = s.board.tickets[idx].clone();
+            s.board.tickets[idx] = old_ticket;
+            s.save_and_backup()?;
+            s.undo_manager
+                .record_for_undo_only(UndoAction::ArchiveTicket {
+                    old_ticket: current_ticket,
+                });
+        }
+    }
+
+    s.log_activity("redo", None, None, None);
+    Ok(UndoState {
+        can_undo: s.undo_manager.can_undo(),
+        can_redo: s.undo_manager.can_redo(),
+        undo_description: s.undo_manager.undo_description(),
+        redo_description: s.undo_manager.redo_description(),
+    })
 }
 
 // ── Ticket Execution (interactive terminal mode) ──

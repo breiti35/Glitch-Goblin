@@ -237,6 +237,12 @@
             <span id="deploy-status-badge" class="deploy-badge hidden"></span>
             <span id="git-status" class="git-badge clean hidden"></span>
             <span id="running-badge" class="running-badge hidden">&#9881; Running...</span>
+            <button id="btn-undo" class="header-icon-btn" title="Rückgängig (Ctrl+Z)" disabled>
+              <span class="material-symbols-outlined">undo</span>
+            </button>
+            <button id="btn-redo" class="header-icon-btn" title="Wiederherstellen (Ctrl+Y)" disabled>
+              <span class="material-symbols-outlined">redo</span>
+            </button>
             <button id="btn-filter-toggle" class="header-icon-btn" title="Filter (Ctrl+F)" data-i18n-title="board.filter">
               <span class="material-symbols-outlined">filter_list</span>
             </button>
@@ -952,6 +958,8 @@
           <button class="modal-close icon-btn">&#10005;</button>
         </div>
         <div class="shortcut-grid">
+          <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span data-i18n="undo.undo">Undo</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+Y</kbd><span data-i18n="undo.redo">Redo</span></div>
           <div class="shortcut-row"><kbd>Ctrl+N</kbd><span data-i18n="modal.newTask_btn">New Task</span></div>
           <div class="shortcut-row"><kbd>Ctrl+F</kbd><span data-i18n="modal.toggleFilter">Toggle Filter</span></div>
           <div class="shortcut-row"><kbd>Ctrl+P</kbd><span data-i18n="modal.projectPicker">Project Picker</span></div>

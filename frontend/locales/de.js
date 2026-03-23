@@ -426,4 +426,10 @@ export default {
     none: "Keine",
     version: "Version",
   },
+  undo: {
+    undo: "R\u00fcckg\u00e4ngig",
+    redo: "Wiederherstellen",
+    undone: "R\u00fcckg\u00e4ngig gemacht",
+    redone: "Wiederhergestellt",
+  },
 };

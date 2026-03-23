@@ -8,6 +8,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Added
+- **Undo/Redo für Ticket-Aktionen:** Ctrl+Z/Ctrl+Y machen Ticket-Aktionen (Erstellen, Löschen, Verschieben, Bearbeiten, Archivieren) rückgängig bzw. stellen sie wieder her. Undo/Redo-Buttons in der Board-Toolbar mit Tooltip-Beschreibung der nächsten Aktion. Undo-Stack speichert bis zu 50 Aktionen, wird bei Projektwechsel zurückgesetzt.
 - **GitHub Actions Build-Status:** Neue KPI-Karte im Dashboard zeigt den Live-Status des letzten GitHub Actions Workflow-Runs (success/failure/pending) mit farbigem Badge, Commit-Hash und Laufzeit. Polling-Intervall konfigurierbar (Standard: 60s). GitHub Token (PAT) wird verschluesselt in den Settings gespeichert. Neuer Settings-Tab "GitHub" fuer Owner, Repo, Token und Poll-Intervall.
 - **Merged Branches aufraeumen:** Neuer "Alle aufräumen"-Button in der Git-Ansicht bei den erledigten Branches. Löscht alle lokalen Branches die bereits im Default-Branch enthalten sind (mit Bestätigungsdialog). Aktueller und Default-Branch werden nie gelöscht.
 
