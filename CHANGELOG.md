@@ -8,6 +8,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [0.2.10-alpha] - 2026-03-24
 
 ### Security
+- **GG-058 Git file_path Parameter ohne Path-Traversal-Validierung:** `get_file_diff`, `get_commit_file_diff` und `get_working_file_diff` uebergaben `file`-Parameter vom Frontend direkt an Git-Kommandos. Obwohl der `--`-Separator Option-Injection verhindert, ermoeglichte ein Wert wie `../../.env` den Zugriff auf Dateien ausserhalb des Repositories. Neue Funktion `validate_file_path` lehnt leere Pfade, Null-Bytes, absolute Pfade (Unix `/`, Windows `\` und Laufwerksbuchstaben wie `C:`) sowie `..`-Komponenten ab.
 - **GG-056 Deploy SSH-Commands ohne Shell-Escaping:** Zwei Shell-Injection-Luecken im Deploy-Modul geschlossen. (1) `executeLocalDeployStop` baute Compose-Dateinamen ohne `shellEscapeLocal` in den PTY-Befehl ein — analog zu `executeLocalDeploy` wird jetzt `shellEscapeLocal(f)` verwendet. (2) `validateDeployParam` liess doppelte Anfuehrungszeichen (`"`) und Backslashes (`\`) durch, die die aeussere SSH-Befehlsquotierung haetten aufbrechen koennen — beide Zeichen sind jetzt in der Blocklist.
 
 ### Added

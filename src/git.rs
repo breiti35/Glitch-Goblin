@@ -52,6 +52,43 @@ fn validate_git_ref(name: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Validates a file path parameter to prevent path traversal attacks.
+/// Rejects empty paths, null bytes, absolute paths, and ".." components.
+fn validate_file_path(path: &str) -> Result<(), String> {
+    if path.is_empty() {
+        return Err(AppError::InvalidInput("Dateipfad darf nicht leer sein".into()).into());
+    }
+    if path.contains('\0') {
+        return Err(
+            AppError::InvalidInput("Dateipfad enthaelt ungueltige Zeichen (Null-Byte)".into())
+                .into(),
+        );
+    }
+    if path.starts_with('/') || path.starts_with('\\') {
+        return Err(
+            AppError::InvalidInput(format!("Dateipfad '{path}' darf nicht absolut sein")).into(),
+        );
+    }
+    // Windows-Laufwerksbuchstabe (z.B. "C:")
+    if path.len() >= 2 && path.chars().nth(1) == Some(':') {
+        return Err(
+            AppError::InvalidInput(format!("Dateipfad '{path}' darf nicht absolut sein")).into(),
+        );
+    }
+    // Path-Traversal: ".." als Pfadkomponente ablehnen
+    for component in path.split(['/', '\\']) {
+        if component == ".." {
+            return Err(
+                AppError::InvalidInput(format!(
+                    "Dateipfad '{path}' enthaelt unerlaubte Pfad-Traversal-Sequenz"
+                ))
+                .into(),
+            );
+        }
+    }
+    Ok(())
+}
+
 /// Strip Windows UNC prefix (\\?\ or //?/) that git cannot handle.
 pub fn strip_unc_prefix(path: &Path) -> PathBuf {
     let s = path.to_string_lossy();
@@ -498,6 +535,7 @@ pub async fn get_file_diff(
     file: &str,
 ) -> Result<String, String> {
     validate_git_ref(branch)?;
+    validate_file_path(file)?;
     let base = default_branch(project_path).await;
 
     let output = git_cmd()
@@ -576,6 +614,7 @@ pub async fn get_commit_file_diff(
     file: &str,
 ) -> Result<String, String> {
     validate_git_ref(commit_hash)?;
+    validate_file_path(file)?;
 
     let output = git_cmd()
         .args(["show", commit_hash, "--", file])
@@ -770,6 +809,7 @@ pub async fn get_working_diff(project_path: &Path) -> Result<DiffInfo, String> {
 
 /// Get the unified diff for a single file in the working tree.
 pub async fn get_working_file_diff(project_path: &Path, file: &str) -> Result<String, String> {
+    validate_file_path(file)?;
     let clean_project = strip_unc_prefix(project_path);
 
     let output = git_cmd()
@@ -986,6 +1026,50 @@ mod tests {
         assert!(validate_git_ref("v1.0.0").is_ok());
         assert!(validate_git_ref("feature_branch").is_ok());
         assert!(validate_git_ref("a/b/c.d_e").is_ok());
+    }
+
+    #[test]
+    fn validate_file_path_rejects_empty() {
+        assert!(validate_file_path("").is_err());
+    }
+
+    #[test]
+    fn validate_file_path_rejects_null_byte() {
+        assert!(validate_file_path("src/main\0.rs").is_err());
+    }
+
+    #[test]
+    fn validate_file_path_rejects_absolute_unix() {
+        assert!(validate_file_path("/etc/passwd").is_err());
+        assert!(validate_file_path("/etc/shadow").is_err());
+    }
+
+    #[test]
+    fn validate_file_path_rejects_absolute_windows_backslash() {
+        assert!(validate_file_path("\\Windows\\System32\\config").is_err());
+    }
+
+    #[test]
+    fn validate_file_path_rejects_absolute_windows_drive() {
+        assert!(validate_file_path("C:\\secret.key").is_err());
+        assert!(validate_file_path("D:/credentials.toml").is_err());
+    }
+
+    #[test]
+    fn validate_file_path_rejects_dotdot_traversal() {
+        assert!(validate_file_path("../../etc/passwd").is_err());
+        assert!(validate_file_path("src/../../../secret").is_err());
+        assert!(validate_file_path("..").is_err());
+        assert!(validate_file_path("../sibling/file.rs").is_err());
+    }
+
+    #[test]
+    fn validate_file_path_accepts_valid_relative_paths() {
+        assert!(validate_file_path("src/main.rs").is_ok());
+        assert!(validate_file_path("frontend/app.js").is_ok());
+        assert!(validate_file_path("Cargo.toml").is_ok());
+        assert!(validate_file_path("src/git.rs").is_ok());
+        assert!(validate_file_path("some/deep/nested/file.txt").is_ok());
     }
 
     #[test]
