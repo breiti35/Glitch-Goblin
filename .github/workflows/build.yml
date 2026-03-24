@@ -175,13 +175,19 @@ jobs:
           # Build platforms JSON
           PLATFORMS="{}"
 
+          # Download signature files via API (draft assets are not public)
+          RELEASE_ID="${{ needs.create-release.outputs.release_id }}"
+
           # Windows NSIS
           WIN_SIG=""
           WIN_URL=""
           for a in $ASSETS; do
             case "$a" in
-              *.nsis.zip.sig) WIN_SIG=$(gh api "repos/${REPO}/releases/${{ needs.create-release.outputs.release_id }}" --jq ".assets[] | select(.name==\"$a\") | .browser_download_url" | xargs curl -sL) ;;
-              *.nsis.zip)     WIN_URL="${BASE_URL}/$a" ;;
+              *.nsis.zip.sig)
+                ASSET_ID=$(gh api "repos/${REPO}/releases/${RELEASE_ID}" --jq ".assets[] | select(.name==\"$a\") | .id")
+                WIN_SIG=$(gh api "repos/${REPO}/releases/assets/${ASSET_ID}" -H "Accept: application/octet-stream" 2>/dev/null || echo "")
+                ;;
+              *.nsis.zip) WIN_URL="${BASE_URL}/$a" ;;
             esac
           done
           if [[ -n "$WIN_URL" && -n "$WIN_SIG" ]]; then
@@ -193,8 +199,11 @@ jobs:
           LINUX_URL=""
           for a in $ASSETS; do
             case "$a" in
-              *.AppImage.tar.gz.sig) LINUX_SIG=$(gh api "repos/${REPO}/releases/${{ needs.create-release.outputs.release_id }}" --jq ".assets[] | select(.name==\"$a\") | .browser_download_url" | xargs curl -sL) ;;
-              *.AppImage.tar.gz)     LINUX_URL="${BASE_URL}/$a" ;;
+              *.AppImage.tar.gz.sig)
+                ASSET_ID=$(gh api "repos/${REPO}/releases/${RELEASE_ID}" --jq ".assets[] | select(.name==\"$a\") | .id")
+                LINUX_SIG=$(gh api "repos/${REPO}/releases/assets/${ASSET_ID}" -H "Accept: application/octet-stream" 2>/dev/null || echo "")
+                ;;
+              *.AppImage.tar.gz) LINUX_URL="${BASE_URL}/$a" ;;
             esac
           done
           if [[ -n "$LINUX_URL" && -n "$LINUX_SIG" ]]; then
