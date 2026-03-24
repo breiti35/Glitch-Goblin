@@ -224,6 +224,7 @@ function createCard(ticket, col) {
     card.classList.add("expanded");
   } else if (cardMode === "click") {
     card.addEventListener("click", (e) => {
+      if (isDragging) return;
       if (e.target.closest("button") || e.target.closest("select") || e.target.closest("a")) return;
       card.classList.toggle("expanded");
     });
@@ -504,6 +505,8 @@ export function clearFilters() {
 // ── Drag & Drop (Event Delegation -- listeners registered once) ──
 
 let dragDropInitialized = false;
+let dragDropped = false;
+let isDragging = false;
 
 /** Registriert Drag-&-Drop-Event-Listener am Board-Container (wird nur beim ersten Aufruf ausgeführt). */
 export function setupDragDrop() {
@@ -517,8 +520,14 @@ export function setupDragDrop() {
   board.addEventListener("dragstart", (e) => {
     const card = e.target.closest(".ticket-card");
     if (!card) return;
+    e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", card.dataset.ticketId);
     card.classList.add("dragging");
+    isDragging = true;
+    dragDropped = false;
+
+    // Save expanded state, collapse for cleaner drag visual
+    card.dataset.wasExpanded = card.classList.contains("expanded") ? "1" : "";
     card.classList.remove("expanded");
 
     const ghost = card.cloneNode(true);
@@ -527,12 +536,22 @@ export function setupDragDrop() {
     ghost.style.top = "-9999px";
     document.body.appendChild(ghost);
     e.dataTransfer.setDragImage(ghost, 20, 20);
-    requestAnimationFrame(() => ghost.remove());
+    setTimeout(() => ghost.remove(), 100);
   });
 
   board.addEventListener("dragend", (e) => {
     const card = e.target.closest(".ticket-card");
-    if (card) card.classList.remove("dragging");
+    if (card) {
+      card.classList.remove("dragging");
+      // Restore expanded state if drag was cancelled (no successful drop)
+      if (!dragDropped && card.dataset.wasExpanded === "1") {
+        card.classList.add("expanded");
+      }
+      delete card.dataset.wasExpanded;
+    }
+    dragDropped = false;
+    // Clear isDragging after pending click events
+    setTimeout(() => { isDragging = false; }, 0);
     document.querySelectorAll(".column").forEach(c => c.classList.remove("drag-over"));
     document.querySelectorAll(".drop-indicator").forEach(ind => ind.remove());
   });
@@ -541,6 +560,7 @@ export function setupDragDrop() {
   document.querySelectorAll(".column-body").forEach(body => {
     body.addEventListener("dragover", (e) => {
       e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
       body.closest(".column").classList.add("drag-over");
 
       const afterElement = getDragAfterElement(body, e.clientY);
@@ -563,6 +583,7 @@ export function setupDragDrop() {
     });
     body.addEventListener("drop", async (e) => {
       e.preventDefault();
+      dragDropped = true;
       body.closest(".column").classList.remove("drag-over");
       body.querySelector(".drop-indicator")?.remove();
       const ticketId = e.dataTransfer.getData("text/plain");
