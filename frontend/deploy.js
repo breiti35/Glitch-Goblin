@@ -200,7 +200,7 @@ async function executeLocalDeployStop() {
     const cfg = state.deployConfig;
     const files = (cfg.composeFiles?.length > 0) ? cfg.composeFiles : [];
     let cmd = "docker compose";
-    files.forEach(f => cmd += ` -f ${f}`);
+    files.forEach(f => cmd += ` -f ${shellEscapeLocal(f)}`);
     cmd += " down\r";
     setTimeout(() => {
       invoke("write_terminal", { terminalId, data: cmd }).catch(e => logError("deploy: write", e));

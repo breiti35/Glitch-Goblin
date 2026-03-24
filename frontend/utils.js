@@ -84,7 +84,7 @@ export function validateDeployParam(name, value) {
     console.error(`Security: ${name} exceeds max length (500)`);
     return false;
   }
-  if (/[;\|&\$`\n\r\0<>\(\)\{\}!\~\#\%\^\*\?\[\]]/.test(value)) {
+  if (/[;\|&\$`\n\r\0<>\(\)\{\}!\~\#\%\^\*\?\[\]"\\]/.test(value)) {
     console.error(`Security: ${name} contains forbidden characters`);
     return false;
   }
