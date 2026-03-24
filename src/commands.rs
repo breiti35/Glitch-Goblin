@@ -1376,8 +1376,8 @@ pub async fn move_ticket_to_project(
         .ok_or_else(|| format!("Target project '{}' not found", target_project))?;
 
     let target_data_dir = config::project_data_dir(&target.name)?;
-    let target_kanban_path = target_data_dir.join("kanban.json");
-    let mut target_board = kanban::load_board(&target_kanban_path)?;
+    let target_conn = db::open(&target_data_dir)?;
+    let mut target_board = db::load_board(&target_conn)?;
 
     // Re-generate ticket ID based on target board and project prefix
     let target_prefix = &target.ticket_prefix;
@@ -1389,7 +1389,7 @@ pub async fn move_ticket_to_project(
 
     // Add to target board
     target_board.tickets.push(ticket);
-    kanban::save_board(&target_kanban_path, &target_board)?;
+    db::save_board(&target_conn, &target_board)?;
 
     // Remove from current board
     s.board.tickets.remove(idx);
