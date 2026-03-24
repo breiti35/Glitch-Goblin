@@ -7,6 +7,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [0.2.10-alpha] - 2026-03-24
 
+### Security
+- **GG-056 Deploy SSH-Commands ohne Shell-Escaping:** Zwei Shell-Injection-Luecken im Deploy-Modul geschlossen. (1) `executeLocalDeployStop` baute Compose-Dateinamen ohne `shellEscapeLocal` in den PTY-Befehl ein — analog zu `executeLocalDeploy` wird jetzt `shellEscapeLocal(f)` verwendet. (2) `validateDeployParam` liess doppelte Anfuehrungszeichen (`"`) und Backslashes (`\`) durch, die die aeussere SSH-Befehlsquotierung haetten aufbrechen koennen — beide Zeichen sind jetzt in der Blocklist.
+
 ### Added
 - **GG-050 Auto-Updater:** Tauri Updater Plugin mit GitHub Releases integriert. Update-Modal im Stitch Design mit drei Zustaenden (Update gefunden mit Release Notes, Download-Fortschritt, Neustart-Prompt). Automatischer Check beim App-Start (5s Verzoegerung). Manueller Check-Button in den Settings. Build-Pipeline generiert Signing-Artefakte (.sig) und latest.json fuer den Updater-Endpoint.
 - **GG-047 Zentrales Prozess-Modul:** `CREATE_NO_WINDOW`-Konstante und -Pattern aus `git.rs`, `deploy.rs`, `crypto.rs` und `terminal.rs` in gemeinsames Modul `process_util.rs` extrahiert. Zwei Hilfsfunktionen (`cmd_no_window` fuer sync, `async_cmd_no_window` fuer async) verhindern, dass das Flag bei neuen `Command::new()`-Aufrufen vergessen wird.
