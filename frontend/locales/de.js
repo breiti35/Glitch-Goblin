@@ -133,6 +133,7 @@ export default {
     deleted: "gel\u00f6scht",
     confirmMerge: "\"{branch}\" \u00fcbernehmen?\nDie \u00c4nderungen werden in den Hauptbranch \u00fcbernommen.",
     confirmDelete: "Branch \"{branch}\" l\u00f6schen?",
+    confirmForceDelete: "Branch \"{branch}\" hat ungemergte \u00c4nderungen!\nTrotzdem unwiderruflich l\u00f6schen?",
     noDiff: "(kein Diff verf\u00fcgbar)",
     pushing: "Pushe {branch}...",
     pushSuccess: "{branch} gepusht",
