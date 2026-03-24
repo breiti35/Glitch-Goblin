@@ -2619,6 +2619,22 @@ pub async fn get_build_status(state: State<'_>) -> Result<BuildStatus, String> {
         .await
         .map_err(|e| format!("GitHub API request failed: {e}"))?;
 
+    // 401 with token → retry without token (public repos don't need auth)
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED && !token.is_empty() {
+        let retry = client
+            .get(&url)
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "glitch-goblin")
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await
+            .map_err(|e| format!("GitHub API request failed: {e}"))?;
+        if !retry.status().is_success() {
+            return Err(format!("GitHub API returned status {}", retry.status()));
+        }
+        return parse_build_status(retry).await;
+    }
+
     if !response.status().is_success() {
         return Err(format!(
             "GitHub API returned status {}",
@@ -2626,6 +2642,10 @@ pub async fn get_build_status(state: State<'_>) -> Result<BuildStatus, String> {
         ));
     }
 
+    parse_build_status(response).await
+}
+
+async fn parse_build_status(response: reqwest::Response) -> Result<BuildStatus, String> {
     let body: serde_json::Value = response
         .json()
         .await
