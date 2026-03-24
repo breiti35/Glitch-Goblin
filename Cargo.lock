@@ -1521,7 +1521,7 @@ dependencies = [
 
 [[package]]
 name = "glitch-goblin"
-version = "0.2.9-alpha.1"
+version = "0.2.10-alpha"
 dependencies = [
  "base64 0.22.1",
  "chacha20poly1305",
