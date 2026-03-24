@@ -138,7 +138,16 @@ pub fn load_projects() -> Result<ProjectsConfig, String> {
 /// Write `content` to `path` atomically: first write to a `.tmp` sibling,
 /// then rename over the target. Cleans up the tmp file if rename fails.
 fn write_atomic(path: &Path, content: &str) -> Result<(), String> {
-    let mut tmp_name = path.file_name().unwrap_or_default().to_os_string();
+    let mut tmp_name = path
+        .file_name()
+        .ok_or_else(|| {
+            AppError::FileWrite {
+                path: path.display().to_string(),
+                cause: "Pfad hat keinen Dateinamen".into(),
+            }
+            .to_string()
+        })?
+        .to_os_string();
     tmp_name.push(".tmp");
     let tmp_path = path.with_file_name(tmp_name);
     if let Err(e) = std::fs::write(&tmp_path, content) {
