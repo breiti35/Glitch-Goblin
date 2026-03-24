@@ -901,7 +901,7 @@ pub async fn merge_ticket(
         if let Some(idx) = s.board.tickets.iter().position(|t| t.id == ticket_id) {
             s.board.tickets[idx].column = Column::Done;
             s.board.tickets[idx].done_at = Some(kanban::now_iso());
-            let _ = s.save_and_backup();
+            s.save_and_backup()?;
             s.log(format!("{} merged -> Done", ticket_id));
             let title = s.board.tickets[idx].title.clone();
             s.log_activity("ticket_merged", Some(&ticket_id), Some(&title), None);
