@@ -8,13 +8,7 @@ use crate::kanban::Ticket;
 /// Erstellt ein `Command::new("git")` mit `CREATE_NO_WINDOW` Flag auf Windows,
 /// damit keine Konsolenfenster aufpoppen wenn die App ohne eigene Konsole laeuft.
 fn git_cmd() -> Command {
-    let mut cmd = Command::new("git");
-    #[cfg(target_os = "windows")]
-    {
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
-    cmd
+    crate::process_util::async_cmd_no_window("git")
 }
 
 /// Prueft ob git im PATH verfuegbar ist.

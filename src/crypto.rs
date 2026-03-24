@@ -84,17 +84,13 @@ fn get_macos_uuid() -> Result<String, String> {
 
 #[cfg(target_os = "windows")]
 fn get_windows_machine_guid() -> Result<String, String> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-    let output = std::process::Command::new("reg")
+    let output = crate::process_util::cmd_no_window("reg")
         .args([
             "query",
             r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography",
             "/v",
             "MachineGuid",
         ])
-        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| e.to_string())?;
     let stdout = String::from_utf8_lossy(&output.stdout);
