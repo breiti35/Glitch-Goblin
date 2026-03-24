@@ -2830,7 +2830,7 @@ static USAGE_CACHE: std::sync::LazyLock<tokio::sync::Mutex<Option<UsageCacheEntr
     std::sync::LazyLock::new(|| tokio::sync::Mutex::new(None));
 
 /// Versucht, Usage aus dem Statusline-Datei-Cache zu lesen (%TEMP%/claude/statusline-usage-cache.json).
-/// Gibt `Some(ClaudeUsage)` zurueck wenn die Datei existiert und juenger als 120s ist.
+/// Gibt `Some(ClaudeUsage)` zurueck wenn die Datei existiert und juenger als 300s ist.
 fn read_file_cache() -> Option<ClaudeUsage> {
     let temp = std::env::temp_dir();
     let cache_path = temp.join("claude").join("statusline-usage-cache.json");
