@@ -5,7 +5,7 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
-## [0.2.10-alpha] - 2026-03-24
+## [0.2.9-alpha.1] - 2026-03-24
 
 ### Added
 - **GG-047 Zentrales Prozess-Modul:** `CREATE_NO_WINDOW`-Konstante und -Pattern aus `git.rs`, `deploy.rs`, `crypto.rs` und `terminal.rs` in gemeinsames Modul `process_util.rs` extrahiert. Zwei Hilfsfunktionen (`cmd_no_window` fuer sync, `async_cmd_no_window` fuer async) verhindern, dass das Flag bei neuen `Command::new()`-Aufrufen vergessen wird.
