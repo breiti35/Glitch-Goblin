@@ -30,6 +30,15 @@
       "icons/256x256.png",
       "icons/icon.png",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/breiti35/Glitch-Goblin/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

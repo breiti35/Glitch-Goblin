@@ -5170,3 +5170,105 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   color: var(--accent);
   border-color: var(--accent);
 }
+
+/* ── Updater Modal ── */
+.modal-updater-content {
+  max-width: 480px;
+  width: 90vw;
+}
+.updater-body {
+  padding: 4px 0;
+}
+.updater-info,
+.updater-progress,
+.updater-done,
+.updater-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 16px 0;
+}
+.updater-version-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.updater-icon {
+  font-size: 40px;
+  color: var(--accent);
+}
+.updater-version-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.updater-version-number {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.updater-notes {
+  text-align: left;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.updater-notes strong { color: var(--text); }
+.updater-notes ul { padding-left: 16px; margin: 4px 0; }
+.updater-notes li { margin: 2px 0; }
+.updater-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  justify-content: center;
+}
+.updater-progress-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.updater-progress-bar-track {
+  width: 100%;
+  height: 8px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.updater-progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.updater-progress-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.updater-done-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.updater-error-detail {
+  font-size: 12px;
+  color: var(--text-inactive);
+  word-break: break-all;
+}
+@keyframes updater-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.updater-icon-spin {
+  animation: updater-spin 1.2s linear infinite;
+}
