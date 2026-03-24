@@ -135,6 +135,30 @@ pub fn load_projects() -> Result<ProjectsConfig, String> {
     Ok(config)
 }
 
+/// Write `content` to `path` atomically: first write to a `.tmp` sibling,
+/// then rename over the target. Cleans up the tmp file if rename fails.
+fn write_atomic(path: &Path, content: &str) -> Result<(), String> {
+    let mut tmp_name = path.file_name().unwrap_or_default().to_os_string();
+    tmp_name.push(".tmp");
+    let tmp_path = path.with_file_name(tmp_name);
+    if let Err(e) = std::fs::write(&tmp_path, content) {
+        return Err(AppError::FileWrite {
+            path: tmp_path.display().to_string(),
+            cause: e.to_string(),
+        }
+        .to_string());
+    }
+    if let Err(e) = std::fs::rename(&tmp_path, path) {
+        let _ = std::fs::remove_file(&tmp_path);
+        return Err(AppError::FileWrite {
+            path: path.display().to_string(),
+            cause: e.to_string(),
+        }
+        .to_string());
+    }
+    Ok(())
+}
+
 pub fn save_projects(config: &ProjectsConfig) -> Result<(), String> {
     let path = config_path()?;
     if let Some(parent) = path.parent() {
@@ -151,10 +175,7 @@ pub fn save_projects(config: &ProjectsConfig) -> Result<(), String> {
     }
     let json = serde_json::to_string_pretty(&config_to_save)
         .map_err(|e| AppError::Serialize(e.to_string()))?;
-    std::fs::write(&path, json).map_err(|e| AppError::FileWrite {
-        path: path.display().to_string(),
-        cause: e.to_string(),
-    })?;
+    write_atomic(&path, &json)?;
     Ok(())
 }
 
@@ -268,10 +289,7 @@ pub fn save_settings_to_disk(settings: &Settings) -> Result<(), String> {
     }
     let json = serde_json::to_string_pretty(&settings_to_save)
         .map_err(|e| AppError::Serialize(e.to_string()))?;
-    std::fs::write(&path, json).map_err(|e| AppError::FileWrite {
-        path: path.display().to_string(),
-        cause: e.to_string(),
-    })?;
+    write_atomic(&path, &json)?;
     Ok(())
 }
 
