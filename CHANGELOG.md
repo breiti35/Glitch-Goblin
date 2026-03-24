@@ -5,6 +5,11 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.2.10-alpha] - 2026-03-24
+
+### Fixed
+- **GG-045 Konsolenfenster bei Kindprozessen:** `CREATE_NO_WINDOW`-Flag fuer `reg.exe` (crypto.rs) und `where.exe` (terminal.rs) gesetzt, damit keine sichtbaren Konsolenfenster aufblitzen. Machine-ID wird per `OnceLock` gecacht, sodass `reg.exe` nur noch einmal pro App-Laufzeit gestartet wird statt bei jedem encrypt/decrypt.
+
 ## [0.2.9-alpha] - 2026-03-23
 
 ### Added

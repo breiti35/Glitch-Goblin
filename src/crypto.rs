@@ -15,6 +15,7 @@ use chacha20poly1305::{
 };
 use pbkdf2::pbkdf2_hmac;
 use sha2::{Digest, Sha256};
+use std::sync::OnceLock;
 
 const PREFIX_V1: &str = "v1:";
 const PREFIX_V2: &str = "v2:";
@@ -29,31 +30,36 @@ const KDF_SALT: &[u8] = b"glitch-goblin-v3-kdf";
 // ── Machine ID ───────────────────────────────────────────────────────────────
 
 fn get_machine_id() -> String {
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(id) = std::fs::read_to_string("/etc/machine-id") {
-            let id = id.trim().to_string();
-            if !id.is_empty() {
-                return id;
+    static MACHINE_ID: OnceLock<String> = OnceLock::new();
+    MACHINE_ID
+        .get_or_init(|| {
+            #[cfg(target_os = "linux")]
+            {
+                if let Ok(id) = std::fs::read_to_string("/etc/machine-id") {
+                    let id = id.trim().to_string();
+                    if !id.is_empty() {
+                        return id;
+                    }
+                }
             }
-        }
-    }
 
-    #[cfg(target_os = "macos")]
-    {
-        if let Ok(id) = get_macos_uuid() {
-            return id;
-        }
-    }
+            #[cfg(target_os = "macos")]
+            {
+                if let Ok(id) = get_macos_uuid() {
+                    return id;
+                }
+            }
 
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(id) = get_windows_machine_guid() {
-            return id;
-        }
-    }
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(id) = get_windows_machine_guid() {
+                    return id;
+                }
+            }
 
-    get_or_create_fallback_seed()
+            get_or_create_fallback_seed()
+        })
+        .clone()
 }
 
 #[cfg(target_os = "macos")]
@@ -78,6 +84,9 @@ fn get_macos_uuid() -> Result<String, String> {
 
 #[cfg(target_os = "windows")]
 fn get_windows_machine_guid() -> Result<String, String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
     let output = std::process::Command::new("reg")
         .args([
             "query",
@@ -85,6 +94,7 @@ fn get_windows_machine_guid() -> Result<String, String> {
             "/v",
             "MachineGuid",
         ])
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| e.to_string())?;
     let stdout = String::from_utf8_lossy(&output.stdout);
