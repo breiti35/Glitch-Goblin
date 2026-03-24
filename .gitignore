@@ -7,3 +7,14 @@ node_modules/
 frontend/dist/
 CODE_QUALITY_PLAN.md
 ROADMAP_NEXT.md
+
+# Secrets & Credentials
+.env*
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Local databases
+*.db
+*.sqlite
