@@ -136,6 +136,10 @@ export async function deleteDetailTicket() {
   if (!state.detailTicket) return;
   const id = state.detailTicket.id;
 
+  if (!confirm(t('detail.confirmDelete', {id: state.detailTicket.id, title: state.detailTicket.title}))) {
+    return;
+  }
+
   try {
     await invoke("delete_ticket", { ticketId: id });
     state.board = await invoke("get_board");
