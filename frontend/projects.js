@@ -161,7 +161,10 @@ export async function loadClaudeUsage() {
     lastUsage = usage;
     updateUsageDisplay(usage);
   } catch (e) {
-    // Usage unavailable (no credentials, offline, etc.) — Offline-Symbol anzeigen
+    console.warn("[usage] get_claude_usage fehlgeschlagen:", e);
+    // Wenn bereits Daten vorhanden sind, Anzeige beibehalten (kein Offline-Flackern)
+    if (lastUsage !== null) return;
+    // Noch keine Daten — Offline-Symbol anzeigen
     const bars = document.getElementById("header-usage-bars");
     if (bars) bars.classList.add("hidden");
     const offlineIcon = document.getElementById("usage-offline-icon");

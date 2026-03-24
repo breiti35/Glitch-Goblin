@@ -8,6 +8,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [0.2.10-alpha] - 2026-03-24
 
 ### Fixed
+- **GG-046 Usage-Anzeige erholt sich nicht von Offline-Zustand:** Drei Ursachen behoben: (1) Frontend-Catch-Block zeigte Offline-Icon auch dann, wenn bereits Daten vorhanden waren — jetzt wird die letzte bekannte Anzeige beibehalten statt auf Offline umzuschalten (nur beim allerersten Fehler ohne Vordaten wird das Offline-Icon gezeigt). (2) `reqwest::Client` hatte keinen Timeout — haengende API-Aufrufe konnten spaeter eintreffend das Online-Display wieder ueberschreiben; jetzt 10-Sekunden-Timeout. (3) Datei-Cache-Altersgrenze von 120s auf 300s erhoeht, damit kurze Update-Pausen des Statusline-Scripts toleriert werden. Ausserdem: Clock-Skew-Robustheit in `read_file_cache` (falls `elapsed()` fehlschlaegt, wird die Datei als frisch behandelt).
 - **GG-045 Konsolenfenster bei Kindprozessen:** `CREATE_NO_WINDOW`-Flag fuer `reg.exe` (crypto.rs) und `where.exe` (terminal.rs) gesetzt, damit keine sichtbaren Konsolenfenster aufblitzen. Machine-ID wird per `OnceLock` gecacht, sodass `reg.exe` nur noch einmal pro App-Laufzeit gestartet wird statt bei jedem encrypt/decrypt.
 
 ## [0.2.9-alpha] - 2026-03-23

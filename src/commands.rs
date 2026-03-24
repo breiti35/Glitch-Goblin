@@ -2830,13 +2830,17 @@ static USAGE_CACHE: std::sync::LazyLock<tokio::sync::Mutex<Option<UsageCacheEntr
     std::sync::LazyLock::new(|| tokio::sync::Mutex::new(None));
 
 /// Versucht, Usage aus dem Statusline-Datei-Cache zu lesen (%TEMP%/claude/statusline-usage-cache.json).
-/// Gibt `Some(ClaudeUsage)` zurueck wenn die Datei existiert und juenger als 120s ist.
+/// Gibt `Some(ClaudeUsage)` zurueck wenn die Datei existiert und juenger als 300s ist.
 fn read_file_cache() -> Option<ClaudeUsage> {
     let temp = std::env::temp_dir();
     let cache_path = temp.join("claude").join("statusline-usage-cache.json");
     let meta = std::fs::metadata(&cache_path).ok()?;
-    let age = meta.modified().ok()?.elapsed().ok()?;
-    if age.as_secs() >= 120 {
+    let age = meta
+        .modified()
+        .ok()
+        .and_then(|mtime| mtime.elapsed().ok())
+        .unwrap_or_default();
+    if age.as_secs() >= 300 {
         return None;
     }
     let content = std::fs::read_to_string(&cache_path).ok()?;
@@ -2917,7 +2921,10 @@ pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
         .and_then(|v| v.as_str())
         .ok_or("OAuth access token not found in credentials")?;
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .unwrap_or_default();
     let resp = client
         .get("https://api.anthropic.com/api/oauth/usage")
         .header("Authorization", format!("Bearer {token}"))
