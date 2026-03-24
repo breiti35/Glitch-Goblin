@@ -5,7 +5,7 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
-## [0.2.9-alpha.1] - 2026-03-24
+## [0.2.10-alpha] - 2026-03-24
 
 ### Added
 - **GG-050 Auto-Updater:** Tauri Updater Plugin mit GitHub Releases integriert. Update-Modal im Stitch Design mit drei Zustaenden (Update gefunden mit Release Notes, Download-Fortschritt, Neustart-Prompt). Automatischer Check beim App-Start (5s Verzoegerung). Manueller Check-Button in den Settings. Build-Pipeline generiert Signing-Artefakte (.sig) und latest.json fuer den Updater-Endpoint.
