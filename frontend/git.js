@@ -466,12 +466,25 @@ async function mergeBranch(branch) {
 async function deleteBranch(branch) {
   if (!await gitConfirm(t('git.confirmDelete', {branch}))) return;
   try {
-    await invoke("delete_branch_cmd", { branch, force: true });
+    await invoke("delete_branch_cmd", { branch, force: false });
     appendLog(`Deleted branch: ${branch}`);
     showToast(`${branch} ${t('git.deleted')}`, "success");
     loadGitView();
   } catch (e) {
-    appendLog("Delete failed: " + e, true);
+    const notMerged = String(e).toLowerCase().includes("not fully merged");
+    if (notMerged) {
+      if (!await gitConfirm(t('git.confirmForceDelete', {branch}))) return;
+      try {
+        await invoke("delete_branch_cmd", { branch, force: true });
+        appendLog(`Force-deleted branch: ${branch}`);
+        showToast(`${branch} ${t('git.deleted')}`, "success");
+        loadGitView();
+      } catch (e2) {
+        appendLog("Delete failed: " + e2, true);
+      }
+    } else {
+      appendLog("Delete failed: " + e, true);
+    }
   }
 }
 

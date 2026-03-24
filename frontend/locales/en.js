@@ -133,6 +133,7 @@ export default {
     deleted: "deleted",
     confirmMerge: "Merge \"{branch}\"?\nChanges will be merged into the main branch.",
     confirmDelete: "Delete branch \"{branch}\"?",
+    confirmForceDelete: "Branch \"{branch}\" has unmerged changes!\nDelete anyway? This cannot be undone.",
     noDiff: "(no diff available)",
     pushing: "Pushing {branch}...",
     pushSuccess: "{branch} pushed",
