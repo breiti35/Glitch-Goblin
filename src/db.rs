@@ -180,6 +180,41 @@ fn backup_database(conn: &Connection, backup_path: &Path) -> Result<(), String> 
     Ok(())
 }
 
+/// Create a timestamped DB backup in `<data_dir>/kanban-backups/` and prune old ones.
+pub fn backup(conn: &Connection, data_dir: &Path, max_backups: u32) -> Result<(), String> {
+    let backup_dir = data_dir.join("kanban-backups");
+    std::fs::create_dir_all(&backup_dir)
+        .map_err(|e| format!("Backup-Verzeichnis erstellen fehlgeschlagen: {e}"))?;
+
+    let timestamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+    let backup_name = format!("kanban-{timestamp}.db");
+    let backup_path = backup_dir.join(&backup_name);
+
+    backup_database(conn, &backup_path)?;
+
+    // Prune old backups
+    let mut backups: Vec<_> = std::fs::read_dir(&backup_dir)
+        .map_err(|e| format!("Backup-Verzeichnis lesen fehlgeschlagen: {e}"))?
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path()
+                .file_name()
+                .map(|f| f.to_string_lossy().starts_with("kanban-") && f.to_string_lossy().ends_with(".db"))
+                .unwrap_or(false)
+        })
+        .collect();
+
+    backups.sort_by_key(|e| e.file_name());
+
+    while backups.len() > max_backups as usize {
+        let oldest_path = backups.remove(0).path();
+        std::fs::remove_file(&oldest_path)
+            .map_err(|e| format!("Altes Backup löschen fehlgeschlagen {oldest_path:?}: {e}"))?;
+    }
+
+    Ok(())
+}
+
 /// Restore the database from a pre-migration backup.
 ///
 /// Removes stale WAL/SHM files from the failed migration before copying.

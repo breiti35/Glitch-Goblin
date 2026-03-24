@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tracing::error;
 
 use crate::config::ProjectEntry;
-use crate::kanban::{self, KanbanBoard};
+use crate::kanban::KanbanBoard;
 use crate::undo::UndoManager;
 use crate::terminal::{self, TerminalSession};
 
@@ -258,9 +258,11 @@ impl AppState {
             .as_ref()
             .ok_or("Keine aktive Datenbankverbindung")?;
         crate::db::save_board(conn, &self.board)?;
-        if self.settings.backups_enabled && !self.kanban_path.as_os_str().is_empty() {
-            if let Err(e) = kanban::backup_board(&self.kanban_path, self.settings.max_backups) {
-                error!(error = %e, "Backup failed");
+        if self.settings.backups_enabled {
+            if let Some(dd) = self.data_dir() {
+                if let Err(e) = crate::db::backup(conn, &dd, self.settings.max_backups) {
+                    error!(error = %e, "Backup failed");
+                }
             }
         }
         Ok(())
