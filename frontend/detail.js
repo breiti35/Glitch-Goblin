@@ -3,7 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, formatDuration, formatTimeShort, timeAgo } from './utils.js';
-import { state, appendLog } from './app.js';
+import { state, appendLog, openModal, closeModal } from './app.js';
 import { renderBoard } from './board.js';
 import { t } from './i18n.js';
 
@@ -132,22 +132,25 @@ export async function saveDetailTicket() {
   }
 }
 
-export async function deleteDetailTicket() {
+export function deleteDetailTicket() {
   if (!state.detailTicket) return;
   const id = state.detailTicket.id;
+  const title = state.detailTicket.title;
 
-  if (!confirm(t('detail.confirmDelete', {id: state.detailTicket.id, title: state.detailTicket.title}))) {
-    return;
-  }
-
-  try {
-    await invoke("delete_ticket", { ticketId: id });
-    state.board = await invoke("get_board");
-    renderBoard();
-    closeDetailPanel();
-  } catch (err) {
-    appendLog("Delete error: " + err, true);
-  }
+  const msg = document.getElementById("git-confirm-message");
+  msg.textContent = t('detail.confirmDelete', {id, title});
+  document.getElementById("btn-git-confirm-yes").onclick = async () => {
+    closeModal("modal-git-confirm");
+    try {
+      await invoke("delete_ticket", { ticketId: id });
+      state.board = await invoke("get_board");
+      renderBoard();
+      closeDetailPanel();
+    } catch (err) {
+      appendLog("Delete error: " + err, true);
+    }
+  };
+  openModal("modal-git-confirm");
 }
 
 // ── Comments ──

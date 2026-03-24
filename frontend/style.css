@@ -3332,6 +3332,8 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   align-self: center;
   cursor: default;
 }
+.header-usage-offline.hidden { display: none; }
+#header-usage-bars.hidden { display: none; }
 /* Window Controls */
 .window-controls {
   display: flex;
@@ -3911,6 +3913,7 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   justify-content: space-between;
   font-size: 12px;
 }
+.focus-meta-row.hidden { display: none; }
 
 .focus-meta-label { color: var(--muted); }
 .focus-meta-value {
