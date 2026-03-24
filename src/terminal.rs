@@ -84,14 +84,10 @@ pub fn detect_shells() -> Vec<ShellInfo> {
 
 #[cfg(windows)]
 fn which_exists(cmd: &str) -> bool {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-    std::process::Command::new("where")
+    crate::process_util::cmd_no_window("where")
         .arg(cmd)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .creation_flags(CREATE_NO_WINDOW)
         .status()
         .map(|s| s.success())
         .unwrap_or(false)

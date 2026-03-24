@@ -257,12 +257,10 @@ pub fn build_ssh_command(config: &DeployConfig, commands: &[String]) -> Result<S
 // ── Helpers ──
 
 async fn run_cmd(program: &str, args: &[&str]) -> Result<String, String> {
-    let mut cmd = tokio::process::Command::new(program);
+    let mut cmd = crate::process_util::async_cmd_no_window(program);
     cmd.args(args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     let output = cmd.output()
         .await
         .map_err(|e| format!("{e}"))?;
