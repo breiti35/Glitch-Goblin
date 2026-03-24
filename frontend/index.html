@@ -547,6 +547,7 @@
           </div>
           <!-- Actions -->
           <div style="padding:0 32px 24px;display:flex;gap:12px;align-items:center">
+            <button id="btn-check-update" class="btn-secondary"><span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle">system_update</span> Auf Updates pr&uuml;fen</button>
             <button id="btn-open-backups" class="btn-secondary">Backup wiederherstellen...</button>
             <button id="btn-save-settings" class="btn-primary">Save Settings</button>
             <span class="settings-version" id="settings-version"></span>
@@ -975,6 +976,18 @@
           <button id="btn-recovery-finish" class="btn-secondary" data-i18n="modal.finish">&#10004; Abschlie&szlig;en</button>
           <button id="btn-recovery-reset" class="btn-secondary" data-i18n="modal.backToBacklog">&#8634; Zur&uuml;ck ins Backlog</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal: Auto-Updater -->
+    <div id="modal-updater" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-updater-content">
+        <div class="modal-header">
+          <h2><span class="material-symbols-outlined" style="font-size:20px;vertical-align:middle">system_update</span> Update</h2>
+          <button class="modal-close icon-btn" id="btn-updater-modal-close">&#10005;</button>
+        </div>
+        <div class="updater-body"></div>
       </div>
     </div>
 

@@ -26,6 +26,7 @@ import { enterFocusMode, exitFocusMode } from './focus-mode.js';
 import { loadNotesView } from './notes.js';
 import { checkTicketRecovery } from './recovery.js';
 import { openSearchSpotlight, closeSearchSpotlight, globalSearch } from './search.js';
+import { scheduleUpdateCheck, checkForUpdate } from './updater.js';
 
 // ── Re-exports for other modules ──
 export { showToast } from './notifications.js';
@@ -90,6 +91,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Check for interrupted ticket (crash recovery)
   checkTicketRecovery();
+
+  // Auto-update check (5s delay)
+  scheduleUpdateCheck();
 });
 
 async function loadInitialState() {
@@ -251,6 +255,7 @@ function bindEvents() {
     document.getElementById("github-interval-label").textContent = e.target.value + "s";
   });
   document.getElementById("btn-open-backups").addEventListener("click", openBackupModal);
+  document.getElementById("btn-check-update").addEventListener("click", () => checkForUpdate(false));
 
   // Filter bar (debounced)
   document.getElementById("btn-filter-toggle").addEventListener("click", toggleFilterBar);
