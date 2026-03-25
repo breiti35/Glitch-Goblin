@@ -701,15 +701,22 @@ function getDragAfterElement(container, y) {
 
 // ── Archive ──
 
-async function archiveTicket(ticketId) {
-  try {
-    await invoke("archive_ticket", { ticketId });
-    state.board = await invoke("get_board");
-    renderBoard();
-    showToast(t('board.ticketArchived') || "Ticket archiviert", "success");
-  } catch (err) {
-    appendLog("Archive error: " + err, true);
-  }
+function archiveTicket(ticketId) {
+  const ticket = state.board.tickets.find(tk => tk.id === ticketId);
+  const msg = document.getElementById("git-confirm-message");
+  msg.textContent = t('board.confirmArchive', {id: ticketId}) || `Ticket ${ticketId} archivieren?`;
+  document.getElementById("btn-git-confirm-yes").onclick = async () => {
+    closeModal("modal-git-confirm");
+    try {
+      await invoke("archive_ticket", { ticketId });
+      state.board = await invoke("get_board");
+      renderBoard();
+      showToast(t('board.ticketArchived') || "Ticket archiviert", "success");
+    } catch (err) {
+      appendLog("Archive error: " + err, true);
+    }
+  };
+  openModal("modal-git-confirm");
 }
 
 export async function loadArchiveView() {

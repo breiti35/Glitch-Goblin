@@ -794,6 +794,15 @@ pub async fn finish_ticket(
             .position(|t| t.id == ticket_id)
             .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
         let ticket = s.board.tickets[idx].clone();
+
+        // Column check: Ticket must be in Progress
+        if ticket.column != Column::Progress {
+            return Err(AppError::InvalidInput(format!(
+                "Ticket {} ist nicht in 'Progress' (aktuelle Spalte: {:?})",
+                ticket_id, ticket.column
+            )).into());
+        }
+
         let project_path = s
             .project_path()
             .ok_or(AppError::NoProjectSelected)?;
@@ -860,6 +869,15 @@ pub async fn merge_ticket(
             .position(|t| t.id == ticket_id)
             .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
         let ticket = s.board.tickets[idx].clone();
+
+        // Column check: Ticket must be in Review
+        if ticket.column != Column::Review {
+            return Err(AppError::InvalidInput(format!(
+                "Ticket {} ist nicht in 'Review' (aktuelle Spalte: {:?})",
+                ticket_id, ticket.column
+            )).into());
+        }
+
         let project_path = s
             .project_path()
             .ok_or(AppError::NoProjectSelected)?;
