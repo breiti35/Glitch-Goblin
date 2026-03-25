@@ -4424,10 +4424,64 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-muted);
-  white-space: pre-wrap;
   max-height: 400px;
   overflow-y: auto;
 }
+
+/* ── Rendered Markdown in README card ── */
+.dash-readme-content .md-h1 { font-size: 1.5em; font-weight: 700; color: var(--text); margin: 0 0 8px; border-bottom: 1px solid var(--outline-variant); padding-bottom: 6px; }
+.dash-readme-content .md-h2 { font-size: 1.3em; font-weight: 700; color: var(--text); margin: 12px 0 6px; border-bottom: 1px solid var(--outline-variant); padding-bottom: 4px; }
+.dash-readme-content .md-h3 { font-size: 1.1em; font-weight: 600; color: var(--text); margin: 10px 0 4px; }
+.dash-readme-content .md-h4,
+.dash-readme-content .md-h5,
+.dash-readme-content .md-h6 { font-size: 1em; font-weight: 600; color: var(--text); margin: 8px 0 4px; }
+.dash-readme-content .md-p { margin: 0 0 8px; }
+.dash-readme-content .md-list { margin: 4px 0 8px 20px; padding: 0; }
+.dash-readme-content .md-list li { margin-bottom: 2px; }
+.dash-readme-content .md-code-block {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.dash-readme-content .md-code-block code { background: none; padding: 0; border: none; font-size: inherit; }
+.dash-readme-content .md-inline-code {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+.dash-readme-content .md-blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--text-muted);
+  background: var(--surface-container);
+  border-radius: 0 4px 4px 0;
+}
+.dash-readme-content .md-blockquote p { margin: 2px 0; }
+.dash-readme-content .md-hr { border: none; border-top: 1px solid var(--outline-variant); margin: 12px 0; }
+.dash-readme-content .md-link { color: var(--accent); text-decoration: none; }
+.dash-readme-content .md-link:hover { text-decoration: underline; }
+.dash-readme-content .md-img-placeholder {
+  display: inline-block;
+  background: var(--surface-container);
+  border: 1px dashed var(--outline-variant);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+.dash-readme-content strong { color: var(--text); }
+
 /* Activity section (Stitch) */
 .dash-activity-section {
   padding: 8px 0;

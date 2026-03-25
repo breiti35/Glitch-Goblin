@@ -341,6 +341,7 @@ fn main() {
             commands::get_all_notes,
             // Dashboard, Templates, Import/Export (Block D - Phase 3)
             commands::get_project_info,
+            commands::open_readme,
             commands::list_templates,
             commands::save_templates,
             commands::create_ticket_from_template,
