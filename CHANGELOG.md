@@ -7,6 +7,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+- **GG-103 Projekt-Einstellungen von globalen Settings trennen:** Neues Modal "Projekt-Einstellungen" (oeffnen per Rechtsklick/Klick auf Projekt-Avatar). GitHub, Bug-Sync und Deploy-Einstellungen sind jetzt projektspezifisch und werden in `projects.json` pro Projekt gespeichert. Der globale Settings-Tab enthaelt nur noch systemweite Einstellungen (Theme, Sprache, Akzentfarbe, Claude CLI, Modell, Terminal, Benachrichtigungen). Bestehende globale GitHub- und Bug-Sync-Einstellungen werden automatisch ins Default-Projekt migriert. Neue Backend-Commands `get_project_settings` und `save_project_settings`.
+
 ### Fixed
 - **GG-102 validate_api_token fehlt in mark_bugs_synced:** `mark_bugs_synced` in `bugsync.rs` rief `validate_api_url` auf, validierte den API-Token aber nicht. Ein Token mit eingebettetem `\n` oder `\r` haette Header Injection im `Authorization`-Header ermoeglichen koennen. Analog zu `fetch_unsynced_bugs` wird jetzt `validate_api_token(api_token)?` vor dem Setzen des Headers aufgerufen.
 - **GG-101 TOCTOU Race Condition in create_agent und create_command:** Beide Funktionen prueften Datei-Existenz mit synchronem `Path::exists()` in async-Kontext und erstellten die Datei erst danach mit `tokio::fs::write()`. Zwischen Check und Write konnte eine parallele Task dieselbe Datei anlegen — silent overwrite. `exists()` + `write()` wurde durch `tokio::fs::OpenOptions::new().write(true).create_new(true).open()` ersetzt, das Pruefen und Erstellen atomar kombiniert (O_EXCL/CREATE_NEW auf OS-Ebene). Fehler mit `ErrorKind::AlreadyExists` werden auf die bisherige Fehlermeldung gemappt.

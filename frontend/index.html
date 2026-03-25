@@ -383,9 +383,6 @@
         <div class="settings-tabs">
           <button class="settings-tab active" data-settings-tab="general" data-i18n="settings.general">Allgemein</button>
           <button class="settings-tab" data-settings-tab="terminal" data-i18n="settings.terminal">Terminal</button>
-          <button class="settings-tab" data-settings-tab="deploy" data-i18n="settings.deploy">Deploy</button>
-          <button class="settings-tab" data-settings-tab="bugsync" data-i18n="settings.bugSync">Bug-Sync</button>
-          <button class="settings-tab" data-settings-tab="github" data-i18n="settings.github">GitHub</button>
         </div>
         <div class="settings-bento">
           <!-- ═══ GENERAL TAB ═══ -->
@@ -489,62 +486,7 @@
               </label>
             </div>
           </div>
-          <!-- ═══ BUG-SYNC TAB ═══ -->
-          <div class="settings-tab-content" data-tab-content="bugsync">
-            <div class="settings-card">
-              <div class="settings-card-title"><span class="material-symbols-outlined">bug_report</span> Bug-Sync (Portal)</div>
-              <label class="settings-label"><span class="toggle-row"><span>Bug-Sync aktivieren</span><label class="toggle-switch"><input type="checkbox" id="set-bugsync-enabled"><span class="toggle-slider"></span></label></span></label>
-              <label class="settings-label"><span>API URL</span><input type="text" id="set-bugsync-url" class="settings-input" placeholder="https://example.com/api/internal/bugs"></label>
-              <label class="settings-label"><span>API TOKEN</span><input type="password" id="set-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token"></label>
-              <label class="settings-label"><span>SYNC-INTERVALL</span>
-                <div class="settings-range-row"><input type="range" id="set-bugsync-interval" class="settings-range" min="60" max="1800" step="60" value="300"><span id="bugsync-interval-label">5 min</span></div>
-              </label>
-              <button id="btn-bugsync-test" class="btn-secondary" style="margin-top:8px">Jetzt synchronisieren</button>
-              <div id="bugsync-status" class="deploy-detection-info hidden"></div>
-            </div>
-          </div>
-          <!-- ═══ GITHUB TAB ═══ -->
-          <div class="settings-tab-content" data-tab-content="github">
-            <div class="settings-card">
-              <div class="settings-card-title"><span class="material-symbols-outlined">code</span> GitHub Actions</div>
-              <label class="settings-label"><span class="toggle-row"><span data-i18n="settings.githubEnable">Build-Status aktivieren</span><label class="toggle-switch"><input type="checkbox" id="set-github-enabled"><span class="toggle-slider"></span></label></span></label>
-              <label class="settings-label"><span>OWNER</span><input type="text" id="set-github-owner" class="settings-input" placeholder="username-or-org"></label>
-              <label class="settings-label"><span>REPOSITORY</span><input type="text" id="set-github-repo" class="settings-input" placeholder="repo-name"></label>
-              <label class="settings-label"><span>TOKEN (PAT)</span><input type="password" id="set-github-token" class="settings-input" placeholder="ghp_... oder gho_..."></label>
-              <label class="settings-label"><span data-i18n="settings.githubPollInterval">POLL-INTERVALL</span>
-                <div class="settings-range-row"><input type="range" id="set-github-interval" class="settings-range" min="30" max="300" step="10" value="60"><span id="github-interval-label">60s</span></div>
-              </label>
-            </div>
-          </div>
-          <!-- ═══ DEPLOY TAB ═══ -->
-          <div class="settings-tab-content" data-tab-content="deploy">
-            <div class="settings-bento-row">
-              <div class="settings-card">
-                <div class="settings-card-title"><span class="material-symbols-outlined">deployed_code</span> Docker Deploy</div>
-                <label class="settings-label"><span>DEPLOY-TYP</span><select id="set-deploy-type" class="settings-input"><option value="compose">Docker Compose</option><option value="dockerfile">Dockerfile</option></select></label>
-                <label class="settings-label"><span>COMPOSE FILES</span><input type="text" id="set-compose-files" class="settings-input" placeholder="docker-compose.yml"></label>
-                <label class="settings-label"><span>ENV FILE</span><input type="text" id="set-env-file" class="settings-input" placeholder=".env"></label>
-                <label class="settings-label"><span>LOCAL URL</span><input type="text" id="set-local-url" class="settings-input" placeholder="http://localhost:3000"></label>
-                <button id="btn-detect-env" class="btn-secondary" style="margin-top:8px">Umgebung erkennen</button>
-                <div id="deploy-detection-info" class="deploy-detection-info hidden"></div>
-              </div>
-              <div class="settings-card">
-                <div class="settings-card-title"><span class="material-symbols-outlined">cloud_upload</span> Live Server (SSH)</div>
-                <label class="settings-label"><span class="toggle-row"><span>Live Deploy aktivieren</span><label class="toggle-switch"><input type="checkbox" id="set-live-enabled"><span class="toggle-slider"></span></label></span></label>
-                <div id="live-settings-panel">
-                  <label class="settings-label"><span>SSH HOST</span><input type="text" id="set-ssh-host" class="settings-input" placeholder="user@example.com"></label>
-                  <label class="settings-label"><span>SSH KEY</span><input type="text" id="set-ssh-key" class="settings-input" placeholder="~/.ssh/id_rsa"></label>
-                  <label class="settings-label"><span>SSH PORT</span><input type="number" id="set-ssh-port" class="settings-input" value="22" min="1" max="65535"></label>
-                  <label class="settings-label"><span>SERVER-PFAD</span><input type="text" id="set-server-path" class="settings-input" placeholder="/var/www/myapp"></label>
-                  <label class="settings-label"><span>BRANCH</span><input type="text" id="set-server-branch" class="settings-input" placeholder="main"></label>
-                  <label class="settings-label"><span>PRE-COMMANDS</span><textarea id="set-pre-commands" class="settings-input settings-textarea" rows="2" placeholder="git pull origin main"></textarea></label>
-                  <label class="settings-label"><span>DEPLOY-COMMANDS</span><textarea id="set-deploy-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose up --build -d"></textarea></label>
-                  <label class="settings-label"><span>POST-COMMANDS</span><textarea id="set-post-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose logs -f --tail=50"></textarea></label>
-                  <label class="settings-label"><span>LIVE URL</span><input type="text" id="set-live-url" class="settings-input" placeholder="https://example.com"></label>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- Bug-Sync, GitHub, Deploy tabs moved to Project Settings modal -->
           <!-- Actions -->
           <div style="padding:0 32px 24px;display:flex;gap:12px;align-items:center">
             <button id="btn-check-update" class="btn-secondary"><span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle">system_update</span> Auf Updates pr&uuml;fen</button>
@@ -1138,6 +1080,100 @@
       <div class="ctx-item" data-action="remove-logo"><span class="material-symbols-outlined" style="font-size:16px">delete</span> <span data-i18n="avatar.removeLogo">Logo entfernen</span></div>
       <div class="ctx-divider"></div>
       <div class="ctx-item" data-action="project-settings"><span class="material-symbols-outlined" style="font-size:16px">settings</span> <span data-i18n="avatar.projectSettings">Projekt-Einstellungen</span></div>
+    </div>
+
+    <!-- ═══ Project Settings Modal ═══ -->
+    <div id="modal-project-settings" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-project-settings-content">
+        <div class="modal-header">
+          <h2><span class="material-symbols-outlined" style="font-size:22px;vertical-align:middle;color:var(--accent)">folder_managed</span> <span data-i18n="projectSettings.title">Projekt-Einstellungen</span></h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:0">
+          <div class="settings-tabs" id="ps-tabs">
+            <button class="settings-tab active" data-settings-tab="ps-project" data-i18n="projectSettings.tabProject">Projekt</button>
+            <button class="settings-tab" data-settings-tab="ps-github" data-i18n="projectSettings.tabGithub">GitHub</button>
+            <button class="settings-tab" data-settings-tab="ps-bugsync" data-i18n="projectSettings.tabBugsync">Bug-Sync</button>
+            <button class="settings-tab" data-settings-tab="ps-deploy" data-i18n="projectSettings.tabDeploy">Deploy</button>
+          </div>
+          <div class="settings-bento" style="padding:16px 24px 8px">
+            <!-- ── Projekt Tab ── -->
+            <div class="settings-tab-content active" data-tab-content="ps-project">
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">badge</span> <span data-i18n="projectSettings.identity">Projekt-Identit&auml;t</span></div>
+                <label class="settings-label"><span data-i18n="projectSettings.ticketPrefix">TICKET-PREFIX</span>
+                  <input type="text" id="ps-ticket-prefix" class="settings-input" maxlength="8" placeholder="GG">
+                </label>
+                <label class="settings-label"><span data-i18n="projectSettings.projectLogo">PROJEKT-LOGO</span>
+                  <div style="display:flex;gap:8px">
+                    <button id="ps-upload-logo" class="btn-secondary" style="font-size:12px"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">upload</span> <span data-i18n="projectSettings.uploadLogo">Logo hochladen</span></button>
+                    <button id="ps-remove-logo" class="btn-secondary" style="font-size:12px"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">delete</span> <span data-i18n="projectSettings.removeLogo">Entfernen</span></button>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <!-- ── GitHub Tab ── -->
+            <div class="settings-tab-content" data-tab-content="ps-github">
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">code</span> GitHub Actions</div>
+                <label class="settings-label"><span class="toggle-row"><span data-i18n="settings.githubEnable">Build-Status aktivieren</span><label class="toggle-switch"><input type="checkbox" id="ps-github-enabled"><span class="toggle-slider"></span></label></span></label>
+                <label class="settings-label"><span>OWNER</span><input type="text" id="ps-github-owner" class="settings-input" placeholder="username-or-org"></label>
+                <label class="settings-label"><span>REPOSITORY</span><input type="text" id="ps-github-repo" class="settings-input" placeholder="repo-name"></label>
+                <label class="settings-label"><span>TOKEN (PAT)</span><input type="password" id="ps-github-token" class="settings-input" placeholder="ghp_... oder gho_..."></label>
+                <label class="settings-label"><span data-i18n="settings.githubPollInterval">POLL-INTERVALL</span>
+                  <div class="settings-range-row"><input type="range" id="ps-github-interval" class="settings-range" min="30" max="300" step="10" value="60"><span id="ps-github-interval-label">60s</span></div>
+                </label>
+              </div>
+            </div>
+            <!-- ── Bug-Sync Tab ── -->
+            <div class="settings-tab-content" data-tab-content="ps-bugsync">
+              <div class="settings-card">
+                <div class="settings-card-title"><span class="material-symbols-outlined">bug_report</span> Bug-Sync (Portal)</div>
+                <label class="settings-label"><span class="toggle-row"><span>Bug-Sync aktivieren</span><label class="toggle-switch"><input type="checkbox" id="ps-bugsync-enabled"><span class="toggle-slider"></span></label></span></label>
+                <label class="settings-label"><span>API URL</span><input type="text" id="ps-bugsync-url" class="settings-input" placeholder="https://example.com/api/internal/bugs"></label>
+                <label class="settings-label"><span>API TOKEN</span><input type="password" id="ps-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token"></label>
+                <label class="settings-label"><span>SYNC-INTERVALL</span>
+                  <div class="settings-range-row"><input type="range" id="ps-bugsync-interval" class="settings-range" min="60" max="1800" step="60" value="300"><span id="ps-bugsync-interval-label">5 min</span></div>
+                </label>
+              </div>
+            </div>
+            <!-- ── Deploy Tab ── -->
+            <div class="settings-tab-content" data-tab-content="ps-deploy">
+              <div class="settings-bento-row">
+                <div class="settings-card">
+                  <div class="settings-card-title"><span class="material-symbols-outlined">deployed_code</span> Docker Deploy</div>
+                  <label class="settings-label"><span>DEPLOY-TYP</span><select id="ps-deploy-type" class="settings-input"><option value="compose">Docker Compose</option><option value="dockerfile">Dockerfile</option></select></label>
+                  <label class="settings-label"><span>COMPOSE FILES</span><input type="text" id="ps-compose-files" class="settings-input" placeholder="docker-compose.yml"></label>
+                  <label class="settings-label"><span>ENV FILE</span><input type="text" id="ps-env-file" class="settings-input" placeholder=".env"></label>
+                  <label class="settings-label"><span>LOCAL URL</span><input type="text" id="ps-local-url" class="settings-input" placeholder="http://localhost:3000"></label>
+                  <button id="ps-detect-env" class="btn-secondary" style="margin-top:8px">Umgebung erkennen</button>
+                  <div id="ps-deploy-detection-info" class="deploy-detection-info hidden"></div>
+                </div>
+                <div class="settings-card">
+                  <div class="settings-card-title"><span class="material-symbols-outlined">cloud_upload</span> Live Server (SSH)</div>
+                  <label class="settings-label"><span class="toggle-row"><span>Live Deploy aktivieren</span><label class="toggle-switch"><input type="checkbox" id="ps-live-enabled"><span class="toggle-slider"></span></label></span></label>
+                  <div id="ps-live-settings-panel">
+                    <label class="settings-label"><span>SSH HOST</span><input type="text" id="ps-ssh-host" class="settings-input" placeholder="user@example.com"></label>
+                    <label class="settings-label"><span>SSH KEY</span><input type="text" id="ps-ssh-key" class="settings-input" placeholder="~/.ssh/id_rsa"></label>
+                    <label class="settings-label"><span>SSH PORT</span><input type="number" id="ps-ssh-port" class="settings-input" value="22" min="1" max="65535"></label>
+                    <label class="settings-label"><span>SERVER-PFAD</span><input type="text" id="ps-server-path" class="settings-input" placeholder="/var/www/myapp"></label>
+                    <label class="settings-label"><span>BRANCH</span><input type="text" id="ps-server-branch" class="settings-input" placeholder="main"></label>
+                    <label class="settings-label"><span>PRE-COMMANDS</span><textarea id="ps-pre-commands" class="settings-input settings-textarea" rows="2" placeholder="git pull origin main"></textarea></label>
+                    <label class="settings-label"><span>DEPLOY-COMMANDS</span><textarea id="ps-deploy-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose up --build -d"></textarea></label>
+                    <label class="settings-label"><span>POST-COMMANDS</span><textarea id="ps-post-commands" class="settings-input settings-textarea" rows="2" placeholder="docker compose logs -f --tail=50"></textarea></label>
+                    <label class="settings-label"><span>LIVE URL</span><input type="text" id="ps-live-url" class="settings-input" placeholder="https://example.com"></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:8px 24px 20px;display:flex;gap:12px;justify-content:flex-end">
+            <button id="btn-ps-cancel" class="btn-secondary" data-i18n="projectSettings.cancel">Abbrechen</button>
+            <button id="btn-ps-save" class="btn-primary" data-i18n="projectSettings.save">Speichern</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

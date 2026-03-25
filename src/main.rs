@@ -103,6 +103,25 @@ fn main() {
                 }
             }
 
+            // One-time migration: move global Bug-Sync settings into the default project
+            if settings.bug_sync.enabled || !settings.bug_sync.api_url.is_empty() {
+                if let Some(default_name) = &projects_config.default_project {
+                    if let Some(entry) = projects_config.projects.iter_mut().find(|p| &p.name == default_name) {
+                        if !entry.bug_sync.enabled && entry.bug_sync.api_url.is_empty() {
+                            info!("Migrating global Bug-Sync settings to project '{}'", entry.name);
+                            entry.bug_sync = settings.bug_sync.clone();
+                            if let Err(e) = config::save_projects(&projects_config) {
+                                error!(error = %e, "Failed to save migrated Bug-Sync settings");
+                            }
+                            settings.bug_sync = crate::state::BugSyncSettings::default();
+                            if let Err(e) = config::save_settings_to_disk(&settings) {
+                                error!(error = %e, "Failed to clear global Bug-Sync settings");
+                            }
+                        }
+                    }
+                }
+            }
+
             let projects = projects_config.projects.clone();
 
             // Resolve default project (re-read to pick up migrated github settings)
@@ -155,6 +174,11 @@ fn main() {
             let state = app.state::<Mutex<AppState>>();
             let mut s = tauri::async_runtime::block_on(state.lock());
             s.board = board;
+            // Overlay project-specific settings so the background task picks them up
+            if let Some(ref p) = project {
+                settings.bug_sync = p.bug_sync.clone();
+                settings.github = p.github.clone();
+            }
             s.project = project;
             s.projects = projects;
             s.kanban_path = kanban_path.clone();
@@ -333,6 +357,9 @@ fn main() {
             // Bug-Sync (Portal Bug-Tracker)
             commands::sync_portal_bugs,
             commands::get_bug_sync_settings,
+            // Project Settings
+            commands::get_project_settings,
+            commands::save_project_settings,
             // GitHub Actions
             commands::get_build_status,
             // Project Logo

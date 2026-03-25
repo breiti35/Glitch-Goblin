@@ -334,9 +334,189 @@ export function setupAvatarContextMenu() {
     if (action === "upload-logo") uploadProjectLogo();
     else if (action === "remove-logo") removeProjectLogo();
     else if (action === "project-settings") {
-      // Navigiere zum Settings-View
-      const nav = document.querySelector('[data-view="settings"]');
-      if (nav) nav.click();
+      openProjectSettingsModal();
+    }
+  });
+}
+
+// ── Project Settings Modal ──
+
+/** Öffnet das Projekt-Einstellungen-Modal und befüllt es mit den aktuellen Werten. */
+export async function openProjectSettingsModal() {
+  if (!state.project) return;
+  openModal("modal-project-settings");
+  await loadProjectSettingsForm();
+}
+
+/** Lädt projekt-spezifische Einstellungen vom Backend und befüllt das Modal. */
+async function loadProjectSettingsForm() {
+  try {
+    const ps = await invoke("get_project_settings");
+
+    // Projekt-Tab
+    document.getElementById("ps-ticket-prefix").value = ps.ticket_prefix || "GG";
+
+    // GitHub-Tab
+    document.getElementById("ps-github-enabled").checked = !!ps.github.enabled;
+    document.getElementById("ps-github-owner").value = ps.github.owner || "";
+    document.getElementById("ps-github-repo").value = ps.github.repo || "";
+    document.getElementById("ps-github-token").value = "";
+    document.getElementById("ps-github-token").placeholder = ps.github_token_set ? "(Token gesetzt)" : "ghp_... oder gho_...";
+    document.getElementById("ps-github-interval").value = ps.github.poll_interval_secs || 60;
+    document.getElementById("ps-github-interval-label").textContent = (ps.github.poll_interval_secs || 60) + "s";
+
+    // Bug-Sync-Tab
+    document.getElementById("ps-bugsync-enabled").checked = !!ps.bug_sync.enabled;
+    document.getElementById("ps-bugsync-url").value = ps.bug_sync.api_url || "";
+    document.getElementById("ps-bugsync-token").value = "";
+    document.getElementById("ps-bugsync-token").placeholder = ps.bug_sync_token_set ? "(Token gesetzt)" : "Secret oder JWT Token";
+    document.getElementById("ps-bugsync-interval").value = ps.bug_sync.interval_secs || 300;
+    const bsInterval = ps.bug_sync.interval_secs || 300;
+    document.getElementById("ps-bugsync-interval-label").textContent = bsInterval >= 60 ? Math.round(bsInterval / 60) + " min" : bsInterval + " s";
+
+    // Deploy-Tab — load from existing deploy config
+    loadProjectDeployForm();
+  } catch (err) {
+    appendLog("Load project settings error: " + err, true);
+  }
+}
+
+/** Befüllt die Deploy-Felder im Projekt-Settings-Modal aus state.deployConfig. */
+function loadProjectDeployForm() {
+  const cfg = state.deployConfig || {};
+  const el = (id) => document.getElementById(id);
+  if (el("ps-deploy-type")) el("ps-deploy-type").value = cfg.deployType || "compose";
+  if (el("ps-compose-files")) el("ps-compose-files").value = (cfg.composeFiles || []).join(", ");
+  if (el("ps-env-file")) el("ps-env-file").value = cfg.envFile || "";
+  if (el("ps-local-url")) el("ps-local-url").value = cfg.localUrl || "";
+  if (el("ps-live-enabled")) el("ps-live-enabled").checked = !!cfg.liveEnabled;
+  if (el("ps-ssh-host")) el("ps-ssh-host").value = cfg.sshHost || "";
+  if (el("ps-ssh-key")) el("ps-ssh-key").value = cfg.sshKey || "";
+  if (el("ps-ssh-port")) el("ps-ssh-port").value = cfg.sshPort || 22;
+  if (el("ps-server-path")) el("ps-server-path").value = cfg.serverPath || "";
+  if (el("ps-server-branch")) el("ps-server-branch").value = cfg.serverBranch || "main";
+  if (el("ps-pre-commands")) el("ps-pre-commands").value = (cfg.preCommands || []).join("\n");
+  if (el("ps-deploy-commands")) el("ps-deploy-commands").value = (cfg.deployCommands || []).join("\n");
+  if (el("ps-post-commands")) el("ps-post-commands").value = (cfg.postCommands || []).join("\n");
+  if (el("ps-live-url")) el("ps-live-url").value = cfg.liveUrl || "";
+
+  const livePanel = document.getElementById("ps-live-settings-panel");
+  if (livePanel) livePanel.classList.toggle("collapsed", !cfg.liveEnabled);
+}
+
+/** Speichert alle Projekt-Einstellungen (GitHub, Bug-Sync, Deploy, Prefix). */
+export async function saveProjectSettingsForm() {
+  const payload = {
+    ticket_prefix: document.getElementById("ps-ticket-prefix").value.trim(),
+    github: {
+      enabled: document.getElementById("ps-github-enabled").checked,
+      owner: document.getElementById("ps-github-owner").value.trim(),
+      repo: document.getElementById("ps-github-repo").value.trim(),
+      token: document.getElementById("ps-github-token").value.trim(),
+      poll_interval_secs: parseInt(document.getElementById("ps-github-interval").value) || 60,
+    },
+    bug_sync: {
+      enabled: document.getElementById("ps-bugsync-enabled").checked,
+      api_url: document.getElementById("ps-bugsync-url").value.trim(),
+      api_token: document.getElementById("ps-bugsync-token").value.trim(),
+      interval_secs: parseInt(document.getElementById("ps-bugsync-interval").value) || 300,
+    },
+  };
+
+  // Deploy config (separate command)
+  const el = (id) => document.getElementById(id);
+  const deployConfig = {
+    deployType: el("ps-deploy-type")?.value || "compose",
+    composeFiles: (el("ps-compose-files")?.value || "").split(",").map(s => s.trim()).filter(Boolean),
+    envFile: el("ps-env-file")?.value?.trim() || "",
+    localUrl: el("ps-local-url")?.value?.trim() || "",
+    liveEnabled: el("ps-live-enabled")?.checked || false,
+    sshHost: el("ps-ssh-host")?.value?.trim() || "",
+    sshKey: el("ps-ssh-key")?.value?.trim() || "",
+    sshPort: parseInt(el("ps-ssh-port")?.value) || 22,
+    serverPath: el("ps-server-path")?.value?.trim() || "",
+    serverBranch: el("ps-server-branch")?.value?.trim() || "main",
+    preCommands: (el("ps-pre-commands")?.value || "").split("\n").map(s => s.trim()).filter(Boolean),
+    deployCommands: (el("ps-deploy-commands")?.value || "").split("\n").map(s => s.trim()).filter(Boolean),
+    postCommands: (el("ps-post-commands")?.value || "").split("\n").map(s => s.trim()).filter(Boolean),
+    liveUrl: el("ps-live-url")?.value?.trim() || "",
+  };
+
+  try {
+    await invoke("save_project_settings", { payload });
+    await invoke("save_deploy_config", { config: deployConfig });
+    state.deployConfig = deployConfig;
+
+    // Update local state
+    if (state.project) {
+      state.project.ticket_prefix = payload.ticket_prefix;
+    }
+    state.projects = await invoke("get_projects");
+
+    closeModal("modal-project-settings");
+    showToast(t('settings.saved'), "success");
+  } catch (err) {
+    appendLog("Save project settings error: " + err, true);
+    showToast(String(err), "error");
+  }
+}
+
+/** Richtet Listener für das Projekt-Settings-Modal ein. */
+export function setupProjectSettingsModal() {
+  // Tab navigation within the modal
+  document.querySelectorAll("#ps-tabs .settings-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("#ps-tabs .settings-tab").forEach(t => t.classList.remove("active"));
+      const modal = document.getElementById("modal-project-settings");
+      modal.querySelectorAll(".settings-tab-content").forEach(c => c.classList.remove("active"));
+      tab.classList.add("active");
+      const target = modal.querySelector(`[data-tab-content="${tab.dataset.settingsTab}"]`);
+      if (target) target.classList.add("active");
+    });
+  });
+
+  // Save / Cancel
+  document.getElementById("btn-ps-save")?.addEventListener("click", saveProjectSettingsForm);
+  document.getElementById("btn-ps-cancel")?.addEventListener("click", () => closeModal("modal-project-settings"));
+  document.querySelector("#modal-project-settings .modal-close")?.addEventListener("click", () => closeModal("modal-project-settings"));
+  document.querySelector("#modal-project-settings .modal-backdrop")?.addEventListener("click", () => closeModal("modal-project-settings"));
+
+  // Logo buttons in project settings
+  document.getElementById("ps-upload-logo")?.addEventListener("click", uploadProjectLogo);
+  document.getElementById("ps-remove-logo")?.addEventListener("click", removeProjectLogo);
+
+  // Live deploy panel toggle
+  document.getElementById("ps-live-enabled")?.addEventListener("change", (e) => {
+    const panel = document.getElementById("ps-live-settings-panel");
+    if (panel) panel.classList.toggle("collapsed", !e.target.checked);
+  });
+
+  // Range label updates
+  document.getElementById("ps-github-interval")?.addEventListener("input", (e) => {
+    document.getElementById("ps-github-interval-label").textContent = e.target.value + "s";
+  });
+  document.getElementById("ps-bugsync-interval")?.addEventListener("input", (e) => {
+    const v = parseInt(e.target.value);
+    document.getElementById("ps-bugsync-interval-label").textContent = v >= 60 ? Math.round(v / 60) + " min" : v + " s";
+  });
+
+  // Detect deploy environment
+  document.getElementById("ps-detect-env")?.addEventListener("click", async () => {
+    const info = document.getElementById("ps-deploy-detection-info");
+    if (info) { info.classList.remove("hidden"); info.textContent = t('settings.detecting'); }
+    try {
+      const result = await invoke("detect_deploy_env");
+      if (result.composeFiles?.length > 0) {
+        const el = document.getElementById("ps-compose-files");
+        if (el) el.value = result.composeFiles.join(", ");
+      }
+      if (result.envFile) {
+        const el = document.getElementById("ps-env-file");
+        if (el) el.value = result.envFile;
+      }
+      if (info) info.textContent = JSON.stringify(result, null, 2);
+    } catch (err) {
+      if (info) info.textContent = String(err);
     }
   });
 }

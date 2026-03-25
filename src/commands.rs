@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::Manager;
@@ -18,7 +18,7 @@ use crate::deploy;
 use crate::error::AppError;
 use crate::git;
 use crate::kanban::{self, Column, KanbanBoard, Ticket, TicketType};
-use crate::state::{AppState, GitHubSettings, Settings};
+use crate::state::{AppState, BugSyncSettings, GitHubSettings, Settings};
 use crate::terminal;
 use crate::undo::UndoAction;
 
@@ -180,6 +180,10 @@ pub async fn switch_project(
     s.board = board.clone();
     s.kanban_path = data_dir.join("kanban.json");
     s.data_dir = data_dir;
+    // Overlay project-specific settings into the in-memory settings
+    // so the background bug-sync task picks them up.
+    s.settings.bug_sync = project.bug_sync.clone();
+    s.settings.github = project.github.clone();
     s.project = Some(project);
     s.undo_manager.clear();
     s.log("Project switched".to_string());
@@ -1083,18 +1087,41 @@ pub async fn get_settings(state: State<'_>) -> Result<Settings, String> {
     Ok(settings)
 }
 
-/// Gibt `existing` zurück wenn `incoming` leer ist, sonst `incoming`.
-/// Verhindert, dass ein nicht befülltes Token-Feld im Einstellungs-Formular
-/// einen bereits gespeicherten Token überschreibt (GG-064).
-fn preserve_token_if_empty(incoming: &str, existing: &str) -> String {
-    if incoming.is_empty() && !existing.is_empty() {
-        existing.to_string()
-    } else {
-        incoming.to_string()
-    }
+/// Gibt die projekt-spezifischen Einstellungen des aktuellen Projekts zurück.
+#[derive(Clone, Serialize)]
+pub struct ProjectSettingsResponse {
+    pub ticket_prefix: String,
+    pub github: GitHubSettings,
+    pub bug_sync: BugSyncSettings,
+    pub github_token_set: bool,
+    pub bug_sync_token_set: bool,
 }
 
-/// Speichert die App-Einstellungen dauerhaft auf der Festplatte.
+#[tauri::command]
+pub async fn get_project_settings(state: State<'_>) -> Result<ProjectSettingsResponse, String> {
+    let s = state.lock().await;
+    let p = s.project.as_ref().ok_or("Kein Projekt aktiv")?;
+    let mut github = p.github.clone();
+    let github_token_set = !github.token.is_empty();
+    github.token = String::new(); // Never send tokens to the frontend
+
+    let mut bug_sync = p.bug_sync.clone();
+    let bug_sync_token_set = !bug_sync.api_token.is_empty();
+    bug_sync.api_token = String::new();
+
+    Ok(ProjectSettingsResponse {
+        ticket_prefix: p.ticket_prefix.clone(),
+        github,
+        bug_sync,
+        github_token_set,
+        bug_sync_token_set,
+    })
+}
+
+
+/// Speichert die globalen App-Einstellungen dauerhaft auf der Festplatte.
+/// Projekt-spezifische Settings (GitHub, Bug-Sync, Deploy) werden über
+/// `save_project_settings` gespeichert.
 #[tauri::command]
 pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(), String> {
     // Validate settings ranges
@@ -1106,57 +1133,96 @@ pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(
     if settings.cost_per_output_mtok < 0.0 {
         settings.cost_per_output_mtok = 0.0;
     }
-    if settings.bug_sync.interval_secs < 60 {
-        settings.bug_sync.interval_secs = 60;
-    }
-    if settings.github.poll_interval_secs < 30 {
-        settings.github.poll_interval_secs = 30;
-    }
 
-    // Extract project-specific GitHub settings before saving global settings
-    let mut project_github = settings.github.clone();
-
-    // Preserve existing tokens if the frontend sends empty ones (GG-064)
-    {
-        let s = state.lock().await;
-        settings.bug_sync.api_token = preserve_token_if_empty(
-            &settings.bug_sync.api_token,
-            &s.settings.bug_sync.api_token,
-        );
-        // Preserve project-specific GitHub token
-        if project_github.token.is_empty() {
-            if let Some(p) = &s.project {
-                if !p.github.token.is_empty() {
-                    project_github.token = p.github.token.clone();
-                }
-            }
-        }
-    }
-
-    // Save GitHub settings to the current project (not global)
-    {
-        let mut s = state.lock().await;
-        if let Some(ref mut p) = s.project {
-            let project_name = p.name.clone();
-            p.github = project_github.clone();
-            // Also update in the projects list
-            if let Some(entry) = s.projects.iter_mut().find(|e| e.name == project_name) {
-                entry.github = project_github.clone();
-            }
-            // Persist to projects.json
-            let mut cfg = config::load_projects()?;
-            if let Some(entry) = cfg.projects.iter_mut().find(|e| e.name == project_name) {
-                entry.github = project_github;
-            }
-            config::save_projects(&cfg)?;
-        }
-    }
-
-    // Save global settings without GitHub (cleared to default)
+    // Clear project-specific fields — they are managed by save_project_settings
     settings.github = GitHubSettings::default();
+    settings.bug_sync = BugSyncSettings::default();
+
     config::save_settings_to_disk(&settings)?;
     let mut s = state.lock().await;
+    // Preserve the project-overlaid bug_sync/github in memory
+    let project_bug_sync = s.settings.bug_sync.clone();
+    let project_github = s.settings.github.clone();
     s.settings = settings;
+    s.settings.bug_sync = project_bug_sync;
+    s.settings.github = project_github;
+    Ok(())
+}
+
+/// Projekt-spezifische Einstellungen für das aktuelle Projekt.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProjectSettingsPayload {
+    pub ticket_prefix: String,
+    pub github: GitHubSettings,
+    pub bug_sync: BugSyncSettings,
+}
+
+/// Speichert projekt-spezifische Einstellungen (GitHub, Bug-Sync, Ticket-Prefix)
+/// in die projects.json des aktuellen Projekts.
+#[tauri::command]
+pub async fn save_project_settings(
+    payload: ProjectSettingsPayload,
+    state: State<'_>,
+) -> Result<(), String> {
+    let mut github = payload.github;
+    let mut bug_sync = payload.bug_sync;
+
+    // Validate
+    if github.poll_interval_secs < 30 {
+        github.poll_interval_secs = 30;
+    }
+    if bug_sync.interval_secs < 60 {
+        bug_sync.interval_secs = 60;
+    }
+    let prefix = payload.ticket_prefix.trim().to_uppercase();
+    if prefix.is_empty() || !prefix.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err("Ticket-Prefix darf nur Buchstaben/Zahlen enthalten".into());
+    }
+
+    // Single lock scope: preserve tokens, update state, persist
+    let mut s = state.lock().await;
+    let project_name = s
+        .project
+        .as_ref()
+        .map(|p| p.name.clone())
+        .ok_or("Kein Projekt aktiv")?;
+
+    // Preserve existing tokens if the frontend sends empty ones (GG-064)
+    if let Some(p) = &s.project {
+        if github.token.is_empty() && !p.github.token.is_empty() {
+            github.token = p.github.token.clone();
+        }
+        if bug_sync.api_token.is_empty() && !p.bug_sync.api_token.is_empty() {
+            bug_sync.api_token = p.bug_sync.api_token.clone();
+        }
+    }
+
+    if let Some(ref mut p) = s.project {
+        p.github = github.clone();
+        p.bug_sync = bug_sync.clone();
+        p.ticket_prefix = prefix.clone();
+    }
+    if let Some(entry) = s.projects.iter_mut().find(|e| e.name == project_name) {
+        entry.github = github.clone();
+        entry.bug_sync = bug_sync.clone();
+        entry.ticket_prefix = prefix;
+    }
+
+    // Update the in-memory settings so the background task picks up changes
+    s.settings.bug_sync = bug_sync;
+    s.settings.github = github;
+
+    // Persist to projects.json
+    let mut cfg = config::load_projects()?;
+    if let Some(entry) = cfg.projects.iter_mut().find(|e| e.name == project_name) {
+        if let Some(p) = &s.project {
+            entry.github = p.github.clone();
+            entry.bug_sync = p.bug_sync.clone();
+            entry.ticket_prefix = p.ticket_prefix.clone();
+        }
+    }
+    config::save_projects(&cfg)?;
+
     Ok(())
 }
 
@@ -3211,35 +3277,4 @@ mod tests {
         assert!(!is_windows_reserved_name("COM10"));
     }
 
-    // ── preserve_token_if_empty ──
-
-    #[test]
-    fn preserve_token_wenn_leer_gesendet() {
-        // Hauptfall GG-064: User öffnet Settings und speichert ohne Token einzugeben
-        assert_eq!(
-            preserve_token_if_empty("", "gespeicherter-token"),
-            "gespeicherter-token"
-        );
-    }
-
-    #[test]
-    fn neuer_token_ersetzt_bestehenden() {
-        // User gibt explizit einen neuen Token ein
-        assert_eq!(
-            preserve_token_if_empty("neuer-token", "alter-token"),
-            "neuer-token"
-        );
-    }
-
-    #[test]
-    fn leerer_token_bleibt_leer_wenn_kein_token_gesetzt() {
-        // Kein Token war gesetzt, User hat auch keinen eingegeben
-        assert_eq!(preserve_token_if_empty("", ""), "");
-    }
-
-    #[test]
-    fn erster_token_wird_gesetzt() {
-        // Kein bestehender Token, User setzt einen neuen
-        assert_eq!(preserve_token_if_empty("erster-token", ""), "erster-token");
-    }
 }
