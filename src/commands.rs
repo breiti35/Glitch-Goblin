@@ -358,7 +358,7 @@ pub async fn move_ticket(
 
 /// Löscht ein Ticket dauerhaft aus dem Board.
 #[tauri::command]
-pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), String> {
+pub async fn delete_ticket(ticket_id: String, state: State<'_>, app: AppHandle) -> Result<(), String> {
     let mut s = state.lock().await;
     let idx = s
         .board
@@ -368,12 +368,22 @@ pub async fn delete_ticket(ticket_id: String, state: State<'_>) -> Result<(), St
         .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
     let removed_ticket = s.board.tickets.remove(idx);
     let title = removed_ticket.title.clone();
+
+    // Clear running_ticket if the deleted ticket is currently running
+    if s.running_ticket.as_ref() == Some(&ticket_id) {
+        s.running_ticket = None;
+    }
+
     s.save_and_backup()?;
     s.undo_manager.push(UndoAction::DeleteTicket {
         ticket: removed_ticket,
         index: idx,
     });
     s.log_activity("ticket_deleted", Some(&ticket_id), Some(&title), None);
+
+    // Notify frontend of board change
+    let _ = app.emit("board-changed", &s.board);
+
     Ok(())
 }
 
