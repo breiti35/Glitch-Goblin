@@ -33,6 +33,8 @@ export function checkOnboarding() {
   if (state.projects && state.projects.length > 0) return;
   // Kein Projekt vorhanden — Onboarding starten
   currentStep = 0;
+  finishing = false;
+  prefixUserEdited = false;
   wizardData = {
     folderPath: null,
     projectName: '',
@@ -63,7 +65,7 @@ export function setupOnboarding() {
   if (nameInput) {
     nameInput.addEventListener('input', () => {
       const name = nameInput.value.trim();
-      if (name && !document.getElementById('ob-ticket-prefix')._userEdited) {
+      if (name && !prefixUserEdited) {
         document.getElementById('ob-ticket-prefix').value = derivePrefix(name);
       }
     });
@@ -73,7 +75,7 @@ export function setupOnboarding() {
   const prefixInput = document.getElementById('ob-ticket-prefix');
   if (prefixInput) {
     prefixInput.addEventListener('input', () => {
-      prefixInput._userEdited = true;
+      prefixUserEdited = true;
       prefixInput.value = prefixInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     });
   }
@@ -203,7 +205,7 @@ async function pickFolder() {
 
     // Auto-derive prefix
     const prefixInput = document.getElementById('ob-ticket-prefix');
-    if (prefixInput && !prefixInput._userEdited) {
+    if (prefixInput && !prefixUserEdited) {
       prefixInput.value = derivePrefix(name);
       wizardData.ticketPrefix = prefixInput.value;
     }
@@ -275,15 +277,19 @@ function updateSummary() {
   if (claudeEl) {
     if (wizardData.claudeFound) {
       claudeEl.textContent = '✓ ' + t('onboarding.available');
-      claudeEl.style.color = 'var(--green, #22c55e)';
+      claudeEl.style.color = 'var(--success)';
     } else {
       claudeEl.textContent = '✗ ' + t('onboarding.notAvailable');
-      claudeEl.style.color = 'var(--red, #ef4444)';
+      claudeEl.style.color = 'var(--danger)';
     }
   }
 }
 
+let finishing = false;
+let prefixUserEdited = false;
 async function finishOnboarding() {
+  if (finishing) return;
+  finishing = true;
   try {
     // 1. Add project
     await invoke('add_project', {
@@ -327,5 +333,6 @@ async function finishOnboarding() {
   } catch (err) {
     appendLog('Onboarding finish error: ' + err, true);
     showToast(String(err), 'error');
+    finishing = false;
   }
 }

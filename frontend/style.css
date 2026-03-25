@@ -1641,7 +1641,7 @@ kbd {
 }
 .onboarding-step.active .step-label,
 .onboarding-step.done .step-label {
-  color: var(--text-primary);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -1712,8 +1712,8 @@ kbd {
   gap: 6px;
   font-size: 12px;
 }
-.ob-git-status.ok { color: var(--green, #22c55e); }
-.ob-git-status.err { color: var(--red, #ef4444); }
+.ob-git-status.ok { color: var(--success); }
+.ob-git-status.err { color: var(--danger); }
 
 .ob-claude-status {
   display: flex;
@@ -1725,10 +1725,10 @@ kbd {
   font-size: 13px;
 }
 .ob-claude-status.ok {
-  color: var(--green, #22c55e);
+  color: var(--success);
 }
 .ob-claude-status.err {
-  color: var(--red, #ef4444);
+  color: var(--danger);
 }
 .ob-claude-spinner {
   width: 16px;

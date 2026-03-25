@@ -331,6 +331,7 @@ export default {
     firstTicketHint: "Create your first ticket with Ctrl+N",
     available: "available",
     notAvailable: "not available",
+    recheck: "Recheck",
   },
 
   // Focus Mode

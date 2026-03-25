@@ -331,6 +331,7 @@ export default {
     firstTicketHint: "Erstelle dein erstes Ticket mit Ctrl+N",
     available: "verf\u00fcgbar",
     notAvailable: "nicht verf\u00fcgbar",
+    recheck: "Erneut pr\u00fcfen",
   },
 
   // Focus Mode
