@@ -110,7 +110,7 @@ export default {
     activityYesterday: "YESTERDAY",
     activityThisWeek: "THIS WEEK",
     activityOlder: "OLDER",
-    activityStreamSubtitle: "Real-time event stream for {project}",
+    activityStreamSubtitle: "Echtzeit-Ereignisstrom f\u00fcr {project}",
   },
 
   // Git
