@@ -608,6 +608,7 @@ code, pre, .commit-hash, .card-ticket-id, .system-status-bar, .git-current-name 
   position: relative;
   overflow: hidden;
   box-shadow: 0 8px 40px var(--shadow-ambient);
+  flex-shrink: 0;
 }
 
 /* Workflow progress bar — thin accent line at card bottom */
@@ -3562,6 +3563,8 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 .card-expand { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; }
 /* Click-toggle: .expanded class controls visibility */
 .ticket-card.expanded .card-expand { max-height: 300px; }
+/* Always-open mode: cards permanently expanded via CSS */
+[data-card-mode="always"] .card-expand { max-height: 300px; }
 /* Hover mode: only active when body has data-card-mode="hover" */
 [data-card-mode="hover"] .ticket-card:hover .card-expand { max-height: 300px; }
 .ticket-card.dragging .card-expand { max-height: 0 !important; }
