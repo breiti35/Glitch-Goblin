@@ -16,7 +16,7 @@ use crate::kanban::{Column, KanbanBoard, Ticket, TicketComment, TicketType};
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 const CREATE_SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS ticket_comments (
     timestamp TEXT    NOT NULL,
     text      TEXT    NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_comments_ticket ON ticket_comments(ticket_id);
 
 CREATE TABLE IF NOT EXISTS activity_log (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,6 +237,12 @@ fn apply_schema_migrations(conn: &Connection, from_version: i64) -> Result<(), S
     if from_version < 2 {
         conn.execute_batch("ALTER TABLE tickets ADD COLUMN archived_at TEXT;")
             .map_err(|e| format!("Migration v1→v2 (archived_at): {e}"))?;
+    }
+    if from_version < 3 {
+        conn.execute_batch(
+            "CREATE INDEX IF NOT EXISTS idx_comments_ticket ON ticket_comments(ticket_id);",
+        )
+        .map_err(|e| format!("Migration v2→v3 (idx_comments_ticket): {e}"))?;
     }
     Ok(())
 }
