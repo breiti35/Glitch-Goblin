@@ -382,8 +382,19 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
         })
         .unwrap_or_default();
 
+    // First pass: parse metadata (no git calls yet)
+    struct ParsedBranch {
+        name: String,
+        is_current: bool,
+        is_kanban: bool,
+        last_commit_msg: String,
+        last_commit_date: String,
+        is_merged: bool,
+        ticket_id: Option<String>,
+    }
+
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let mut branches = Vec::new();
+    let mut parsed: Vec<ParsedBranch> = Vec::new();
 
     for line in stdout.lines() {
         let parts: Vec<&str> = line.splitn(4, '|').collect();
@@ -403,27 +414,53 @@ pub async fn list_branches(project_path: &Path) -> Result<Vec<BranchInfo>, Strin
                 None
             }
         });
-        let is_kanban = ticket_id.is_some();
 
-        // Get ahead count and files changed (lightweight: rev-list count + diffstat)
-        let (ahead_count, files_changed) = if name != default {
-            get_branch_counts(&clean_project, &default, &name).await
-        } else {
-            (0, 0)
-        };
-
-        branches.push(BranchInfo {
+        parsed.push(ParsedBranch {
             is_current: parts[1].trim() == "*",
-            is_kanban,
+            is_kanban: ticket_id.is_some(),
             last_commit_msg: parts[2].trim().to_string(),
             last_commit_date: parts[3].trim().to_string(),
             is_merged: merged_set.contains(&name),
-            files_changed,
-            ahead_count,
             ticket_id,
             name,
         });
     }
+
+    // Second pass: spawn all count queries concurrently (2 git processes per branch, all parallel)
+    let handles: Vec<tokio::task::JoinHandle<(u32, u32)>> = parsed
+        .iter()
+        .map(|b| {
+            if b.name == default {
+                tokio::spawn(async { (0u32, 0u32) })
+            } else {
+                let path = clean_project.clone();
+                let base = default.clone();
+                let name = b.name.clone();
+                tokio::spawn(async move { get_branch_counts(&path, &base, &name).await })
+            }
+        })
+        .collect();
+
+    let mut counts = Vec::with_capacity(handles.len());
+    for handle in handles {
+        counts.push(handle.await.unwrap_or((0, 0)));
+    }
+
+    let mut branches: Vec<BranchInfo> = parsed
+        .into_iter()
+        .zip(counts)
+        .map(|(b, (ahead_count, files_changed))| BranchInfo {
+            name: b.name,
+            is_current: b.is_current,
+            is_kanban: b.is_kanban,
+            last_commit_msg: b.last_commit_msg,
+            last_commit_date: b.last_commit_date,
+            is_merged: b.is_merged,
+            files_changed,
+            ahead_count,
+            ticket_id: b.ticket_id,
+        })
+        .collect();
 
     // Sort: current first, then kanban branches, then alphabetical
     branches.sort_by(|a, b| {
