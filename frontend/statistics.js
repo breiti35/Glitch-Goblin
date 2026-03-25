@@ -17,15 +17,18 @@ export async function loadStatistics() {
   const done = tickets.filter(tk => tk.column === "done" || tk.column === "archived");
 
   // KPI stats
-  document.getElementById("stat-total").textContent = tickets.length;
-  document.getElementById("stat-done").textContent = done.length;
+  const statTotal = document.getElementById("stat-total");
+  const statDone  = document.getElementById("stat-done");
+  if (statTotal) statTotal.textContent = tickets.length;
+  if (statDone)  statDone.textContent  = done.length;
 
   // Avg cycle time
   const cycleTimes = done
     .filter(tk => tk.created_at && tk.done_at)
     .map(tk => new Date(tk.done_at) - new Date(tk.created_at))
     .filter(d => d > 0);
-  document.getElementById("stat-cycle").textContent =
+  const statCycle = document.getElementById("stat-cycle");
+  if (statCycle) statCycle.textContent =
     cycleTimes.length > 0 ? formatDuration(cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length) : "-";
 
   // Efficiency score (done / total %)
@@ -37,7 +40,8 @@ export async function loadStatistics() {
   }
 
   // Stats badge
-  document.getElementById("stats-badge").textContent = done.length + "/" + tickets.length;
+  const statsBadge = document.getElementById("stats-badge");
+  if (statsBadge) statsBadge.textContent = done.length + "/" + tickets.length;
 
   renderTypePieChart(tickets);
   renderColumnBarChart(tickets);
@@ -61,6 +65,7 @@ function renderTypePieChart(tickets) {
   }
 
   const pie = document.getElementById("pie-chart");
+  if (!pie) return;
   const typeCount = Object.values(counts).filter(c => c > 0).length;
   if (segments.length === 0) {
     pie.style.background = "var(--surface-hover)";
@@ -72,6 +77,7 @@ function renderTypePieChart(tickets) {
   pie.style.position = "relative";
 
   const legend = document.getElementById("pie-legend");
+  if (!legend) return;
   legend.innerHTML = Object.entries(counts)
     .filter(([_, c]) => c > 0)
     .map(([type, count]) => {
@@ -89,6 +95,7 @@ function renderColumnBarChart(tickets) {
   const colors = { backlog: "var(--accent)", progress: "var(--accent)", review: "var(--tertiary)", done: "var(--tertiary)" };
 
   const chart = document.getElementById("bar-chart");
+  if (!chart) return;
   chart.innerHTML = cols.map(col => `
     <div class="hbar-row">
       <span class="hbar-label">${labels[col]}</span>
@@ -107,6 +114,7 @@ function renderRecentCompleted(doneTickets) {
     .slice(0, 5);
 
   const container = document.getElementById("recent-completed");
+  if (!container) return;
   if (sorted.length === 0) {
     container.innerHTML = '<span class="empty-state" style="padding:8px 0">' + esc(t('stats.noCompleted')) + '</span>';
     return;

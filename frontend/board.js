@@ -76,16 +76,20 @@ function renderBoardImpl() {
   updateColumnStats(tickets);
 
   // Update badge counts
-  document.getElementById("ticket-count").textContent = tickets.length;
-  document.getElementById("board-title").textContent = state.board.project_name || "Kanban Board";
+  const ticketCountEl = document.getElementById("ticket-count");
+  const boardTitleEl  = document.getElementById("board-title");
+  if (ticketCountEl) ticketCountEl.textContent = tickets.length;
+  if (boardTitleEl)  boardTitleEl.textContent  = state.board.project_name || "Kanban Board";
 
   // Running badge
   const runBadge = document.getElementById("running-badge");
-  if (state.runningTicket) {
-    runBadge.textContent = t('board.runningTicket', {id: state.runningTicket});
-    runBadge.classList.remove("hidden");
-  } else {
-    runBadge.classList.add("hidden");
+  if (runBadge) {
+    if (state.runningTicket) {
+      runBadge.textContent = t('board.runningTicket', {id: state.runningTicket});
+      runBadge.classList.remove("hidden");
+    } else {
+      runBadge.classList.add("hidden");
+    }
   }
 
   updateHealthBar(tickets);
@@ -332,7 +336,7 @@ export function showContextMenu(e, ticket) {
 
 /** Schließt das Kontextmenü und setzt den gespeicherten Ticket-Verweis zurück. */
 export function closeContextMenu() {
-  document.getElementById("context-menu").classList.add("hidden");
+  document.getElementById("context-menu")?.classList.add("hidden");
   contextTicket = null;
 }
 

@@ -13,11 +13,12 @@ let buildPollTimer = null;
 
 /** Lädt und rendert die Dashboard-Ansicht mit Tech-Stack, Ticket-Statistiken, Commits und Aktivitäten. */
 export async function loadDashboard() {
+  const projectNameEl = document.getElementById("dashboard-project-name");
   if (!state.project) {
-    document.getElementById("dashboard-project-name").textContent = t('dashboard.noProject');
+    if (projectNameEl) projectNameEl.textContent = t('dashboard.noProject');
     return;
   }
-  document.getElementById("dashboard-project-name").textContent = state.project.name;
+  if (projectNameEl) projectNameEl.textContent = state.project.name;
 
   // Breadcrumb — preserve material icon, update text
   const breadcrumb = document.getElementById("dash-breadcrumb");
@@ -58,11 +59,12 @@ export async function loadDashboard() {
     }
 
     // README
-    document.getElementById("dash-readme-body").textContent =
-      info.readmePreview || t('dashboard.noReadme');
+    const readmeEl = document.getElementById("dash-readme-body");
+    if (readmeEl) readmeEl.textContent = info.readmePreview || t('dashboard.noReadme');
 
     // Recent commits — timeline style
-    document.getElementById("dash-commits-body").innerHTML =
+    const commitsEl = document.getElementById("dash-commits-body");
+    if (commitsEl) commitsEl.innerHTML =
       info.recentCommits.length > 0
         ? '<div class="dash-commit-timeline">' + info.recentCommits.map((c, i) => {
             const isMerge = c.message.startsWith("Merge ");
@@ -93,7 +95,8 @@ export async function loadDashboard() {
       deleted: { icon: 'delete', color: 'var(--danger)' },
       backup_restored: { icon: 'restore', color: 'var(--info)' },
     };
-    document.getElementById("dash-activity-body").innerHTML =
+    const activityEl = document.getElementById("dash-activity-body");
+    if (activityEl) activityEl.innerHTML =
       info.recentActivity.length > 0
         ? info.recentActivity.map(a => {
             const actionKey = a.action.toLowerCase().replace(/ /g, '_');

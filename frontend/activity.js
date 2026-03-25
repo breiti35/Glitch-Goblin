@@ -11,6 +11,7 @@ let activityEntries = [];
 
 export async function loadActivityView() {
   const list = document.getElementById("activity-list");
+  if (!list) return;
   list.innerHTML = `<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div>`;
 
   // Set subtitle
@@ -34,6 +35,7 @@ function formatTime(timestamp) {
 
 function renderActivityList(entries) {
   const list = document.getElementById("activity-list");
+  if (!list) return;
   const filtered = activityFilter === "all"
     ? entries
     : entries.filter(e => e.action === activityFilter);
