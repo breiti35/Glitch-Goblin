@@ -459,4 +459,17 @@ export default {
     undone: "R\u00fcckg\u00e4ngig gemacht",
     redone: "Wiederhergestellt",
   },
+  updater: {
+    newVersion: "Neue Version verf\u00fcgbar",
+    installNow: "Jetzt aktualisieren",
+    later: "Sp\u00e4ter",
+    downloading: "Update wird heruntergeladen...",
+    installFailed: "Installation fehlgeschlagen",
+    close: "Schlie\u00dfen",
+    installed: "Update installiert!",
+    restartHint: "Die App muss neu gestartet werden, um das Update zu aktivieren.",
+    restart: "Jetzt neu starten",
+    upToDate: "App ist aktuell",
+    checkFailed: "Update-Check fehlgeschlagen",
+  },
 };

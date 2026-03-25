@@ -210,10 +210,16 @@ jobs:
             PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$LINUX_URL" --arg sig "$LINUX_SIG" '. + {"linux-x86_64": {"signature": $sig, "url": $url}}')
           fi
 
+          # Fetch release notes from GitHub
+          RELEASE_BODY=$(gh api "repos/${REPO}/releases/${RELEASE_ID}" --jq '.body // ""' 2>/dev/null || echo "")
+          if [[ -z "$RELEASE_BODY" ]]; then
+            RELEASE_BODY="Release v${VERSION} — Details: https://github.com/${REPO}/releases/tag/${TAG}"
+          fi
+
           # Write latest.json
           jq -n \
             --arg version "$VERSION" \
-            --arg notes "Release v${VERSION}" \
+            --arg notes "$RELEASE_BODY" \
             --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --argjson platforms "$PLATFORMS" \
             '{version: $version, notes: $notes, pub_date: $pub_date, platforms: $platforms}' \

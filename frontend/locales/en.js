@@ -459,4 +459,17 @@ export default {
     undone: "Action undone",
     redone: "Action restored",
   },
+  updater: {
+    newVersion: "New version available",
+    installNow: "Install now",
+    later: "Later",
+    downloading: "Downloading update...",
+    installFailed: "Installation failed",
+    close: "Close",
+    installed: "Update installed!",
+    restartHint: "The app needs to restart to apply the update.",
+    restart: "Restart now",
+    upToDate: "App is up to date",
+    checkFailed: "Update check failed",
+  },
 };
