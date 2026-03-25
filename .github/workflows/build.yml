@@ -44,9 +44,9 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: Glitch Goblin v${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
           draft: true
           prerelease: false
-          generate_release_notes: true
 
   build:
     needs: create-release
@@ -160,6 +160,8 @@ jobs:
     needs: [create-release, build]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Generate latest.json for Tauri Updater
         env:
           GH_TOKEN: ${{ github.token }}
@@ -210,10 +212,13 @@ jobs:
             PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$LINUX_URL" --arg sig "$LINUX_SIG" '. + {"linux-x86_64": {"signature": $sig, "url": $url}}')
           fi
 
-          # Fetch release notes from GitHub
-          RELEASE_BODY=$(gh api "repos/${REPO}/releases/${RELEASE_ID}" --jq '.body // ""' 2>/dev/null || echo "")
+          # Read release notes from RELEASE_NOTES.md
+          RELEASE_BODY=""
+          if [[ -f RELEASE_NOTES.md ]]; then
+            RELEASE_BODY=$(cat RELEASE_NOTES.md)
+          fi
           if [[ -z "$RELEASE_BODY" ]]; then
-            RELEASE_BODY="Release v${VERSION} — Details: https://github.com/${REPO}/releases/tag/${TAG}"
+            RELEASE_BODY="Release v${VERSION}"
           fi
 
           # Write latest.json
