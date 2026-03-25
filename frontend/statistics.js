@@ -14,7 +14,7 @@ export async function loadStatistics() {
     archivedTickets = await invoke("get_archived_tickets");
   } catch { /* ignore */ }
   const tickets = [...boardTickets, ...archivedTickets];
-  const done = tickets.filter(t => t.column === "done" || t.column === "archived");
+  const done = tickets.filter(tk => tk.column === "done" || tk.column === "archived");
 
   // KPI stats
   document.getElementById("stat-total").textContent = tickets.length;
@@ -22,8 +22,8 @@ export async function loadStatistics() {
 
   // Avg cycle time
   const cycleTimes = done
-    .filter(t => t.created_at && t.done_at)
-    .map(t => new Date(t.done_at) - new Date(t.created_at))
+    .filter(tk => tk.created_at && tk.done_at)
+    .map(tk => new Date(tk.done_at) - new Date(tk.created_at))
     .filter(d => d > 0);
   document.getElementById("stat-cycle").textContent =
     cycleTimes.length > 0 ? formatDuration(cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length) : "-";
@@ -47,7 +47,7 @@ export async function loadStatistics() {
 
 function renderTypePieChart(tickets) {
   const counts = { feature: 0, bugfix: 0, security: 0, docs: 0 };
-  tickets.forEach(t => { if (counts[t.ticket_type] !== undefined) counts[t.ticket_type]++; });
+  tickets.forEach(tk => { if (counts[tk.ticket_type] !== undefined) counts[tk.ticket_type]++; });
   const total = tickets.length || 1;
   const colors = { feature: "#3B82F6", bugfix: "#f4a460", security: "#e04f5e", docs: "#a855f7" };
   const segments = [];
@@ -84,7 +84,7 @@ function renderColumnBarChart(tickets) {
   const cols = ["backlog", "progress", "review", "done"];
   const labels = { backlog: "BACKLOG", progress: "IN PROGRESS", review: "REVIEW", done: "DONE" };
   const counts = {};
-  cols.forEach(c => counts[c] = tickets.filter(t => t.column === c).length);
+  cols.forEach(c => counts[c] = tickets.filter(tk => tk.column === c).length);
   const max = Math.max(...Object.values(counts), 1);
   const colors = { backlog: "var(--accent)", progress: "var(--accent)", review: "var(--tertiary)", done: "var(--tertiary)" };
 
@@ -102,7 +102,7 @@ function renderColumnBarChart(tickets) {
 
 function renderRecentCompleted(doneTickets) {
   const sorted = doneTickets
-    .filter(t => t.done_at)
+    .filter(tk => tk.done_at)
     .sort((a, b) => new Date(b.done_at) - new Date(a.done_at))
     .slice(0, 5);
 
@@ -146,9 +146,9 @@ function renderWeeklyVelocity(doneTickets) {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
 
-    const count = doneTickets.filter(t => {
-      if (!t.done_at) return false;
-      const d = new Date(t.done_at);
+    const count = doneTickets.filter(tk => {
+      if (!tk.done_at) return false;
+      const d = new Date(tk.done_at);
       return d >= weekStart && d < weekEnd;
     }).length;
 

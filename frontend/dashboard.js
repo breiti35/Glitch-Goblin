@@ -41,7 +41,7 @@ export async function loadDashboard() {
     const techEl = document.getElementById("dash-tech-badges");
     if (techEl) {
       techEl.innerHTML = info.techStack.length > 0
-        ? info.techStack.map(t => `<span class="tech-badge">${esc(t)}</span>`).join("")
+        ? info.techStack.map(tech => `<span class="tech-badge">${esc(tech)}</span>`).join("")
         : '';
     }
 
@@ -212,7 +212,7 @@ export function setupTemplateListener() {
     if (!name) return;
     try {
       const templates = await invoke("list_templates");
-      const tpl = templates.find(t => t.name === name);
+      const tpl = templates.find(tmpl => tmpl.name === name);
       if (tpl) {
         document.getElementById("new-task-type").value = tpl.ticket_type;
         document.getElementById("new-task-prio").value = tpl.default_prio;
