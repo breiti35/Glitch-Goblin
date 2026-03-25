@@ -2253,6 +2253,11 @@ pub async fn import_tickets(
             serde_json::from_str(&content).map_err(|e| format!("JSON parse: {e}"))?;
 
         if mode == "replace" {
+            if imported.project_name.trim().is_empty() {
+                return Err(
+                    "Import abgelehnt: project_name fehlt oder ist leer".to_string()
+                );
+            }
             s.board = imported;
         } else {
             // Append to backlog
