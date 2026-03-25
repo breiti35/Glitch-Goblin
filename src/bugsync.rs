@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+static HTTP_CLIENT: std::sync::LazyLock<reqwest::Client> =
+    std::sync::LazyLock::new(reqwest::Client::new);
+
 /// A bug as returned by the Portal API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortalBug {
@@ -54,8 +57,7 @@ pub async fn fetch_unsynced_bugs(api_url: &str, api_token: &str) -> Result<Vec<P
         format!("{api_url}/unsynced")
     };
 
-    let client = reqwest::Client::new();
-    let mut request = client.get(&url);
+    let mut request = HTTP_CLIENT.get(&url);
 
     if !api_token.is_empty() {
         validate_api_token(api_token)?;
@@ -120,8 +122,7 @@ pub async fn mark_bugs_synced(
         })
         .collect();
 
-    let client = reqwest::Client::new();
-    let mut request = client.post(&url).json(&payload);
+    let mut request = HTTP_CLIENT.post(&url).json(&payload);
 
     if !api_token.is_empty() {
         request = request.header("Authorization", format!("Bearer {api_token}"));
