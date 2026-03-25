@@ -23,27 +23,48 @@ use crate::undo::UndoAction;
 
 // ── Input Validation Helpers ──
 
-/// Validate names used for agent/command file paths to prevent path traversal.
+/// Windows-reservierte Geraetenamen, die als Dateinamen unzulaessig sind.
+const WINDOWS_RESERVED_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
+fn is_windows_reserved_name(name: &str) -> bool {
+    let upper = name.to_uppercase();
+    WINDOWS_RESERVED_NAMES.contains(&upper.as_str())
+}
+
+/// Validate names used for agent/command file paths to prevent path traversal
+/// and Windows device name collisions.
 fn validate_safe_name(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err("Name must not be empty".to_string());
     }
-    if name.contains("..") || name.contains('/') || name.contains('\\') || name.contains('\0') {
+    if name.contains("..") || name.contains('/') || name.contains('\\') || name.contains('\0') || name.contains(':') {
         return Err(format!("Invalid name '{}': contains forbidden characters", name));
+    }
+    if is_windows_reserved_name(name) {
+        return Err(format!("Invalid name '{}': reserved Windows device name", name));
     }
     Ok(())
 }
 
-/// Validate backup filenames to prevent path traversal.
+/// Validate backup filenames to prevent path traversal and Windows device name collisions.
 fn validate_backup_filename(filename: &str) -> Result<(), String> {
     if filename.is_empty() {
         return Err("Filename must not be empty".to_string());
     }
-    if filename.contains("..") || filename.contains('/') || filename.contains('\\') || filename.contains('\0') {
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') || filename.contains('\0') || filename.contains(':') {
         return Err(format!("Invalid filename '{}': contains forbidden characters", filename));
     }
     if !filename.ends_with(".json") {
         return Err("Backup filename must end with .json".to_string());
+    }
+    // Stem pruefen (ohne .json): "NUL.json" → Stem "NUL" ist ebenfalls reserviert
+    let stem = &filename[..filename.len() - 5];
+    if is_windows_reserved_name(stem) {
+        return Err(format!("Invalid filename '{}': reserved Windows device name", filename));
     }
     Ok(())
 }
@@ -3042,4 +3063,96 @@ pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
     }
 
     Ok(usage)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── validate_safe_name ──
+
+    #[test]
+    fn safe_name_valid() {
+        assert!(validate_safe_name("my-agent").is_ok());
+        assert!(validate_safe_name("agent_123").is_ok());
+        assert!(validate_safe_name("AgentFoo").is_ok());
+    }
+
+    #[test]
+    fn safe_name_empty() {
+        assert!(validate_safe_name("").is_err());
+    }
+
+    #[test]
+    fn safe_name_path_traversal() {
+        assert!(validate_safe_name("../etc/passwd").is_err());
+        assert!(validate_safe_name("foo/bar").is_err());
+        assert!(validate_safe_name("foo\\bar").is_err());
+        assert!(validate_safe_name("foo\0bar").is_err());
+    }
+
+    #[test]
+    fn safe_name_colon_blocked() {
+        assert!(validate_safe_name("agent:stream").is_err());
+        assert!(validate_safe_name("C:foo").is_err());
+    }
+
+    #[test]
+    fn safe_name_windows_reserved_blocked() {
+        assert!(validate_safe_name("CON").is_err());
+        assert!(validate_safe_name("con").is_err());
+        assert!(validate_safe_name("Con").is_err());
+        assert!(validate_safe_name("NUL").is_err());
+        assert!(validate_safe_name("PRN").is_err());
+        assert!(validate_safe_name("AUX").is_err());
+        assert!(validate_safe_name("COM1").is_err());
+        assert!(validate_safe_name("COM9").is_err());
+        assert!(validate_safe_name("LPT1").is_err());
+        assert!(validate_safe_name("LPT9").is_err());
+    }
+
+    #[test]
+    fn safe_name_windows_reserved_prefix_allowed() {
+        // "CONSOLE" oder "NULLIFY" sind keine reservierten Namen
+        assert!(validate_safe_name("CONSOLE").is_ok());
+        assert!(validate_safe_name("NULLIFY").is_ok());
+        assert!(validate_safe_name("COM10").is_ok());
+    }
+
+    // ── validate_backup_filename ──
+
+    #[test]
+    fn backup_filename_valid() {
+        assert!(validate_backup_filename("backup-2026-03-25.json").is_ok());
+        assert!(validate_backup_filename("my_board.json").is_ok());
+    }
+
+    #[test]
+    fn backup_filename_must_end_with_json() {
+        assert!(validate_backup_filename("backup.txt").is_err());
+        assert!(validate_backup_filename("backup").is_err());
+    }
+
+    #[test]
+    fn backup_filename_colon_blocked() {
+        assert!(validate_backup_filename("backup:stream.json").is_err());
+    }
+
+    #[test]
+    fn backup_filename_windows_reserved_blocked() {
+        assert!(validate_backup_filename("NUL.json").is_err());
+        assert!(validate_backup_filename("con.json").is_err());
+        assert!(validate_backup_filename("COM1.json").is_err());
+    }
+
+    // ── is_windows_reserved_name ──
+
+    #[test]
+    fn reserved_name_case_insensitive() {
+        assert!(is_windows_reserved_name("NUL"));
+        assert!(is_windows_reserved_name("nul"));
+        assert!(is_windows_reserved_name("Nul"));
+        assert!(!is_windows_reserved_name("NULLIFY"));
+        assert!(!is_windows_reserved_name("COM10"));
+    }
 }
