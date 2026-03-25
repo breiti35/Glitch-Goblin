@@ -1599,6 +1599,192 @@ kbd {
   display: none;
 }
 
+/* Onboarding Wizard (GG-105) */
+.modal-onboarding-content {
+  min-width: 440px;
+  max-width: 520px;
+  padding: 32px 28px 24px;
+}
+
+.onboarding-stepper {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 28px;
+}
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+}
+.onboarding-step .step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ghost-border);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.onboarding-step.active .step-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.onboarding-step.done .step-dot {
+  background: var(--accent);
+}
+.onboarding-step .step-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.onboarding-step.active .step-label,
+.onboarding-step.done .step-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Connector line between dots */
+.onboarding-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: calc(50% + 10px);
+  width: calc(100% - 20px);
+  height: 2px;
+  background: var(--ghost-border);
+  transition: background 0.2s;
+}
+.onboarding-step.done:not(:last-child)::after {
+  background: var(--accent);
+}
+
+.onboarding-page {
+  display: none;
+  min-height: 180px;
+}
+.onboarding-page.active {
+  display: block;
+  animation: modal-scale-in 0.15s ease;
+}
+
+.onboarding-welcome {
+  text-align: center;
+  padding: 16px 0;
+}
+.onboarding-logo {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.onboarding-welcome h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.onboarding-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.ob-pick-btn {
+  width: 100%;
+  padding: 12px;
+  text-align: center;
+}
+.ob-folder-info {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface-hover);
+  font-size: 13px;
+}
+.ob-folder-info.hidden { display: none; }
+.ob-folder-path {
+  font-weight: 600;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+.ob-git-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.ob-git-status.ok { color: var(--success); }
+.ob-git-status.err { color: var(--danger); }
+
+.ob-claude-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-hover);
+  font-size: 13px;
+}
+.ob-claude-status.ok {
+  color: var(--success);
+}
+.ob-claude-status.err {
+  color: var(--danger);
+}
+.ob-claude-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ghost-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+.ob-claude-status.ok .ob-claude-spinner,
+.ob-claude-status.err .ob-claude-spinner {
+  display: none;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ob-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-hover);
+  margin-bottom: 16px;
+}
+.ob-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.ob-summary-label {
+  color: var(--text-muted);
+}
+.ob-summary-value {
+  font-weight: 600;
+}
+.ob-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.onboarding-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ghost-border);
+}
+.onboarding-nav .spacer {
+  flex: 1;
+}
+
 /* Picker */
 .modal-picker-content {
   min-width: 400px;

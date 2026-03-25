@@ -3023,6 +3023,36 @@ pub async fn remove_project_logo(
     Ok(())
 }
 
+// ── Onboarding ──
+
+/// Prüft ob Claude Code CLI verfügbar ist und gibt die Version zurück.
+#[tauri::command]
+pub async fn check_claude_cli(cli_path: Option<String>) -> Result<String, String> {
+    let path = cli_path
+        .filter(|p| !p.trim().is_empty())
+        .unwrap_or_else(|| "claude".to_string());
+    let output = crate::process_util::async_cmd_no_window(&path)
+        .arg("--version")
+        .output()
+        .await
+        .map_err(|e| format!("Claude CLI nicht gefunden: {e}"))?;
+    if !output.status.success() {
+        return Err("Claude CLI antwortet nicht auf --version".to_string());
+    }
+    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(version)
+}
+
+/// Prüft ob ein Pfad ein gültiges Git-Repository ist.
+#[tauri::command]
+pub async fn validate_git_repo(path: String) -> Result<bool, String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err(format!("Pfad existiert nicht: {path}"));
+    }
+    Ok(git::is_git_repo(p).await)
+}
+
 /// Gibt den Pfad zur aktuellsten Log-Datei der App zurück.
 #[tauri::command]
 pub async fn get_log_file_path() -> Result<String, String> {
