@@ -1082,6 +1082,17 @@ pub async fn get_settings(state: State<'_>) -> Result<Settings, String> {
     Ok(settings)
 }
 
+/// Gibt `existing` zurück wenn `incoming` leer ist, sonst `incoming`.
+/// Verhindert, dass ein nicht befülltes Token-Feld im Einstellungs-Formular
+/// einen bereits gespeicherten Token überschreibt (GG-064).
+fn preserve_token_if_empty(incoming: &str, existing: &str) -> String {
+    if incoming.is_empty() && !existing.is_empty() {
+        existing.to_string()
+    } else {
+        incoming.to_string()
+    }
+}
+
 /// Speichert die App-Einstellungen dauerhaft auf der Festplatte.
 #[tauri::command]
 pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(), String> {
@@ -1104,12 +1115,13 @@ pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(
     // Extract project-specific GitHub settings before saving global settings
     let mut project_github = settings.github.clone();
 
-    // Preserve existing tokens if the frontend sends empty ones
+    // Preserve existing tokens if the frontend sends empty ones (GG-064)
     {
         let s = state.lock().await;
-        if settings.bug_sync.api_token.is_empty() && !s.settings.bug_sync.api_token.is_empty() {
-            settings.bug_sync.api_token = s.settings.bug_sync.api_token.clone();
-        }
+        settings.bug_sync.api_token = preserve_token_if_empty(
+            &settings.bug_sync.api_token,
+            &s.settings.bug_sync.api_token,
+        );
         // Preserve project-specific GitHub token
         if project_github.token.is_empty() {
             if let Some(p) = &s.project {
@@ -3154,5 +3166,37 @@ mod tests {
         assert!(is_windows_reserved_name("Nul"));
         assert!(!is_windows_reserved_name("NULLIFY"));
         assert!(!is_windows_reserved_name("COM10"));
+    }
+
+    // ── preserve_token_if_empty ──
+
+    #[test]
+    fn preserve_token_wenn_leer_gesendet() {
+        // Hauptfall GG-064: User öffnet Settings und speichert ohne Token einzugeben
+        assert_eq!(
+            preserve_token_if_empty("", "gespeicherter-token"),
+            "gespeicherter-token"
+        );
+    }
+
+    #[test]
+    fn neuer_token_ersetzt_bestehenden() {
+        // User gibt explizit einen neuen Token ein
+        assert_eq!(
+            preserve_token_if_empty("neuer-token", "alter-token"),
+            "neuer-token"
+        );
+    }
+
+    #[test]
+    fn leerer_token_bleibt_leer_wenn_kein_token_gesetzt() {
+        // Kein Token war gesetzt, User hat auch keinen eingegeben
+        assert_eq!(preserve_token_if_empty("", ""), "");
+    }
+
+    #[test]
+    fn erster_token_wird_gesetzt() {
+        // Kein bestehender Token, User setzt einen neuen
+        assert_eq!(preserve_token_if_empty("erster-token", ""), "erster-token");
     }
 }
