@@ -1276,8 +1276,10 @@ pub async fn export_log(
 #[tauri::command]
 pub async fn read_agent(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let agent_path = project_path
         .join(".claude")
         .join("agents")
@@ -1291,8 +1293,10 @@ pub async fn read_agent(name: String, state: State<'_>) -> Result<String, String
 #[tauri::command]
 pub async fn save_agent(name: String, content: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let agents_dir = project_path.join(".claude").join("agents");
     tokio::fs::create_dir_all(&agents_dir)
         .await
@@ -1307,8 +1311,10 @@ pub async fn save_agent(name: String, content: String, state: State<'_>) -> Resu
 #[tauri::command]
 pub async fn create_agent(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let agents_dir = project_path.join(".claude").join("agents");
     tokio::fs::create_dir_all(&agents_dir)
         .await
@@ -1331,8 +1337,10 @@ pub async fn create_agent(name: String, state: State<'_>) -> Result<String, Stri
 #[tauri::command]
 pub async fn delete_agent(name: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let agent_path = project_path
         .join(".claude")
         .join("agents")
@@ -1348,8 +1356,10 @@ pub async fn delete_agent(name: String, state: State<'_>) -> Result<(), String> 
 #[tauri::command]
 pub async fn read_command(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let cmd_path = project_path
         .join(".claude")
         .join("commands")
@@ -1363,8 +1373,10 @@ pub async fn read_command(name: String, state: State<'_>) -> Result<String, Stri
 #[tauri::command]
 pub async fn save_command(name: String, content: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let cmds_dir = project_path.join(".claude").join("commands");
     tokio::fs::create_dir_all(&cmds_dir)
         .await
@@ -1379,8 +1391,10 @@ pub async fn save_command(name: String, content: String, state: State<'_>) -> Re
 #[tauri::command]
 pub async fn create_command(name: String, state: State<'_>) -> Result<String, String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let cmds_dir = project_path.join(".claude").join("commands");
     tokio::fs::create_dir_all(&cmds_dir)
         .await
@@ -1400,8 +1414,10 @@ pub async fn create_command(name: String, state: State<'_>) -> Result<String, St
 #[tauri::command]
 pub async fn delete_command(name: String, state: State<'_>) -> Result<(), String> {
     validate_safe_name(&name)?;
-    let s = state.lock().await;
-    let project_path = s.project_path().ok_or("No project selected")?;
+    let project_path = {
+        let s = state.lock().await;
+        s.project_path().ok_or("No project selected")?
+    };
     let cmd_path = project_path
         .join(".claude")
         .join("commands")
