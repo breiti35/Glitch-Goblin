@@ -39,7 +39,7 @@ function renderBoardImpl() {
   columns.forEach(col => {
     const body = document.querySelector(`[data-drop="${col}"]`);
     const countEl = document.querySelector(`[data-count="${col}"]`);
-    const colTickets = tickets.filter(t => t.column === col);
+    const colTickets = tickets.filter(tk => tk.column === col);
     countEl.textContent = "(" + colTickets.length + ")";
     body.innerHTML = "";
 
@@ -108,11 +108,11 @@ function updateColumnStats(tickets) {
   if (statBacklog) statBacklog.textContent = "";
 
   // Progress: average age
-  const progTickets = tickets.filter(t => t.column === "progress" && t.started_at);
+  const progTickets = tickets.filter(tk => tk.column === "progress" && tk.started_at);
   const statProgress = document.querySelector('[data-stat="progress"]');
   if (statProgress) {
     if (progTickets.length > 0) {
-      const avgAge = progTickets.reduce((sum, t) => sum + (now - new Date(t.started_at)), 0) / progTickets.length;
+      const avgAge = progTickets.reduce((sum, tk) => sum + (now - new Date(tk.started_at)), 0) / progTickets.length;
       statProgress.textContent = "\u00D8 " + formatDuration(avgAge);
     } else {
       statProgress.textContent = "";
@@ -120,11 +120,11 @@ function updateColumnStats(tickets) {
   }
 
   // Review: oldest ticket age
-  const revTickets = tickets.filter(t => t.column === "review" && t.review_at);
+  const revTickets = tickets.filter(tk => tk.column === "review" && tk.review_at);
   const statReview = document.querySelector('[data-stat="review"]');
   if (statReview) {
     if (revTickets.length > 0) {
-      const oldest = Math.max(...revTickets.map(t => now - new Date(t.review_at)));
+      const oldest = Math.max(...revTickets.map(tk => now - new Date(tk.review_at)));
       statReview.textContent = "\u{1F552} " + formatDuration(oldest);
     } else {
       statReview.textContent = "";
@@ -135,7 +135,7 @@ function updateColumnStats(tickets) {
   const statDone = document.querySelector('[data-stat="done"]');
   if (statDone) {
     const total = tickets.length;
-    const doneCount = tickets.filter(t => t.column === "done").length;
+    const doneCount = tickets.filter(tk => tk.column === "done").length;
     statDone.textContent = total > 0 ? Math.round((doneCount / total) * 100) + "%" : "";
   }
 }
@@ -145,8 +145,8 @@ function updateColumnStats(tickets) {
  */
 export function updateHealthBar(tickets) {
   const total = tickets.length || 1;
-  const done    = tickets.filter(t => t.column === "done").length;
-  const review  = tickets.filter(t => t.column === "review").length;
+  const done    = tickets.filter(tk => tk.column === "done").length;
+  const review  = tickets.filter(tk => tk.column === "review").length;
   const tealPct   = Math.round((done / total) * 100);
   const yellowPct = Math.round((review / total) * 100);
   const emptyPct  = Math.max(0, 100 - tealPct - yellowPct);
@@ -753,13 +753,13 @@ export async function loadArchiveView() {
         </tr>
       </thead>
       <tbody>
-        ${tickets.map(t => `<tr data-ticket-id="${esc(t.id)}">
-          <td class="archive-id">${esc(t.id)}</td>
-          <td>${esc(t.title)}</td>
-          <td><span class="badge badge-${esc(t.ticket_type)}">${esc(t.ticket_type)}</span></td>
-          <td>${t.done_at ? new Date(t.done_at).toLocaleDateString("de-DE") : '–'}</td>
-          <td>${t.archived_at ? new Date(t.archived_at).toLocaleDateString("de-DE") : '–'}</td>
-          <td><button class="btn-unarchive" data-unarchive="${esc(t.id)}" title="Wiederherstellen"><span class="material-symbols-outlined" style="font-size:18px">unarchive</span></button></td>
+        ${tickets.map(tk => `<tr data-ticket-id="${esc(tk.id)}">
+          <td class="archive-id">${esc(tk.id)}</td>
+          <td>${esc(tk.title)}</td>
+          <td><span class="badge badge-${esc(tk.ticket_type)}">${esc(tk.ticket_type)}</span></td>
+          <td>${tk.done_at ? new Date(tk.done_at).toLocaleDateString("de-DE") : '–'}</td>
+          <td>${tk.archived_at ? new Date(tk.archived_at).toLocaleDateString("de-DE") : '–'}</td>
+          <td><button class="btn-unarchive" data-unarchive="${esc(tk.id)}" title="Wiederherstellen"><span class="material-symbols-outlined" style="font-size:18px">unarchive</span></button></td>
         </tr>`).join("")}
       </tbody>
     </table>`;

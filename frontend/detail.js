@@ -182,7 +182,7 @@ export function renderComments(ticket) {
           commentIndex: parseInt(btn.dataset.commentIndex),
         });
         state.board = await invoke("get_board");
-        const updated = state.board.tickets.find(t => t.id === btn.dataset.ticketId);
+        const updated = state.board.tickets.find(tk => tk.id === btn.dataset.ticketId);
         if (updated) renderComments(updated);
       } catch (e) {
         appendLog("Delete comment error: " + e, true);
@@ -201,7 +201,7 @@ export function setupCommentListeners() {
       await invoke("add_comment", { ticketId: state.detailTicket.id, text });
       input.value = "";
       state.board = await invoke("get_board");
-      const updated = state.board.tickets.find(t => t.id === state.detailTicket.id);
+      const updated = state.board.tickets.find(tk => tk.id === state.detailTicket.id);
       if (updated) {
         state.detailTicket = updated;
         renderComments(updated);
