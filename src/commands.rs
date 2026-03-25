@@ -276,7 +276,9 @@ pub async fn create_ticket(
     Ok(ticket)
 }
 
-/// Aktualisiert alle Felder eines bestehenden Tickets.
+/// Aktualisiert die editierbaren Felder eines bestehenden Tickets.
+/// Systemkontrollierte Felder (id, slug, column, created_at, started_at, done_at,
+/// branch, tokens_used, cost_usd usw.) werden vom bestehenden Ticket beibehalten.
 #[tauri::command]
 pub async fn update_ticket(ticket: Ticket, state: State<'_>) -> Result<(), String> {
     let mut s = state.lock().await;
@@ -287,7 +289,10 @@ pub async fn update_ticket(ticket: Ticket, state: State<'_>) -> Result<(), Strin
         .position(|t| t.id == ticket.id)
         .ok_or_else(|| AppError::TicketNotFound(ticket.id.clone()))?;
     let old_ticket = s.board.tickets[idx].clone();
-    s.board.tickets[idx] = ticket;
+    s.board.tickets[idx].title = ticket.title;
+    s.board.tickets[idx].description = ticket.description;
+    s.board.tickets[idx].prio = ticket.prio;
+    s.board.tickets[idx].ticket_type = ticket.ticket_type;
     s.save_and_backup()?;
     s.undo_manager.push(UndoAction::UpdateTicket { old_ticket });
     Ok(())
