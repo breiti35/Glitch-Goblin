@@ -4,9 +4,9 @@
 import { t, getLocale } from './i18n.js';
 
 export function esc(str) {
-  if (!str) return "";
+  if (str == null) return "";
   const div = document.createElement("div");
-  div.textContent = str;
+  div.textContent = String(str);
   return div.innerHTML;
 }
 
