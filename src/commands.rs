@@ -6,6 +6,7 @@ use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 use tracing::{error, info};
 
@@ -1320,16 +1321,25 @@ pub async fn create_agent(name: String, state: State<'_>) -> Result<String, Stri
         .await
         .map_err(|e| format!("Failed to create agents dir: {e}"))?;
     let agent_path = agents_dir.join(format!("{}.md", name));
-    if agent_path.exists() {
-        return Err(format!("Agent '{}' already exists", name));
-    }
     let template = format!(
         "---\nname: {}\ndescription: \ntools: []\n---\n\n# {}\n\nBeschreibung des Agents...\n",
         name, name
     );
-    tokio::fs::write(&agent_path, &template)
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&agent_path)
         .await
-        .map_err(|e| format!("Failed to create agent '{}': {e}", name))?;
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                format!("Agent '{}' already exists", name)
+            } else {
+                format!("Failed to create agent '{}': {e}", name)
+            }
+        })?;
+    file.write_all(template.as_bytes())
+        .await
+        .map_err(|e| format!("Failed to write agent '{}': {e}", name))?;
     Ok(template)
 }
 
@@ -1400,13 +1410,22 @@ pub async fn create_command(name: String, state: State<'_>) -> Result<String, St
         .await
         .map_err(|e| format!("Failed to create commands dir: {e}"))?;
     let cmd_path = cmds_dir.join(format!("{}.md", name));
-    if cmd_path.exists() {
-        return Err(format!("Command '{}' already exists", name));
-    }
     let template = format!("# {}\n\nBeschreibung des Commands...\n", name);
-    tokio::fs::write(&cmd_path, &template)
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&cmd_path)
         .await
-        .map_err(|e| format!("Failed to create command '{}': {e}", name))?;
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                format!("Command '{}' already exists", name)
+            } else {
+                format!("Failed to create command '{}': {e}", name)
+            }
+        })?;
+    file.write_all(template.as_bytes())
+        .await
+        .map_err(|e| format!("Failed to write command '{}': {e}", name))?;
     Ok(template)
 }
 
