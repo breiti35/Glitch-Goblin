@@ -7,6 +7,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Fixed
+- **GG-064 Leerer Token ueberschreibt gespeicherten Token beim Settings-Speichern:** Wenn der User die Settings öffnete und speicherte ohne den API- oder GitHub-Token einzugeben, wurde ein leerer String ans Backend geschickt und überschrieb den gespeicherten Token. `save_settings` ruft jetzt `preserve_token_if_empty` auf: ist der eingehende Token leer und der gespeicherte Token nicht leer, bleibt der bestehende Token erhalten. Die Hilfsfunktion ist isoliert unit-getestet (4 Szenarien).
+
 ### Security
 - **GG-063 validate_safe_name blockiert keine Windows-reservierten Namen:** `validate_safe_name` pruefte nur auf Path-Traversal-Zeichen (`..`, `/`, `\`, `\0`), liess aber Windows-Geraete-Namen (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`) und den Doppelpunkt (`:`) durch. Ein Agent oder Command mit dem Namen `NUL` haette alle Schreiboperationen still verworfen; `CON` haette den Backend-Thread auf stdin blockiert; `COM1` haette die serielle Schnittstelle angesprochen. Ein Doppelpunkt in einem Namen erlaubt auf NTFS Alternate Data Streams (`agent:stream`). Neue Konstante `WINDOWS_RESERVED_NAMES` und Hilfsfunktion `is_windows_reserved_name` (case-insensitiv). `validate_safe_name` blockt jetzt `:` und alle reservierten Namen. `validate_backup_filename` prueft zusaetzlich den Stem (ohne `.json`-Erweiterung) auf reservierte Namen.
 
