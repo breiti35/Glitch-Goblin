@@ -16,7 +16,7 @@ export async function loadActivityView() {
   // Set subtitle
   const subtitle = document.getElementById("activity-subtitle");
   if (subtitle && state.project) {
-    subtitle.textContent = `Real-time event stream for ${state.project.name}`;
+    subtitle.textContent = t('dashboard.activityStreamSubtitle', {project: state.project.name});
   }
 
   try {
@@ -53,10 +53,10 @@ function renderActivityList(entries) {
   for (const entry of filtered) {
     const d = new Date(entry.timestamp);
     let label;
-    if (d.toDateString() === today) label = "TODAY";
-    else if (d.toDateString() === yesterday) label = "YESTERDAY";
-    else if (d > weekAgo) label = "THIS WEEK";
-    else label = "OLDER";
+    if (d.toDateString() === today) label = t('dashboard.activityToday');
+    else if (d.toDateString() === yesterday) label = t('dashboard.activityYesterday');
+    else if (d > weekAgo) label = t('dashboard.activityThisWeek');
+    else label = t('dashboard.activityOlder');
 
     if (!groups[label]) groups[label] = [];
     groups[label].push(entry);

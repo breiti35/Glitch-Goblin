@@ -67,7 +67,7 @@ function renderTypePieChart(tickets) {
     pie.innerHTML = '';
   } else {
     pie.style.background = `conic-gradient(${segments.join(", ")})`;
-    pie.innerHTML = `<div class="pie-center-text"><span class="pie-center-num">${typeCount}</span><span class="pie-center-label">KATEGORIEN</span></div>`;
+    pie.innerHTML = `<div class="pie-center-text"><span class="pie-center-num">${typeCount}</span><span class="pie-center-label">${t('stats.categories')}</span></div>`;
   }
   pie.style.position = "relative";
 

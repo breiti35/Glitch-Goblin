@@ -104,7 +104,7 @@ function renderNotifList() {
   const list = document.getElementById("notif-list");
   if (!list) return;
   if (notifications.length === 0) {
-    list.innerHTML = `<p class="empty-state">${t('header.noNotifications')}</p>`;
+    list.innerHTML = `<p class="empty-state">${esc(t('header.noNotifications'))}</p>`;
     return;
   }
   list.innerHTML = notifications.map(n => {

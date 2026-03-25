@@ -470,11 +470,11 @@ export function switchView(name) {
 async function archiveAllDoneTickets() {
   const doneTickets = (state.board.tickets || []).filter(t => t.column === "done");
   if (doneTickets.length === 0) {
-    showToast("Keine erledigten Tickets zum Archivieren", "info");
+    showToast(t('toast.noDoneTicketsArchive'), "info");
     return;
   }
   const msg = document.getElementById("git-confirm-message");
-  msg.textContent = `${doneTickets.length} erledigte Tickets archivieren?`;
+  msg.textContent = t('toast.archiveConfirm', {count: doneTickets.length});
   document.getElementById("btn-git-confirm-yes").onclick = async () => {
     closeModal("modal-git-confirm");
     try {
@@ -483,7 +483,7 @@ async function archiveAllDoneTickets() {
       }
       state.board = await invoke("get_board");
       renderBoard();
-      showToast(`${doneTickets.length} Tickets archiviert`, "success");
+      showToast(t('toast.ticketsArchived', {count: doneTickets.length}), "success");
     } catch (err) {
       appendLog("Archive error: " + err, true);
     }
@@ -497,7 +497,7 @@ async function archiveAllDoneTickets() {
  */
 export function confirmExecute(ticket) {
   const isCodeChanging = ticket.ticket_type === "feature" || ticket.ticket_type === "bugfix";
-  const warning = isCodeChanging ? " \u26A0 Dieses Ticket \u00E4ndert Code." : "";
+  const warning = isCodeChanging ? " " + t('modals.codeChanging') : "";
   document.getElementById("confirm-message").textContent =
     `Execute ticket ${ticket.id} - "${ticket.title}"?${warning}`;
   const modelSelect = document.getElementById("confirm-model-select");

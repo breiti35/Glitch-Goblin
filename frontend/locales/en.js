@@ -106,6 +106,11 @@ export default {
     buildFailure: "Failing",
     buildPending: "Running...",
     buildError: "Error",
+    activityToday: "TODAY",
+    activityYesterday: "YESTERDAY",
+    activityThisWeek: "THIS WEEK",
+    activityOlder: "OLDER",
+    activityStreamSubtitle: "Real-time event stream for {project}",
   },
 
   // Git
@@ -117,9 +122,12 @@ export default {
     uncommittedChanges: "uncommitted changes",
     allCommitted: "all committed",
     recentCommits: "Recent Commits",
+    recentCommitsHeader: "RECENT COMMITS",
+    viewAllHistory: "VIEW ALL HISTORY",
     activeBranches: "Active (Ticket Branches)",
     otherBranches: "Other Branches",
     mergedBranches: "Merged Branches (already in {branch})",
+    mergedBranchesHeader: "MERGED BRANCHES (ALREADY IN MASTER)",
     onlyCurrentBranch: "Only the current branch exists",
     details: "Details",
     merge: "Merge",
@@ -235,6 +243,7 @@ export default {
     velocity: "Velocity (Tickets/Week)",
     recentCompleted: "Recent Completed",
     noCompleted: "No completed tickets",
+    categories: "CATEGORIES",
   },
 
   // Terminal
@@ -351,6 +360,10 @@ export default {
     deleteTicket: "Delete Ticket",
     confirmDelete: "Delete ticket {id} - \"{title}\"?",
     none: "None",
+    created: "Created",
+    started: "Started",
+    review: "Review",
+    done: "Done",
   },
 
   // Toast Messages
@@ -362,6 +375,21 @@ export default {
     terminalOpened: "Terminal opened \u2014 continue working",
     backToBacklog: "{id} moved back to Backlog",
     deployConfigError: "Could not load deploy configuration",
+    noDoneTicketsArchive: "No completed tickets to archive",
+    ticketsArchived: "{count} tickets archived",
+    archiveConfirm: "Archive {count} completed tickets?",
+  },
+
+  // Projects
+  projects: {
+    prefixInvalid: "Prefix can only contain letters/numbers",
+    removeProject: "Remove project",
+    ticketPrefixTitle: "Ticket Prefix",
+  },
+
+  // Modals
+  modals: {
+    codeChanging: "\u26A0 This ticket changes code.",
   },
 
   // Notifications

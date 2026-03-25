@@ -57,7 +57,7 @@ export function globalSearch() {
   });
 
   if (results.length === 0) {
-    dropdown.innerHTML = `<div class="search-empty">${t('search.noResults')}</div>`;
+    dropdown.innerHTML = `<div class="search-empty">${esc(t('search.noResults'))}</div>`;
   } else {
     dropdown.innerHTML = results.slice(0, 10).map((r, i) => `
       <div class="search-result-item" data-search-idx="${i}">
