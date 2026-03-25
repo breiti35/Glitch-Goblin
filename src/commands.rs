@@ -2043,8 +2043,12 @@ pub async fn create_ticket_from_template(
     state: State<'_>,
 ) -> Result<Ticket, String> {
     let mut s = state.lock().await;
-    let data_dir = s.data_dir().ok_or("No project data directory")?;
-    let templates = config::load_templates(&data_dir);
+    let templates = if let Some(conn) = &s.db {
+        db::load_templates(conn)
+    } else {
+        let data_dir = s.data_dir().ok_or("No project data directory")?;
+        config::load_templates(&data_dir)
+    };
     let tpl = templates
         .iter()
         .find(|t| t.name == template_name)
