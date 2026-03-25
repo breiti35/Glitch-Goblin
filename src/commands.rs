@@ -2694,8 +2694,7 @@ pub async fn get_build_status(state: State<'_>) -> Result<BuildStatus, String> {
         owner, repo
     );
 
-    let client = reqwest::Client::new();
-    let mut request = client
+    let mut request = HTTP_CLIENT
         .get(&url)
         .header("Accept", "application/vnd.github+json")
         .header("User-Agent", "glitch-goblin")
@@ -2712,7 +2711,7 @@ pub async fn get_build_status(state: State<'_>) -> Result<BuildStatus, String> {
 
     // 401 with token → retry without token (public repos don't need auth)
     if response.status() == reqwest::StatusCode::UNAUTHORIZED && !token.is_empty() {
-        let retry = client
+        let retry = HTTP_CLIENT
             .get(&url)
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "glitch-goblin")
@@ -2940,6 +2939,9 @@ struct UsageCacheEntry {
 static USAGE_CACHE: std::sync::LazyLock<tokio::sync::Mutex<Option<UsageCacheEntry>>> =
     std::sync::LazyLock::new(|| tokio::sync::Mutex::new(None));
 
+static HTTP_CLIENT: std::sync::LazyLock<reqwest::Client> =
+    std::sync::LazyLock::new(reqwest::Client::new);
+
 /// Versucht, Usage aus dem Statusline-Datei-Cache zu lesen (%TEMP%/claude/statusline-usage-cache.json).
 /// Gibt `Some(ClaudeUsage)` zurueck wenn die Datei existiert und juenger als 300s ist.
 fn read_file_cache() -> Option<ClaudeUsage> {
@@ -3032,15 +3034,12 @@ pub async fn get_claude_usage() -> Result<ClaudeUsage, String> {
         .and_then(|v| v.as_str())
         .ok_or("OAuth access token not found in credentials")?;
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .unwrap_or_default();
-    let resp = client
+    let resp = HTTP_CLIENT
         .get("https://api.anthropic.com/api/oauth/usage")
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/json")
         .header("anthropic-beta", "oauth-2025-04-20")
+        .timeout(std::time::Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Usage API request failed: {e}"))?;
