@@ -27,6 +27,7 @@ import { loadNotesView } from './notes.js';
 import { checkTicketRecovery } from './recovery.js';
 import { openSearchSpotlight, closeSearchSpotlight, globalSearch } from './search.js';
 import { scheduleUpdateCheck, checkForUpdate } from './updater.js';
+import { checkOnboarding, setupOnboarding } from './onboarding.js';
 
 // ── Re-exports for other modules ──
 export { showToast } from './notifications.js';
@@ -79,6 +80,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBugSyncListeners();
   setupAvatarContextMenu();
   setupProjectSettingsModal();
+  setupOnboarding();
   loadDeployConfig();
   restoreFilters();
   renderBoard();
@@ -92,6 +94,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Check for interrupted ticket (crash recovery)
   checkTicketRecovery();
+
+  // Onboarding wizard on first start (no projects configured)
+  checkOnboarding();
 
   // Auto-update check (5s delay)
   scheduleUpdateCheck();

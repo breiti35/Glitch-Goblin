@@ -370,6 +370,9 @@ fn main() {
             // Version / Utilities
             commands::get_version,
             commands::get_log_file_path,
+            // Onboarding
+            commands::check_claude_cli,
+            commands::validate_git_repo,
             // Claude Usage
             commands::get_claude_usage,
             // Git Push

@@ -960,6 +960,95 @@
       </div>
     </div>
 
+    <!-- Modal: Onboarding Wizard (GG-105) -->
+    <div id="modal-onboarding" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content modal-onboarding-content">
+        <!-- Stepper -->
+        <div class="onboarding-stepper">
+          <div class="onboarding-step active" data-step="0"><span class="step-dot"></span><span class="step-label" data-i18n="onboarding.stepWelcome">Willkommen</span></div>
+          <div class="onboarding-step" data-step="1"><span class="step-dot"></span><span class="step-label" data-i18n="onboarding.stepProject">Projekt</span></div>
+          <div class="onboarding-step" data-step="2"><span class="step-dot"></span><span class="step-label" data-i18n="onboarding.stepPrefix">Prefix</span></div>
+          <div class="onboarding-step" data-step="3"><span class="step-dot"></span><span class="step-label" data-i18n="onboarding.stepClaude">Claude</span></div>
+          <div class="onboarding-step" data-step="4"><span class="step-dot"></span><span class="step-label" data-i18n="onboarding.stepDone">Fertig</span></div>
+        </div>
+
+        <!-- Step 0: Willkommen -->
+        <div class="onboarding-page active" data-page="0">
+          <div class="onboarding-welcome">
+            <div class="onboarding-logo">&#128126;</div>
+            <h2 data-i18n="onboarding.welcome">Willkommen bei Glitch Goblin</h2>
+            <p class="onboarding-subtitle" data-i18n="onboarding.subtitle">Dein Desktop-Kanban-Board f&uuml;r Entwicklungsprojekte</p>
+          </div>
+        </div>
+
+        <!-- Step 1: Projekt einrichten -->
+        <div class="onboarding-page" data-page="1">
+          <h3 data-i18n="onboarding.stepProject">Projekt</h3>
+          <button id="ob-pick-folder" class="btn-secondary ob-pick-btn" data-i18n="onboarding.selectFolder">Projektordner ausw&auml;hlen</button>
+          <div id="ob-folder-info" class="ob-folder-info hidden">
+            <div id="ob-folder-path" class="ob-folder-path"></div>
+            <div id="ob-git-status" class="ob-git-status"></div>
+          </div>
+          <label class="settings-label" style="margin-top:12px">
+            <span data-i18n="onboarding.projectName">Projektname</span>
+            <input type="text" id="ob-project-name" class="settings-input" placeholder="my-project">
+          </label>
+        </div>
+
+        <!-- Step 2: Ticket-Prefix -->
+        <div class="onboarding-page" data-page="2">
+          <h3 data-i18n="onboarding.ticketPrefix">Ticket-Prefix</h3>
+          <p class="text-muted" data-i18n="onboarding.ticketPrefixHint">z.B. "GG" ergibt GG-001, GG-002, ...</p>
+          <label class="settings-label">
+            <input type="text" id="ob-ticket-prefix" class="settings-input" maxlength="8" placeholder="GG" style="text-transform:uppercase">
+          </label>
+        </div>
+
+        <!-- Step 3: Claude Code Erkennung -->
+        <div class="onboarding-page" data-page="3">
+          <h3 data-i18n="onboarding.claudeCheck">Claude Code Erkennung</h3>
+          <div id="ob-claude-status" class="ob-claude-status">
+            <span class="ob-claude-spinner"></span>
+            <span data-i18n="onboarding.checking">Pr&uuml;fe...</span>
+          </div>
+          <label class="settings-label" style="margin-top:12px">
+            <span data-i18n="onboarding.claudePath">Claude CLI Pfad</span>
+            <input type="text" id="ob-claude-path" class="settings-input" placeholder="claude">
+            <span class="text-muted text-small" data-i18n="onboarding.claudePathHint">Pfad zur Claude CLI (leer = Standard "claude")</span>
+          </label>
+          <button id="ob-claude-recheck" class="btn-secondary" style="margin-top:8px" data-i18n="onboarding.checking">Erneut pr&uuml;fen</button>
+        </div>
+
+        <!-- Step 4: Fertig -->
+        <div class="onboarding-page" data-page="4">
+          <h3 data-i18n="onboarding.summary">Zusammenfassung</h3>
+          <div class="ob-summary">
+            <div class="ob-summary-row">
+              <span class="ob-summary-label" data-i18n="onboarding.summaryProject">Projekt</span>
+              <span id="ob-summary-project" class="ob-summary-value">—</span>
+            </div>
+            <div class="ob-summary-row">
+              <span class="ob-summary-label" data-i18n="onboarding.summaryPrefix">Prefix</span>
+              <span id="ob-summary-prefix" class="ob-summary-value">—</span>
+            </div>
+            <div class="ob-summary-row">
+              <span class="ob-summary-label" data-i18n="onboarding.summaryClaude">Claude Code</span>
+              <span id="ob-summary-claude" class="ob-summary-value">—</span>
+            </div>
+          </div>
+          <p class="ob-hint" data-i18n="onboarding.firstTicketHint">Erstelle dein erstes Ticket mit Ctrl+N</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="onboarding-nav">
+          <button id="ob-btn-back" class="btn-secondary hidden" data-i18n="onboarding.back">Zur&uuml;ck</button>
+          <div class="spacer"></div>
+          <button id="ob-btn-next" class="btn-primary" data-i18n="onboarding.letsStart">Los geht&rsquo;s!</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Shortcut Help (Block C1) -->
     <div id="shortcut-help" class="modal hidden">
       <div class="modal-backdrop"></div>
