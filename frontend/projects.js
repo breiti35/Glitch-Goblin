@@ -1,6 +1,6 @@
 // ── Project Management ──
 import { invoke } from '@tauri-apps/api/core';
-import { esc } from './utils.js';
+import { esc, withGuard } from './utils.js';
 import { t } from './i18n.js';
 import { state, openModal, closeModal, appendLog } from './app.js';
 import { renderBoard, clearFilters } from './board.js';
@@ -69,7 +69,7 @@ export function openProjectPicker() {
 /** Wechselt zum angegebenen Projekt und laedt alle Views neu.
  * @param {string} name - Name des Projekts.
  */
-export async function switchProject(name) {
+async function switchProjectImpl(name) {
   try {
     state.board = await invoke("switch_project", { name });
     state.project = await invoke("get_current_project");
@@ -103,6 +103,9 @@ export async function switchProject(name) {
     appendLog("Switch project error: " + err, true);
   }
 }
+
+// Guard gegen Race Conditions bei schnellem Wechsel
+export const switchProject = withGuard(switchProjectImpl);
 
 async function removeProjectFlow(name) {
   if (!confirm(`Projekt "${name}" aus der Liste entfernen?\n(Die Dateien werden nicht gel\u00F6scht)`)) return;
