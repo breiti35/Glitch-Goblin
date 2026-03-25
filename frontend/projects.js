@@ -27,12 +27,12 @@ export function openProjectPicker() {
     item.innerHTML = `
       <span class="picker-item-row">
         <span class="picker-item-name">${esc(p.name)}</span>
-        <span class="picker-item-prefix" title="Ticket-Prefix">
+        <span class="picker-item-prefix" title="${esc(t('projects.ticketPrefixTitle'))}">
           <input type="text" class="prefix-input" value="${esc(p.ticket_prefix || p.ticketPrefix || 'GG')}" maxlength="8" placeholder="GG">
         </span>
       </span>
       <span class="picker-item-path">${esc(p.path)}</span>
-      <button class="picker-item-remove" title="Projekt entfernen">&times;</button>
+      <button class="picker-item-remove" title="${esc(t('projects.removeProject'))}">&times;</button>
     `;
     item.querySelector(".picker-item-remove").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -45,7 +45,7 @@ export function openProjectPicker() {
       const newPrefix = e.target.value.trim().toUpperCase();
       if (!newPrefix || !/^[A-Z0-9]+$/.test(newPrefix)) {
         e.target.value = p.ticket_prefix || p.ticketPrefix || "GG";
-        showToast("Prefix darf nur Buchstaben/Zahlen enthalten", "error");
+        showToast(t('projects.prefixInvalid'), "error");
         return;
       }
       try {

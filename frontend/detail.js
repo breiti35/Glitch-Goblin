@@ -69,24 +69,24 @@ export function renderTimeline(ticket) {
   const entries = [];
 
   if (ticket.created_at) {
-    entries.push({ icon: "\u2795", label: "Created", time: ticket.created_at });
+    entries.push({ icon: "\u2795", label: t('detail.created'), time: ticket.created_at });
   }
   if (ticket.started_at) {
-    entries.push({ icon: "\u25B6", label: "Started", time: ticket.started_at });
+    entries.push({ icon: "\u25B6", label: t('detail.started'), time: ticket.started_at });
     if (ticket.created_at) {
       const dur = new Date(ticket.started_at) - new Date(ticket.created_at);
       entries[entries.length - 1].duration = formatDuration(dur);
     }
   }
   if (ticket.review_at) {
-    entries.push({ icon: "\u2714", label: "Review", time: ticket.review_at });
+    entries.push({ icon: "\u2714", label: t('detail.review'), time: ticket.review_at });
     if (ticket.started_at) {
       const dur = new Date(ticket.review_at) - new Date(ticket.started_at);
       entries[entries.length - 1].duration = formatDuration(dur);
     }
   }
   if (ticket.done_at) {
-    entries.push({ icon: "\u2605", label: "Done", time: ticket.done_at });
+    entries.push({ icon: "\u2605", label: t('detail.done'), time: ticket.done_at });
     if (ticket.review_at) {
       const dur = new Date(ticket.done_at) - new Date(ticket.review_at);
       entries[entries.length - 1].duration = formatDuration(dur);

@@ -106,6 +106,11 @@ export default {
     buildFailure: "Fehlgeschlagen",
     buildPending: "L\u00e4uft...",
     buildError: "Fehler",
+    activityToday: "TODAY",
+    activityYesterday: "YESTERDAY",
+    activityThisWeek: "THIS WEEK",
+    activityOlder: "OLDER",
+    activityStreamSubtitle: "Real-time event stream for {project}",
   },
 
   // Git
@@ -117,9 +122,12 @@ export default {
     uncommittedChanges: "\u00c4nderungen nicht committed",
     allCommitted: "alles committed",
     recentCommits: "Letzte Commits",
+    recentCommitsHeader: "LETZTE COMMITS",
+    viewAllHistory: "VIEW ALL HISTORY",
     activeBranches: "In Arbeit (Ticket-Branches)",
     otherBranches: "Weitere Branches",
     mergedBranches: "Erledigte Branches (bereits in {branch} eingebaut)",
+    mergedBranchesHeader: "ERLEDIGTE BRANCHES (BEREITS IN MASTER EINGEBAUT)",
     onlyCurrentBranch: "Nur der aktuelle Branch vorhanden",
     details: "Details",
     merge: "\u00dcbernehmen",
@@ -235,6 +243,7 @@ export default {
     velocity: "Velocity (Tickets/Woche)",
     recentCompleted: "Zuletzt abgeschlossen",
     noCompleted: "Keine abgeschlossenen Tickets",
+    categories: "KATEGORIEN",
   },
 
   // Terminal
@@ -351,6 +360,10 @@ export default {
     deleteTicket: "Ticket l\u00f6schen",
     confirmDelete: "Ticket {id} - \"{title}\" l\u00f6schen?",
     none: "Keine",
+    created: "Created",
+    started: "Started",
+    review: "Review",
+    done: "Done",
   },
 
   // Toast Messages
@@ -362,6 +375,21 @@ export default {
     terminalOpened: "Terminal ge\u00f6ffnet \u2014 weiterarbeiten",
     backToBacklog: "{id} zur\u00fcck ins Backlog",
     deployConfigError: "Deploy-Konfiguration konnte nicht geladen werden",
+    noDoneTicketsArchive: "Keine erledigten Tickets zum Archivieren",
+    ticketsArchived: "{count} Tickets archiviert",
+    archiveConfirm: "{count} erledigte Tickets archivieren?",
+  },
+
+  // Projects
+  projects: {
+    prefixInvalid: "Prefix darf nur Buchstaben/Zahlen enthalten",
+    removeProject: "Projekt entfernen",
+    ticketPrefixTitle: "Ticket-Prefix",
+  },
+
+  // Modals
+  modals: {
+    codeChanging: "\u26A0 Dieses Ticket \u00e4ndert Code.",
   },
 
   // Notifications

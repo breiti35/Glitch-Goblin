@@ -75,9 +75,9 @@ export async function loadGitView() {
             <div class="git-section-header">
               <div class="git-section-title">
                 <span class="material-symbols-outlined" style="font-size:20px">history</span>
-                LETZTE COMMITS
+                ${esc(t('git.recentCommitsHeader'))}
               </div>
-              <span class="dash-view-all">VIEW ALL HISTORY</span>
+              <span class="dash-view-all">${esc(t('git.viewAllHistory'))}</span>
             </div>
             <div class="git-commits-table">
               <div class="git-commits-thead">
@@ -152,7 +152,7 @@ export async function loadGitView() {
       html += `
         <div class="git-merged-section-title">
           <span class="material-symbols-outlined">verified</span>
-          ERLEDIGTE BRANCHES (BEREITS IN MASTER EINGEBAUT)
+          ${esc(t('git.mergedBranchesHeader'))}
           <button class="btn-cleanup-merged" id="btn-cleanup-merged" title="${esc(t('git.cleanupMergedTitle'))}">
             <span class="material-symbols-outlined" style="font-size:16px">cleaning_services</span>
             ${esc(t('git.cleanupMerged'))}
