@@ -8,6 +8,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Fixed
+- **GG-065 esc() gibt leeren String fuer 0 und false zurueck:** `esc(str)` pruefte `if (!str) return ""` — das behandelt falsy Werte wie `0`, `false`, `null`, `undefined` als Error und gibt einen leeren String zurueck. Wird `esc(0)` aufgerufen (z.B. bei der Kostenanzeige bei Kosten von 0 USD), kommt jetzt korrekt "0" statt "". Die Funktion prueft jetzt `if (str == null) return ""` (nur `null` und `undefined`) und konvertiert alle anderen Werte mit `String(str)`.
 - **GG-064 Leerer Token ueberschreibt gespeicherten Token beim Settings-Speichern:** Wenn der User die Settings öffnete und speicherte ohne den API- oder GitHub-Token einzugeben, wurde ein leerer String ans Backend geschickt und überschrieb den gespeicherten Token. `save_settings` ruft jetzt `preserve_token_if_empty` auf: ist der eingehende Token leer und der gespeicherte Token nicht leer, bleibt der bestehende Token erhalten. Die Hilfsfunktion ist isoliert unit-getestet (4 Szenarien).
 
 ### Security
