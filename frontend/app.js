@@ -216,6 +216,10 @@ function bindEvents() {
   // Confirm modal backdrop
   document.querySelector("#modal-confirm .modal-backdrop").addEventListener("click", () => closeModal("modal-confirm"));
 
+  // Git confirm modal (used for delete, archive, merge)
+  document.getElementById("btn-git-confirm-no").addEventListener("click", () => closeModal("modal-git-confirm"));
+  document.querySelector("#modal-git-confirm .modal-backdrop").addEventListener("click", () => closeModal("modal-git-confirm"));
+
   // Backup modal
   document.querySelector("#modal-backup .modal-close").addEventListener("click", () => closeModal("modal-backup"));
   document.querySelector("#modal-backup .modal-backdrop").addEventListener("click", () => closeModal("modal-backup"));
@@ -469,17 +473,22 @@ async function archiveAllDoneTickets() {
     showToast("Keine erledigten Tickets zum Archivieren", "info");
     return;
   }
-  if (!confirm(`${doneTickets.length} erledigte Tickets archivieren?`)) return;
-  try {
-    for (const t of doneTickets) {
-      await invoke("archive_ticket", { ticketId: t.id });
+  const msg = document.getElementById("git-confirm-message");
+  msg.textContent = `${doneTickets.length} erledigte Tickets archivieren?`;
+  document.getElementById("btn-git-confirm-yes").onclick = async () => {
+    closeModal("modal-git-confirm");
+    try {
+      for (const tk of doneTickets) {
+        await invoke("archive_ticket", { ticketId: tk.id });
+      }
+      state.board = await invoke("get_board");
+      renderBoard();
+      showToast(`${doneTickets.length} Tickets archiviert`, "success");
+    } catch (err) {
+      appendLog("Archive error: " + err, true);
     }
-    state.board = await invoke("get_board");
-    renderBoard();
-    showToast(`${doneTickets.length} Tickets archiviert`, "success");
-  } catch (err) {
-    appendLog("Archive error: " + err, true);
-  }
+  };
+  openModal("modal-git-confirm");
 }
 
 // ── Execution ──
@@ -686,18 +695,23 @@ function renderDiffLines(diff) {
 /** Fuehrt einen Ticket-Branch nach Benutzerbestaetigung in den Hauptbranch zusammen (gegen Doppelklick gesichert).
  * @param {string} ticketId - ID des zu mergenden Tickets.
  */
-export const mergeTicket = withGuard(async function(ticketId) {
-  if (!confirm(`Ticket ${ticketId} \u00FCbernehmen?\nDie \u00C4nderungen werden in den Hauptbranch \u00FCbernommen.`)) return;
-  try {
-    appendLog(`Merging ${ticketId}...`);
-    await invoke("merge_ticket", { ticketId });
-    appendLog(`\u2713 ${ticketId} merged successfully`);
-    showToast(t('toast.ticketMerged', {id: ticketId}), "success");
-    refreshBoard();
-  } catch (err) {
-    appendLog("Merge error: " + err, true);
-  }
-});
+export function mergeTicket(ticketId) {
+  const msg = document.getElementById("git-confirm-message");
+  msg.textContent = `Ticket ${ticketId} \u00FCbernehmen?\nDie \u00C4nderungen werden in den Hauptbranch \u00FCbernommen.`;
+  document.getElementById("btn-git-confirm-yes").onclick = async () => {
+    closeModal("modal-git-confirm");
+    try {
+      appendLog(`Merging ${ticketId}...`);
+      await invoke("merge_ticket", { ticketId });
+      appendLog(`\u2713 ${ticketId} merged successfully`);
+      showToast(t('toast.ticketMerged', {id: ticketId}), "success");
+      refreshBoard();
+    } catch (err) {
+      appendLog("Merge error: " + err, true);
+    }
+  };
+  openModal("modal-git-confirm");
+}
 
 // ── Board Refresh ──
 /** Holt den aktuellen Board-State vom Backend und rendert das Board neu. Beendet den Focus-Modus wenn kein Ticket laeuft. */

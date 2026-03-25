@@ -353,7 +353,10 @@ export async function handleContextMenuAction(e) {
   } else if (item.dataset.action === "merge") {
     mergeTicket(ticket.id);
   } else if (item.dataset.action === "delete") {
-    if (confirm(t('detail.confirmDelete', {id: ticket.id, title: ticket.title}))) {
+    const msg = document.getElementById("git-confirm-message");
+    msg.textContent = t('detail.confirmDelete', {id: ticket.id, title: ticket.title});
+    document.getElementById("btn-git-confirm-yes").onclick = async () => {
+      closeModal("modal-git-confirm");
       try {
         await invoke("delete_ticket", { ticketId: ticket.id });
         state.board = await invoke("get_board");
@@ -361,7 +364,8 @@ export async function handleContextMenuAction(e) {
       } catch (err) {
         appendLog("Delete error: " + err, true);
       }
-    }
+    };
+    openModal("modal-git-confirm");
   } else if (item.dataset.action === "archive") {
     archiveTicket(ticket.id);
   } else if (item.dataset.action === "copy") {
