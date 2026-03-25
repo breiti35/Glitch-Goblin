@@ -76,16 +76,20 @@ function renderBoardImpl() {
   updateColumnStats(tickets);
 
   // Update badge counts
-  document.getElementById("ticket-count").textContent = tickets.length;
-  document.getElementById("board-title").textContent = state.board.project_name || "Kanban Board";
+  const ticketCountEl = document.getElementById("ticket-count");
+  const boardTitleEl  = document.getElementById("board-title");
+  if (ticketCountEl) ticketCountEl.textContent = tickets.length;
+  if (boardTitleEl)  boardTitleEl.textContent  = state.board.project_name || "Kanban Board";
 
   // Running badge
   const runBadge = document.getElementById("running-badge");
-  if (state.runningTicket) {
-    runBadge.textContent = t('board.runningTicket', {id: state.runningTicket});
-    runBadge.classList.remove("hidden");
-  } else {
-    runBadge.classList.add("hidden");
+  if (runBadge) {
+    if (state.runningTicket) {
+      runBadge.textContent = t('board.runningTicket', {id: state.runningTicket});
+      runBadge.classList.remove("hidden");
+    } else {
+      runBadge.classList.add("hidden");
+    }
   }
 
   updateHealthBar(tickets);
@@ -291,12 +295,13 @@ function createCard(ticket, col) {
 export function showContextMenu(e, ticket) {
   contextTicket = ticket;
   const menu = document.getElementById("context-menu");
+  if (!menu) return;
 
   const startItem = menu.querySelector('[data-action="start"]');
   const mergeItem = menu.querySelector('[data-action="merge"]');
   const archiveItem = menu.querySelector('[data-action="archive"]');
-  startItem.classList.toggle("hidden", ticket.column !== "backlog" || !!state.runningTicket);
-  mergeItem.classList.toggle("hidden", ticket.column !== "review");
+  if (startItem) startItem.classList.toggle("hidden", ticket.column !== "backlog" || !!state.runningTicket);
+  if (mergeItem) mergeItem.classList.toggle("hidden", ticket.column !== "review");
   if (archiveItem) archiveItem.classList.toggle("hidden", ticket.column !== "done");
 
   // Hide current column in move submenu
@@ -306,6 +311,7 @@ export function showContextMenu(e, ticket) {
 
   // Populate project submenu
   const projSub = document.getElementById("ctx-project-submenu");
+  if (!projSub) return;
   projSub.innerHTML = "";
   state.projects
     .filter(p => !state.project || p.name !== state.project.name)
@@ -332,7 +338,7 @@ export function showContextMenu(e, ticket) {
 
 /** Schließt das Kontextmenü und setzt den gespeicherten Ticket-Verweis zurück. */
 export function closeContextMenu() {
-  document.getElementById("context-menu").classList.add("hidden");
+  document.getElementById("context-menu")?.classList.add("hidden");
   contextTicket = null;
 }
 
@@ -354,8 +360,9 @@ export async function handleContextMenuAction(e) {
     mergeTicket(ticket.id);
   } else if (item.dataset.action === "delete") {
     const msg = document.getElementById("git-confirm-message");
-    msg.textContent = t('detail.confirmDelete', {id: ticket.id, title: ticket.title});
-    document.getElementById("btn-git-confirm-yes").onclick = async () => {
+    if (msg) msg.textContent = t('detail.confirmDelete', {id: ticket.id, title: ticket.title});
+    const confirmYesDel = document.getElementById("btn-git-confirm-yes");
+    if (confirmYesDel) confirmYesDel.onclick = async () => {
       closeModal("modal-git-confirm");
       try {
         await invoke("delete_ticket", { ticketId: ticket.id });
@@ -430,15 +437,17 @@ export async function exportCurrentLog() {
 /** Schaltet die Filter-Leiste ein/aus und setzt bei Öffnung den Fokus auf das Eingabefeld. */
 export function toggleFilterBar() {
   const bar = document.getElementById("filter-bar");
+  if (!bar) return;
   bar.classList.toggle("hidden");
   if (!bar.classList.contains("hidden")) {
-    document.getElementById("filter-input").focus();
+    document.getElementById("filter-input")?.focus();
   }
 }
 
 /** Filtert Board-Karten nach Text, Ticket-Typ und Priorität. Aktualisiert den Filter-Badge. */
 export function applyFilters() {
-  const text = document.getElementById("filter-input").value.toLowerCase();
+  const filterInput = document.getElementById("filter-input");
+  const text = filterInput ? filterInput.value.toLowerCase() : "";
   const activeTypes = Array.from(document.querySelectorAll("[data-filter-type].active")).map(b => b.dataset.filterType);
   const activePrios = Array.from(document.querySelectorAll("[data-filter-prio].active")).map(b => b.dataset.filterPrio);
 
@@ -464,11 +473,13 @@ export function applyFilters() {
   });
 
   const badge = document.getElementById("filter-badge");
-  if (filteredCount > 0) {
-    badge.textContent = filteredCount + " " + t('board.hidden');
-    badge.classList.remove("hidden");
-  } else {
-    badge.classList.add("hidden");
+  if (badge) {
+    if (filteredCount > 0) {
+      badge.textContent = filteredCount + " " + t('board.hidden');
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
   }
 }
 
@@ -479,7 +490,8 @@ export function restoreFilters() {
     if (!raw) return;
     const saved = JSON.parse(raw);
     if (saved.text) {
-      document.getElementById("filter-input").value = saved.text;
+      const fi = document.getElementById("filter-input");
+      if (fi) fi.value = saved.text;
     }
     if (saved.types && saved.types.length > 0) {
       document.querySelectorAll("[data-filter-type]").forEach(btn => {
@@ -493,14 +505,15 @@ export function restoreFilters() {
     }
     // Show filter bar if any filter is active
     if (saved.text || (saved.types && saved.types.length > 0) || (saved.prios && saved.prios.length > 0)) {
-      document.getElementById("filter-bar").classList.remove("hidden");
+      document.getElementById("filter-bar")?.classList.remove("hidden");
     }
   } catch (_) { /* corrupt data — ignore */ }
 }
 
 /** Setzt alle aktiven Filter (Text, Typ, Priorität) zurück und aktualisiert die Karten-Anzeige. */
 export function clearFilters() {
-  document.getElementById("filter-input").value = "";
+  const fi = document.getElementById("filter-input");
+  if (fi) fi.value = "";
   document.querySelectorAll(".filter-toggle.active").forEach(b => b.classList.remove("active"));
   try { localStorage.removeItem("gg-filter-state"); } catch (_) { /* ignore */ }
   applyFilters();
@@ -613,23 +626,29 @@ async function openReviewDiffModal(ticket) {
   }
 
   const title = `Review: ${ticket.id} \u2014 ${ticket.title}`;
-  document.getElementById("review-title").textContent = title;
+  const reviewTitle = document.getElementById("review-title");
+  if (reviewTitle) reviewTitle.textContent = title;
 
   const fileList = document.getElementById("review-file-list");
   const diffPreview = document.getElementById("review-diff-preview");
+  if (!fileList || !diffPreview) return;
   fileList.innerHTML = '<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short"></div>';
   diffPreview.innerHTML = '<p class="empty-state">' + esc(t('board.clickFileForDiff')) + '</p>';
 
   // Hide confirm button, show only close
   const confirmBtn = document.getElementById("btn-review-confirm");
   const cancelBtn = document.getElementById("btn-review-cancel");
-  confirmBtn.textContent = "\u2714 " + t('board.merge');
-  confirmBtn.onclick = () => {
-    closeModal("modal-review");
-    mergeTicket(ticket.id);
-  };
-  cancelBtn.textContent = t('board.close');
-  cancelBtn.onclick = () => closeModal("modal-review");
+  if (confirmBtn) {
+    confirmBtn.textContent = "\u2714 " + t('board.merge');
+    confirmBtn.onclick = () => {
+      closeModal("modal-review");
+      mergeTicket(ticket.id);
+    };
+  }
+  if (cancelBtn) {
+    cancelBtn.textContent = t('board.close');
+    cancelBtn.onclick = () => closeModal("modal-review");
+  }
 
   openModal("modal-review");
 
@@ -708,8 +727,10 @@ function getDragAfterElement(container, y) {
 function archiveTicket(ticketId) {
   const ticket = state.board.tickets.find(tk => tk.id === ticketId);
   const msg = document.getElementById("git-confirm-message");
-  msg.textContent = t('board.confirmArchive', {id: ticketId}) || `Ticket ${ticketId} archivieren?`;
-  document.getElementById("btn-git-confirm-yes").onclick = async () => {
+  if (msg) msg.textContent = t('board.confirmArchive', {id: ticketId}) || `Ticket ${ticketId} archivieren?`;
+  const confirmYes = document.getElementById("btn-git-confirm-yes");
+  if (!confirmYes) return;
+  confirmYes.onclick = async () => {
     closeModal("modal-git-confirm");
     try {
       await invoke("archive_ticket", { ticketId });
