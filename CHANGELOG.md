@@ -5,6 +5,11 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Security
+- **GG-063 validate_safe_name blockiert keine Windows-reservierten Namen:** `validate_safe_name` pruefte nur auf Path-Traversal-Zeichen (`..`, `/`, `\`, `\0`), liess aber Windows-Geraete-Namen (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`) und den Doppelpunkt (`:`) durch. Ein Agent oder Command mit dem Namen `NUL` haette alle Schreiboperationen still verworfen; `CON` haette den Backend-Thread auf stdin blockiert; `COM1` haette die serielle Schnittstelle angesprochen. Ein Doppelpunkt in einem Namen erlaubt auf NTFS Alternate Data Streams (`agent:stream`). Neue Konstante `WINDOWS_RESERVED_NAMES` und Hilfsfunktion `is_windows_reserved_name` (case-insensitiv). `validate_safe_name` blockt jetzt `:` und alle reservierten Namen. `validate_backup_filename` prueft zusaetzlich den Stem (ohne `.json`-Erweiterung) auf reservierte Namen.
+
 ## [0.2.10-alpha] - 2026-03-24
 
 ### Security
