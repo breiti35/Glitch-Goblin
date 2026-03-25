@@ -20,42 +20,134 @@ export async function loadShellOptions(selectId, selectedValue) {
   }
 }
 
-// ── Terminal Lifecycle ──
+// ── Terminal Context Descriptors ──
 
-export function cleanupTerminal(terminalId) {
-  const inst = state.terminals[terminalId];
+const BOARD_CTX = {
+  containerId: "board-terminal-instances",
+  tabsId: "board-terminal-tabs",
+  emptyStateId: "board-terminal-empty",
+  stateKey: "terminals",
+  activeKey: "activeTerminal",
+};
+
+const PAGE_CTX = {
+  containerId: "terminal-page-instances",
+  tabsId: "terminal-page-tabs",
+  emptyStateId: "terminal-page-empty",
+  stateKey: "pageTerminals",
+  activeKey: "activePageTerminal",
+};
+
+// ── Generic Terminal Factory ──
+
+function createTerminalInstance(terminalId, name, ctx) {
+  const term = new Terminal({
+    cursorBlink: true,
+    fontSize: state.settings.terminal_font_size || 14,
+    fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
+    scrollback: 10000,
+    scrollOnOutput: true,
+  });
+  const fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+
+  const container = document.createElement("div");
+  container.className = "terminal-instance";
+  container.dataset.terminalId = terminalId;
+
+  const emptyState = document.getElementById(ctx.emptyStateId);
+  if (emptyState) emptyState.style.display = "none";
+  document.querySelectorAll(`#${ctx.containerId} .terminal-instance`).forEach(c => c.style.display = "none");
+  document.getElementById(ctx.containerId).appendChild(container);
+  container.style.display = "block";
+
+  const tab = document.createElement("button");
+  tab.className = "terminal-tab active";
+  tab.dataset.terminalId = terminalId;
+  tab.innerHTML = `${esc(name)} <span class="tab-close" data-terminal-id="${terminalId}">&times;</span>`;
+  document.querySelectorAll(`#${ctx.tabsId} .terminal-tab`).forEach(t => t.classList.remove("active"));
+  document.getElementById(ctx.tabsId).appendChild(tab);
+
+  void container.offsetHeight;
+  term.open(container);
+  fitAddon.fit();
+  const { cols, rows } = term;
+  invoke("resize_terminal", { terminalId, cols, rows }).catch(e => logError("terminal: resize", e));
+  term.focus();
+
+  term.onData(data => {
+    invoke("write_terminal", { terminalId, data }).catch(e => logError("terminal: write", e));
+  });
+
+  state[ctx.stateKey][terminalId] = { term, fitAddon, tabEl: tab, containerEl: container, name };
+  state[ctx.activeKey] = terminalId;
+
+  return { term, fitAddon, tab, container };
+}
+
+function cleanupTerminalInContext(terminalId, ctx) {
+  const store = state[ctx.stateKey];
+  const inst = store[terminalId];
   if (inst) {
-    // Clear any pending intervals/timeouts from ticket terminal
     if (inst._checkInterval) clearInterval(inst._checkInterval);
     if (inst._fallbackTimeout) clearTimeout(inst._fallbackTimeout);
     inst.onOutput = null;
     inst.term.dispose();
     if (inst.tabEl) inst.tabEl.remove();
     inst.containerEl.remove();
-    delete state.terminals[terminalId];
+    delete store[terminalId];
   }
 
-  // Switch to another tab or show empty state
-  const remaining = Object.keys(state.terminals);
+  const remaining = Object.keys(store);
   if (remaining.length > 0) {
     const nextId = remaining[remaining.length - 1];
-    const nextInst = state.terminals[nextId];
+    const nextInst = store[nextId];
     if (nextInst) {
-      document.querySelectorAll(".terminal-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(`#${ctx.tabsId} .terminal-tab`).forEach(t => t.classList.remove("active"));
       if (nextInst.tabEl) nextInst.tabEl.classList.add("active");
-      document.querySelectorAll(".terminal-instance").forEach(c => c.style.display = "none");
+      document.querySelectorAll(`#${ctx.containerId} .terminal-instance`).forEach(c => c.style.display = "none");
       nextInst.containerEl.style.display = "block";
-      state.activeTerminal = nextId;
+      state[ctx.activeKey] = nextId;
       requestAnimationFrame(() => {
         nextInst.fitAddon.fit();
         nextInst.term.focus();
       });
     }
   } else {
-    state.activeTerminal = null;
-    const boardEmpty = document.getElementById("board-terminal-empty");
-    if (boardEmpty) boardEmpty.style.display = "";
+    state[ctx.activeKey] = null;
+    const emptyState = document.getElementById(ctx.emptyStateId);
+    if (emptyState) emptyState.style.display = "";
   }
+}
+
+function refitTerminal(ctx) {
+  const activeId = state[ctx.activeKey];
+  if (!activeId || !state[ctx.stateKey][activeId]) return;
+  const inst = state[ctx.stateKey][activeId];
+  requestAnimationFrame(() => {
+    inst.fitAddon.fit();
+    const { cols, rows } = inst.term;
+    invoke("resize_terminal", { terminalId: activeId, cols, rows }).catch(e => logError("terminal: resize", e));
+  });
+}
+
+function switchTerminalTab(terminalId, ctx) {
+  if (!state[ctx.stateKey][terminalId]) return;
+  document.querySelectorAll(`#${ctx.tabsId} .terminal-tab`).forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(`#${ctx.containerId} .terminal-instance`).forEach(c => c.style.display = "none");
+
+  const inst = state[ctx.stateKey][terminalId];
+  if (inst.tabEl) inst.tabEl.classList.add("active");
+  inst.containerEl.style.display = "block";
+  state[ctx.activeKey] = terminalId;
+  refitTerminal(ctx);
+  inst.term.focus();
+}
+
+// ── Terminal Lifecycle ──
+
+export function cleanupTerminal(terminalId) {
+  cleanupTerminalInContext(terminalId, BOARD_CTX);
 }
 
 export async function closeTerminalById(terminalId) {
@@ -117,51 +209,6 @@ function ensurePanelVisible() {
   }
 }
 
-function createTerminalInstance(terminalId, name, containerId, tabsId) {
-  const term = new Terminal({
-    cursorBlink: true,
-    fontSize: state.settings.terminal_font_size || 14,
-    fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
-    scrollback: 10000,
-    scrollOnOutput: true,
-  });
-  const fitAddon = new FitAddon.FitAddon();
-  term.loadAddon(fitAddon);
-
-  const container = document.createElement("div");
-  container.className = "terminal-instance";
-  container.dataset.terminalId = terminalId;
-
-  const emptyState = document.getElementById("board-terminal-empty");
-  if (emptyState) emptyState.style.display = "none";
-  document.querySelectorAll(`#${containerId} .terminal-instance`).forEach(c => c.style.display = "none");
-  document.getElementById(containerId).appendChild(container);
-  container.style.display = "block";
-
-  const tab = document.createElement("button");
-  tab.className = "terminal-tab active";
-  tab.dataset.terminalId = terminalId;
-  tab.innerHTML = `${esc(name)} <span class="tab-close" data-terminal-id="${terminalId}">&times;</span>`;
-  document.querySelectorAll(`#${tabsId} .terminal-tab`).forEach(t => t.classList.remove("active"));
-  document.getElementById(tabsId).appendChild(tab);
-
-  void container.offsetHeight;
-  term.open(container);
-  fitAddon.fit();
-  const { cols, rows } = term;
-  invoke("resize_terminal", { terminalId, cols, rows }).catch(e => logError("terminal: resize", e));
-  term.focus();
-
-  term.onData(data => {
-    invoke("write_terminal", { terminalId, data }).catch(e => logError("terminal: write", e));
-  });
-
-  state.terminals[terminalId] = { term, fitAddon, tabEl: tab, containerEl: container, name };
-  state.activeTerminal = terminalId;
-
-  return { term, fitAddon, tab, container };
-}
-
 export async function openBoardTerminal(shell) {
   if (!state.project) return;
   ensurePanelVisible();
@@ -183,7 +230,7 @@ export async function openBoardTerminal(shell) {
     const terminalId = await invoke("spawn_terminal", { shell, cwd });
     state.terminalCounter++;
     const name = "Terminal " + state.terminalCounter;
-    createTerminalInstance(terminalId, name, "board-terminal-instances", "board-terminal-tabs");
+    createTerminalInstance(terminalId, name, BOARD_CTX);
   } catch (e) {
     appendLog("Failed to open terminal: " + e, true);
   }
@@ -216,7 +263,7 @@ export async function openTicketTerminal(startResult, model) {
   state.terminalCounter++;
   const name = startResult.ticketId;
 
-  createTerminalInstance(terminalId, name, "board-terminal-instances", "board-terminal-tabs");
+  createTerminalInstance(terminalId, name, BOARD_CTX);
 
   // Start Claude Code interactively, detect readiness via output, then send prompt
   setTimeout(() => {
@@ -280,111 +327,23 @@ export async function openDeployTerminal(terminalId, name) {
     switchView("board");
   }
 
-  createTerminalInstance(terminalId, name, "board-terminal-instances", "board-terminal-tabs");
+  createTerminalInstance(terminalId, name, BOARD_CTX);
 }
 
 // ── Terminal Tab Management ──
 
 export function refitBoardTerminal() {
-  if (!state.activeTerminal || !state.terminals[state.activeTerminal]) return;
-  const inst = state.terminals[state.activeTerminal];
-  requestAnimationFrame(() => {
-    inst.fitAddon.fit();
-    const { cols, rows } = inst.term;
-    invoke("resize_terminal", { terminalId: state.activeTerminal, cols, rows }).catch(e => logError("terminal: resize", e));
-  });
+  refitTerminal(BOARD_CTX);
 }
 
 function switchBoardTerminalTab(terminalId) {
-  if (!state.terminals[terminalId]) return;
-  document.querySelectorAll("#board-terminal-tabs .terminal-tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll("#board-terminal-instances .terminal-instance").forEach(c => c.style.display = "none");
-
-  const inst = state.terminals[terminalId];
-  if (inst.tabEl) inst.tabEl.classList.add("active");
-  inst.containerEl.style.display = "block";
-  state.activeTerminal = terminalId;
-  refitBoardTerminal();
-  inst.term.focus();
+  switchTerminalTab(terminalId, BOARD_CTX);
 }
 
 // ── Terminal Page (Fullscreen Multi-Tab) ──
 
-function createPageTerminalInstance(terminalId, name) {
-  const term = new Terminal({
-    cursorBlink: true,
-    fontSize: state.settings.terminal_font_size || 14,
-    fontFamily: "'FiraCode Nerd Font Mono', 'FiraCode Nerd Font', 'Fira Code', 'Consolas', monospace",
-    scrollback: 10000,
-    scrollOnOutput: true,
-  });
-  const fitAddon = new FitAddon.FitAddon();
-  term.loadAddon(fitAddon);
-
-  const container = document.createElement("div");
-  container.className = "terminal-instance";
-  container.dataset.terminalId = terminalId;
-
-  const emptyState = document.getElementById("terminal-page-empty");
-  if (emptyState) emptyState.style.display = "none";
-  document.querySelectorAll("#terminal-page-instances .terminal-instance").forEach(c => c.style.display = "none");
-  document.getElementById("terminal-page-instances").appendChild(container);
-  container.style.display = "block";
-
-  const tab = document.createElement("button");
-  tab.className = "terminal-tab active";
-  tab.dataset.terminalId = terminalId;
-  tab.innerHTML = `${esc(name)} <span class="tab-close" data-terminal-id="${terminalId}">&times;</span>`;
-  document.querySelectorAll("#terminal-page-tabs .terminal-tab").forEach(t => t.classList.remove("active"));
-  document.getElementById("terminal-page-tabs").appendChild(tab);
-
-  void container.offsetHeight;
-  term.open(container);
-  fitAddon.fit();
-  const { cols, rows } = term;
-  invoke("resize_terminal", { terminalId, cols, rows }).catch(e => logError("terminal: resize", e));
-  term.focus();
-
-  term.onData(data => {
-    invoke("write_terminal", { terminalId, data }).catch(e => logError("terminal: write", e));
-  });
-
-  state.pageTerminals[terminalId] = { term, fitAddon, tabEl: tab, containerEl: container, name };
-  state.activePageTerminal = terminalId;
-}
-
 export function cleanupPageTerminal(terminalId) {
-  const inst = state.pageTerminals[terminalId];
-  if (inst) {
-    if (inst._checkInterval) clearInterval(inst._checkInterval);
-    if (inst._fallbackTimeout) clearTimeout(inst._fallbackTimeout);
-    inst.onOutput = null;
-    inst.term.dispose();
-    if (inst.tabEl) inst.tabEl.remove();
-    inst.containerEl.remove();
-    delete state.pageTerminals[terminalId];
-  }
-
-  const remaining = Object.keys(state.pageTerminals);
-  if (remaining.length > 0) {
-    const nextId = remaining[remaining.length - 1];
-    const nextInst = state.pageTerminals[nextId];
-    if (nextInst) {
-      document.querySelectorAll("#terminal-page-tabs .terminal-tab").forEach(t => t.classList.remove("active"));
-      if (nextInst.tabEl) nextInst.tabEl.classList.add("active");
-      document.querySelectorAll("#terminal-page-instances .terminal-instance").forEach(c => c.style.display = "none");
-      nextInst.containerEl.style.display = "block";
-      state.activePageTerminal = nextId;
-      requestAnimationFrame(() => {
-        nextInst.fitAddon.fit();
-        nextInst.term.focus();
-      });
-    }
-  } else {
-    state.activePageTerminal = null;
-    const emptyState = document.getElementById("terminal-page-empty");
-    if (emptyState) emptyState.style.display = "";
-  }
+  cleanupTerminalInContext(terminalId, PAGE_CTX);
 }
 
 async function closePageTerminalById(terminalId) {
@@ -416,33 +375,18 @@ async function openPageTerminal(shell) {
     const terminalId = await invoke("spawn_terminal", { shell, cwd });
     state.pageTerminalCounter++;
     const name = "Terminal " + state.pageTerminalCounter;
-    createPageTerminalInstance(terminalId, name);
+    createTerminalInstance(terminalId, name, PAGE_CTX);
   } catch (e) {
     appendLog("Failed to open terminal: " + e, true);
   }
 }
 
 export function refitPageTerminal() {
-  if (!state.activePageTerminal || !state.pageTerminals[state.activePageTerminal]) return;
-  const inst = state.pageTerminals[state.activePageTerminal];
-  requestAnimationFrame(() => {
-    inst.fitAddon.fit();
-    const { cols, rows } = inst.term;
-    invoke("resize_terminal", { terminalId: state.activePageTerminal, cols, rows }).catch(e => logError("terminal: resize", e));
-  });
+  refitTerminal(PAGE_CTX);
 }
 
 function switchPageTerminalTab(terminalId) {
-  if (!state.pageTerminals[terminalId]) return;
-  document.querySelectorAll("#terminal-page-tabs .terminal-tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll("#terminal-page-instances .terminal-instance").forEach(c => c.style.display = "none");
-
-  const inst = state.pageTerminals[terminalId];
-  if (inst.tabEl) inst.tabEl.classList.add("active");
-  inst.containerEl.style.display = "block";
-  state.activePageTerminal = terminalId;
-  refitPageTerminal();
-  inst.term.focus();
+  switchTerminalTab(terminalId, PAGE_CTX);
 }
 
 // ── Setup Listeners ──
