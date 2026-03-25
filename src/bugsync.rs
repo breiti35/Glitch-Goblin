@@ -125,6 +125,7 @@ pub async fn mark_bugs_synced(
     let mut request = HTTP_CLIENT.post(&url).json(&payload);
 
     if !api_token.is_empty() {
+        validate_api_token(api_token)?;
         request = request.header("Authorization", format!("Bearer {api_token}"));
     }
 
