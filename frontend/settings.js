@@ -36,6 +36,9 @@ export function loadSettingsForm() {
   // Language
   const langEl = document.getElementById("set-language");
   if (langEl) langEl.value = s.language || 'de';
+  // Auto-push
+  const autoPushEl = document.getElementById("set-auto-push");
+  if (autoPushEl) autoPushEl.checked = !!s.auto_push_after_merge;
 }
 
 /** Liest das globale Einstellungsformular aus und speichert es. */
@@ -58,6 +61,7 @@ export async function saveSettingsForm() {
     default_shell: document.getElementById("set-default-shell").value,
     terminal_font_size: parseInt(document.getElementById("set-terminal-fontsize").value) || 14,
     language: document.getElementById("set-language")?.value || 'de',
+    auto_push_after_merge: document.getElementById("set-auto-push")?.checked || false,
   };
 
   try {

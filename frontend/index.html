@@ -1087,28 +1087,28 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content modal-project-settings-content">
         <div class="modal-header">
-          <h2><span class="material-symbols-outlined" style="font-size:22px;vertical-align:middle;color:var(--accent)">folder_managed</span> Projekt-Einstellungen</h2>
+          <h2><span class="material-symbols-outlined" style="font-size:22px;vertical-align:middle;color:var(--accent)">folder_managed</span> <span data-i18n="projectSettings.title">Projekt-Einstellungen</span></h2>
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body" style="padding:0">
           <div class="settings-tabs" id="ps-tabs">
-            <button class="settings-tab active" data-settings-tab="ps-project">Projekt</button>
-            <button class="settings-tab" data-settings-tab="ps-github">GitHub</button>
-            <button class="settings-tab" data-settings-tab="ps-bugsync">Bug-Sync</button>
-            <button class="settings-tab" data-settings-tab="ps-deploy">Deploy</button>
+            <button class="settings-tab active" data-settings-tab="ps-project" data-i18n="projectSettings.tabProject">Projekt</button>
+            <button class="settings-tab" data-settings-tab="ps-github" data-i18n="projectSettings.tabGithub">GitHub</button>
+            <button class="settings-tab" data-settings-tab="ps-bugsync" data-i18n="projectSettings.tabBugsync">Bug-Sync</button>
+            <button class="settings-tab" data-settings-tab="ps-deploy" data-i18n="projectSettings.tabDeploy">Deploy</button>
           </div>
           <div class="settings-bento" style="padding:16px 24px 8px">
             <!-- ── Projekt Tab ── -->
             <div class="settings-tab-content active" data-tab-content="ps-project">
               <div class="settings-card">
-                <div class="settings-card-title"><span class="material-symbols-outlined">badge</span> Projekt-Identität</div>
-                <label class="settings-label"><span>TICKET-PREFIX</span>
+                <div class="settings-card-title"><span class="material-symbols-outlined">badge</span> <span data-i18n="projectSettings.identity">Projekt-Identit&auml;t</span></div>
+                <label class="settings-label"><span data-i18n="projectSettings.ticketPrefix">TICKET-PREFIX</span>
                   <input type="text" id="ps-ticket-prefix" class="settings-input" maxlength="8" placeholder="GG">
                 </label>
-                <label class="settings-label"><span>PROJEKT-LOGO</span>
+                <label class="settings-label"><span data-i18n="projectSettings.projectLogo">PROJEKT-LOGO</span>
                   <div style="display:flex;gap:8px">
-                    <button id="ps-upload-logo" class="btn-secondary" style="font-size:12px"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">upload</span> Logo hochladen</button>
-                    <button id="ps-remove-logo" class="btn-secondary" style="font-size:12px"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">delete</span> Entfernen</button>
+                    <button id="ps-upload-logo" class="btn-secondary" style="font-size:12px"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">upload</span> <span data-i18n="projectSettings.uploadLogo">Logo hochladen</span></button>
+                    <button id="ps-remove-logo" class="btn-secondary" style="font-size:12px"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">delete</span> <span data-i18n="projectSettings.removeLogo">Entfernen</span></button>
                   </div>
                 </label>
               </div>
@@ -1169,8 +1169,8 @@
             </div>
           </div>
           <div style="padding:8px 24px 20px;display:flex;gap:12px;justify-content:flex-end">
-            <button id="btn-ps-cancel" class="btn-secondary">Abbrechen</button>
-            <button id="btn-ps-save" class="btn-primary">Speichern</button>
+            <button id="btn-ps-cancel" class="btn-secondary" data-i18n="projectSettings.cancel">Abbrechen</button>
+            <button id="btn-ps-save" class="btn-primary" data-i18n="projectSettings.save">Speichern</button>
           </div>
         </div>
       </div>

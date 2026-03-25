@@ -1179,26 +1179,23 @@ pub async fn save_project_settings(
         return Err("Ticket-Prefix darf nur Buchstaben/Zahlen enthalten".into());
     }
 
-    // Preserve existing tokens if the frontend sends empty ones (GG-064)
-    {
-        let s = state.lock().await;
-        if let Some(p) = &s.project {
-            if github.token.is_empty() && !p.github.token.is_empty() {
-                github.token = p.github.token.clone();
-            }
-            if bug_sync.api_token.is_empty() && !p.bug_sync.api_token.is_empty() {
-                bug_sync.api_token = p.bug_sync.api_token.clone();
-            }
-        }
-    }
-
-    // Update in-memory state and persist
+    // Single lock scope: preserve tokens, update state, persist
     let mut s = state.lock().await;
     let project_name = s
         .project
         .as_ref()
         .map(|p| p.name.clone())
         .ok_or("Kein Projekt aktiv")?;
+
+    // Preserve existing tokens if the frontend sends empty ones (GG-064)
+    if let Some(p) = &s.project {
+        if github.token.is_empty() && !p.github.token.is_empty() {
+            github.token = p.github.token.clone();
+        }
+        if bug_sync.api_token.is_empty() && !p.bug_sync.api_token.is_empty() {
+            bug_sync.api_token = p.bug_sync.api_token.clone();
+        }
+    }
 
     if let Some(ref mut p) = s.project {
         p.github = github.clone();
