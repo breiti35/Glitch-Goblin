@@ -21,7 +21,7 @@ import { t, setLocale, onLocaleChange, translateDOM } from './i18n.js';
 
 // ── Extracted Modules ──
 import { notifyDesktop, playSound, showToast, setupNotifCenter } from './notifications.js';
-import { openProjectPicker, switchProject, addProjectFlow, updateSidebar, loadClaudeUsage, updateAvatar, setupAvatarContextMenu } from './projects.js';
+import { openProjectPicker, switchProject, addProjectFlow, updateSidebar, loadClaudeUsage, updateAvatar, setupAvatarContextMenu, setupProjectSettingsModal, openProjectSettingsModal } from './projects.js';
 import { enterFocusMode, exitFocusMode } from './focus-mode.js';
 import { loadNotesView } from './notes.js';
 import { checkTicketRecovery } from './recovery.js';
@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupDeployListeners();
   setupBugSyncListeners();
   setupAvatarContextMenu();
+  setupProjectSettingsModal();
   loadDeployConfig();
   restoreFilters();
   renderBoard();

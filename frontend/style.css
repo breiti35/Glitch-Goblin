@@ -1573,6 +1573,32 @@ kbd {
   padding-top: 16px;
 }
 
+/* Project Settings Modal */
+.modal-project-settings-content {
+  min-width: 560px;
+  max-width: 720px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal-project-settings-content .modal-header {
+  padding-bottom: 0;
+}
+.modal-project-settings-content .settings-tabs {
+  margin-bottom: 0;
+  padding: 0 24px;
+}
+.modal-project-settings-content .settings-bento-row {
+  flex-direction: column;
+}
+@media (min-width: 700px) {
+  .modal-project-settings-content .settings-bento-row {
+    flex-direction: row;
+  }
+}
+#ps-live-settings-panel.collapsed {
+  display: none;
+}
+
 /* Picker */
 .modal-picker-content {
   min-width: 400px;

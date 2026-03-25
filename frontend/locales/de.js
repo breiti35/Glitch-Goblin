@@ -323,6 +323,22 @@ export default {
     archive: "Archivieren",
   },
 
+  // Project Settings Modal
+  projectSettings: {
+    title: "Projekt-Einstellungen",
+    tabProject: "Projekt",
+    tabGithub: "GitHub",
+    tabBugsync: "Bug-Sync",
+    tabDeploy: "Deploy",
+    ticketPrefix: "Ticket-Prefix",
+    projectLogo: "Projekt-Logo",
+    uploadLogo: "Logo hochladen",
+    removeLogo: "Entfernen",
+    identity: "Projekt-Identit\u00e4t",
+    save: "Speichern",
+    cancel: "Abbrechen",
+  },
+
   // Avatar Context Menu
   avatar: {
     uploadLogo: "Logo hochladen",
