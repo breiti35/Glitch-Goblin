@@ -6,6 +6,7 @@ import { esc, timeAgo, formatDuration, logError } from './utils.js';
 import { state, appendLog, switchView, confirmExecute } from './app.js';
 import { renderBoard } from './board.js';
 import { t } from './i18n.js';
+import { renderMarkdown } from './markdown.js';
 
 let buildPollTimer = null;
 
@@ -58,9 +59,15 @@ export async function loadDashboard() {
       `;
     }
 
-    // README
+    // README — render as Markdown
     const readmeEl = document.getElementById("dash-readme-body");
-    if (readmeEl) readmeEl.textContent = info.readmePreview || t('dashboard.noReadme');
+    if (readmeEl) {
+      if (info.readmePreview) {
+        readmeEl.innerHTML = renderMarkdown(info.readmePreview);
+      } else {
+        readmeEl.textContent = t('dashboard.noReadme');
+      }
+    }
 
     // Recent commits — timeline style
     const commitsEl = document.getElementById("dash-commits-body");
@@ -259,6 +266,15 @@ export function setupImportExportListeners() {
   });
 
   document.getElementById("dash-goto-board")?.addEventListener("click", () => switchView("board"));
+
+  // README edit button — open in default editor
+  document.querySelector(".dash-readme-edit")?.addEventListener("click", async () => {
+    try {
+      await invoke("open_readme");
+    } catch (e) {
+      appendLog("README öffnen fehlgeschlagen: " + e, true);
+    }
+  });
 }
 
 function pickExportFormat() {

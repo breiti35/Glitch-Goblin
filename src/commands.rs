@@ -2016,7 +2016,17 @@ pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
         .map(|f| project_path.join(f))
         .find(|p| p.exists())
         .and_then(|p| std::fs::read_to_string(p).ok())
-        .map(|s| s.chars().take(500).collect::<String>());
+        .map(|s| {
+            let truncated: String = s.chars().take(3000).collect();
+            // Close unclosed fenced code blocks after truncation
+            let fence_count = truncated.matches("\n```").count()
+                + if truncated.starts_with("```") { 1 } else { 0 };
+            if fence_count % 2 != 0 {
+                format!("{}\n```", truncated)
+            } else {
+                truncated
+            }
+        });
 
     // Tech stack detection
     let mut tech_stack = Vec::new();
@@ -2091,6 +2101,47 @@ pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
         command_count,
         recent_activity,
     })
+}
+
+// ── Open README in editor ──
+
+#[tauri::command]
+pub async fn open_readme(state: State<'_>) -> Result<(), String> {
+    let s = state.lock().await;
+    let project_path = s
+        .project_path()
+        .ok_or_else(|| AppError::NoProjectSelected.to_string())?;
+    drop(s);
+
+    let readme_path = ["README.md", "readme.md", "Readme.md"]
+        .iter()
+        .map(|f| project_path.join(f))
+        .find(|p| p.exists())
+        .ok_or_else(|| "Keine README.md gefunden".to_string())?;
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut cmd = crate::process_util::cmd_no_window("cmd");
+        let quoted_path = format!("\"{}\"", readme_path.to_string_lossy());
+        cmd.args(["/C", "start", "", &quoted_path]);
+        cmd.spawn().map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&readme_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&readme_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }
 
 // ── Templates (Phase 3 - Block D) ──

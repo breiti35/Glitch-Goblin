@@ -8,6 +8,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Added
+- **GG-104 Dashboard README als gerendertes Markdown anzeigen:** Die README.md wird im Dashboard jetzt als gerendertes Markdown dargestellt statt als Rohtext. Neuer leichtgewichtiger Markdown-Renderer (`markdown.js`) ohne externe Abhaengigkeiten — unterstuetzt Ueberschriften, Fettdruck, Kursiv, Code-Bloecke, Inline-Code, Listen, Links, Blockquotes, Horizontal Rules und Strikethrough. Bilder werden als Platzhalter angezeigt (lokale Pfade funktionieren nicht im WebView). Der Stift-Button oben rechts oeffnet die README im Standard-Editor (neuer Backend-Command `open_readme`). Markdown-Output ist XSS-sicher durch HTML-Escaping vor dem Rendering. README-Preview-Limit von 500 auf 3000 Zeichen erhoeht. CSS-Styling passend zum Stitch Design mit CSS-Variablen.
 - **GG-103 Projekt-Einstellungen von globalen Settings trennen:** Neues Modal "Projekt-Einstellungen" (oeffnen per Rechtsklick/Klick auf Projekt-Avatar). GitHub, Bug-Sync und Deploy-Einstellungen sind jetzt projektspezifisch und werden in `projects.json` pro Projekt gespeichert. Der globale Settings-Tab enthaelt nur noch systemweite Einstellungen (Theme, Sprache, Akzentfarbe, Claude CLI, Modell, Terminal, Benachrichtigungen). Bestehende globale GitHub- und Bug-Sync-Einstellungen werden automatisch ins Default-Projekt migriert. Neue Backend-Commands `get_project_settings` und `save_project_settings`.
 
 ### Fixed
