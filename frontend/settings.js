@@ -1,5 +1,5 @@
 // ── Settings Module ──
-// Global settings form, backup modal.
+// Global settings form, backup modal, Anthropic OAuth.
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc } from './utils.js';
@@ -158,4 +158,80 @@ export function setupModelPresetListener() {
       document.getElementById("set-cost-output").value = p[1];
     }
   });
+}
+
+// ── Anthropic OAuth ──
+
+/** Richtet die Event-Listener fuer Anthropic OAuth Login/Logout ein. */
+export function setupAnthropicOAuth() {
+  const btnLogin = document.getElementById("btn-anthropic-login");
+  const btnLogout = document.getElementById("btn-anthropic-logout");
+
+  if (btnLogin) {
+    btnLogin.addEventListener("click", async () => {
+      btnLogin.disabled = true;
+      btnLogin.textContent = t('anthropicOAuth.connecting');
+      try {
+        const status = await invoke("start_anthropic_login");
+        updateAnthropicOAuthUI(status);
+        showToast(t('onboarding.oauthSuccess'), "success");
+      } catch (err) {
+        appendLog("Anthropic OAuth error: " + err, true);
+        showToast(t('onboarding.oauthError') + ": " + err, "error");
+      } finally {
+        btnLogin.disabled = false;
+        btnLogin.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">login</span> ' + esc(t('anthropicOAuth.login'));
+      }
+    });
+  }
+
+  if (btnLogout) {
+    btnLogout.addEventListener("click", async () => {
+      try {
+        await invoke("anthropic_logout");
+        updateAnthropicOAuthUI({ connected: false, accountName: "" });
+        showToast(t('anthropicOAuth.statusNotConnected'), "info");
+      } catch (err) {
+        appendLog("Anthropic logout error: " + err, true);
+      }
+    });
+  }
+}
+
+/** Laedt den Anthropic OAuth Status vom Backend und aktualisiert die UI. */
+export async function loadAnthropicOAuthStatus() {
+  try {
+    const status = await invoke("get_anthropic_auth_status");
+    updateAnthropicOAuthUI(status);
+  } catch (e) {
+    // Silently ignore — not critical
+  }
+}
+
+/** Aktualisiert die Anthropic OAuth UI-Elemente im Settings-Bereich. */
+function updateAnthropicOAuthUI(status) {
+  const badge = document.getElementById("anthropic-oauth-badge");
+  const label = document.getElementById("anthropic-oauth-label");
+  const account = document.getElementById("anthropic-oauth-account");
+  const btnLogin = document.getElementById("btn-anthropic-login");
+  const btnLogout = document.getElementById("btn-anthropic-logout");
+
+  if (!badge) return;
+
+  if (status.connected) {
+    badge.className = "anthropic-oauth-badge connected";
+    if (label) label.textContent = t('anthropicOAuth.statusConnected');
+    if (account) {
+      account.textContent = t('anthropicOAuth.connectedAs') + ": " + (status.accountName || "Anthropic");
+      account.classList.remove("hidden");
+    }
+    if (btnLogin) btnLogin.classList.add("hidden");
+    if (btnLogout) btnLogout.classList.remove("hidden");
+  } else {
+    badge.className = "anthropic-oauth-badge disconnected";
+    if (label) label.textContent = t('anthropicOAuth.statusNotConnected');
+    if (account) account.classList.add("hidden");
+    if (btnLogin) btnLogin.classList.remove("hidden");
+    if (btnLogout) btnLogout.classList.add("hidden");
+  }
 }

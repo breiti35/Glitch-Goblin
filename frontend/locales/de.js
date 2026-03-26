@@ -328,10 +328,31 @@ export default {
     summaryProject: "Projekt",
     summaryPrefix: "Prefix",
     summaryClaude: "Claude Code",
+    summaryAnthropicOAuth: "Anthropic Verbindung",
     firstTicketHint: "Erstelle dein erstes Ticket mit Ctrl+N",
     available: "verf\u00fcgbar",
     notAvailable: "nicht verf\u00fcgbar",
     recheck: "Erneut pr\u00fcfen",
+    usageSourceTitle: "Usage-Datenquelle",
+    usageOptionCli: "Claude Code CLI",
+    usageOptionCliDesc: "Claude Code muss installiert sein. Usage-Anzeige funktioniert nur wenn Claude Code parallel l\u00e4uft.",
+    usageOptionOAuth: "Mit Anthropic anmelden",
+    usageOptionOAuthDesc: "Browser \u00f6ffnet sich, einmalig autorisieren. Usage-Anzeige funktioniert immer, unabh\u00e4ngig von Claude Code.",
+    oauthConnecting: "Verbinde mit Anthropic...",
+    oauthSuccess: "Erfolgreich verbunden!",
+    oauthError: "Verbindung fehlgeschlagen",
+  },
+
+  // Anthropic OAuth
+  anthropicOAuth: {
+    title: "Anthropic Verbindung",
+    statusConnected: "Verbunden",
+    statusNotConnected: "Nicht verbunden",
+    login: "Mit Anthropic anmelden",
+    logout: "Abmelden",
+    connecting: "Verbinde...",
+    connectedAs: "Angemeldet als",
+    description: "Melde dich bei Anthropic an, um die Usage-Anzeige ohne Claude Code CLI zu nutzen.",
   },
 
   // Focus Mode

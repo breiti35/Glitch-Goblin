@@ -286,6 +286,17 @@ pub fn load_settings() -> Result<Settings, String> {
                 settings.github.token.clone()
             });
     }
+    // Decrypt Anthropic OAuth tokens
+    if !settings.anthropic_oauth.access_token.is_empty() {
+        settings.anthropic_oauth.access_token =
+            crate::crypto::decrypt_token(&settings.anthropic_oauth.access_token)
+                .unwrap_or_else(|_| settings.anthropic_oauth.access_token.clone());
+    }
+    if !settings.anthropic_oauth.refresh_token.is_empty() {
+        settings.anthropic_oauth.refresh_token =
+            crate::crypto::decrypt_token(&settings.anthropic_oauth.refresh_token)
+                .unwrap_or_else(|_| settings.anthropic_oauth.refresh_token.clone());
+    }
     Ok(settings)
 }
 
@@ -306,6 +317,17 @@ pub fn save_settings_to_disk(settings: &Settings) -> Result<(), String> {
         settings_to_save.github.token =
             crate::crypto::encrypt_token(&settings.github.token)
                 .unwrap_or_else(|_| settings.github.token.clone());
+    }
+    // Encrypt Anthropic OAuth tokens
+    if !settings.anthropic_oauth.access_token.is_empty() {
+        settings_to_save.anthropic_oauth.access_token =
+            crate::crypto::encrypt_token(&settings.anthropic_oauth.access_token)
+                .unwrap_or_else(|_| settings.anthropic_oauth.access_token.clone());
+    }
+    if !settings.anthropic_oauth.refresh_token.is_empty() {
+        settings_to_save.anthropic_oauth.refresh_token =
+            crate::crypto::encrypt_token(&settings.anthropic_oauth.refresh_token)
+                .unwrap_or_else(|_| settings.anthropic_oauth.refresh_token.clone());
     }
     let json = serde_json::to_string_pretty(&settings_to_save)
         .map_err(|e| AppError::Serialize(e.to_string()))?;

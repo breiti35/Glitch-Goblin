@@ -10,6 +10,7 @@ mod deploy;
 mod error;
 mod git;
 mod kanban;
+mod oauth;
 mod process_util;
 mod state;
 mod terminal;
@@ -373,6 +374,10 @@ fn main() {
             // Onboarding
             commands::check_claude_cli,
             commands::validate_git_repo,
+            // Anthropic OAuth
+            commands::start_anthropic_login,
+            commands::get_anthropic_auth_status,
+            commands::anthropic_logout,
             // Claude Usage
             commands::get_claude_usage,
             // Git Push

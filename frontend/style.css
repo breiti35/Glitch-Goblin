@@ -1773,6 +1773,81 @@ kbd {
   margin-top: 8px;
 }
 
+/* Onboarding: Usage Source Options */
+.ob-usage-option {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-hover);
+}
+.ob-usage-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.ob-usage-radio input[type="radio"] {
+  accent-color: var(--accent);
+}
+.ob-usage-radio-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+.ob-oauth-status {
+  margin-top: 8px;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--surface-high);
+}
+.ob-oauth-status.ok {
+  color: var(--success);
+}
+.ob-oauth-status.err {
+  color: var(--danger);
+}
+
+/* Settings: Anthropic OAuth */
+.anthropic-oauth-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.anthropic-oauth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.anthropic-oauth-badge.connected {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+}
+.anthropic-oauth-badge.disconnected {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+.anthropic-oauth-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.anthropic-oauth-badge.connected .anthropic-oauth-dot {
+  background: var(--success);
+}
+.anthropic-oauth-badge.disconnected .anthropic-oauth-dot {
+  background: var(--text-muted);
+}
+.anthropic-oauth-account {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .onboarding-nav {
   display: flex;
   align-items: center;

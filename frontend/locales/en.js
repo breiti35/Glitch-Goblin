@@ -328,10 +328,31 @@ export default {
     summaryProject: "Project",
     summaryPrefix: "Prefix",
     summaryClaude: "Claude Code",
+    summaryAnthropicOAuth: "Anthropic Connection",
     firstTicketHint: "Create your first ticket with Ctrl+N",
     available: "available",
     notAvailable: "not available",
     recheck: "Recheck",
+    usageSourceTitle: "Usage Data Source",
+    usageOptionCli: "Claude Code CLI",
+    usageOptionCliDesc: "Claude Code must be installed. Usage display only works when Claude Code is running.",
+    usageOptionOAuth: "Sign in with Anthropic",
+    usageOptionOAuthDesc: "Browser opens, authorize once. Usage display works always, independent of Claude Code.",
+    oauthConnecting: "Connecting to Anthropic...",
+    oauthSuccess: "Successfully connected!",
+    oauthError: "Connection failed",
+  },
+
+  // Anthropic OAuth
+  anthropicOAuth: {
+    title: "Anthropic Connection",
+    statusConnected: "Connected",
+    statusNotConnected: "Not connected",
+    login: "Sign in with Anthropic",
+    logout: "Sign out",
+    connecting: "Connecting...",
+    connectedAs: "Signed in as",
+    description: "Sign in with Anthropic to use the usage display without Claude Code CLI.",
   },
 
   // Focus Mode
