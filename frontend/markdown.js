@@ -81,6 +81,19 @@ function sanitizeHtml(html) {
       cleanAttrs.push('target="_blank"');
     }
 
+    // Replace external <img> with badge span (CSP blocks external URLs in WebView)
+    if (tagLower === 'img') {
+      const srcEntry = cleanAttrs.find(a => a.startsWith('src='));
+      if (srcEntry) {
+        const srcVal = srcEntry.match(/^src="([^"]*)"/)?.[1] || '';
+        if (/^https?:\/\//i.test(srcVal)) {
+          const altEntry = cleanAttrs.find(a => a.startsWith('alt='));
+          const altVal = altEntry ? (altEntry.match(/^alt="([^"]*)"/)?.[1] || '') : '';
+          return `<span class="md-badge" title="${altVal}">${altVal || 'Image'}</span>`;
+        }
+      }
+    }
+
     const selfClosing = tagLower === 'br' || tagLower === 'hr' || tagLower === 'img';
     const attrStr = cleanAttrs.length > 0 ? ' ' + cleanAttrs.join(' ') : '';
     return selfClosing ? `<${tagLower}${attrStr}>` : `<${tagLower}${attrStr}>`;

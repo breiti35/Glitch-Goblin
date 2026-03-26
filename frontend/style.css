@@ -4741,6 +4741,17 @@ details.git-merged-group[open] > .git-group-collapsible::before {
   font-size: 0.85em;
   color: var(--text-muted);
 }
+.dash-readme-content .md-badge {
+  display: inline-block;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0 2px;
+}
 .dash-readme-content strong { color: var(--text); }
 
 /* ── README Editor Modal ── */
