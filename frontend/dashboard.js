@@ -3,7 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc, timeAgo, formatDuration, logError } from './utils.js';
-import { state, appendLog, switchView, confirmExecute } from './app.js';
+import { state, appendLog, switchView, confirmExecute, showToast } from './app.js';
 import { renderBoard } from './board.js';
 import { t } from './i18n.js';
 import { renderMarkdown } from './markdown.js';
@@ -67,8 +67,6 @@ export async function loadDashboard() {
           readmeEl.innerHTML = renderMarkdown(info.readmePreview);
         } catch (renderErr) {
           console.error("[README] Markdown render failed:", renderErr);
-          appendLog("README Render-Fehler: " + renderErr, true);
-          showToast("README Render-Fehler: " + renderErr.message, "error");
           readmeEl.textContent = info.readmePreview;
         }
       } else {
@@ -443,11 +441,10 @@ async function saveReadmeEditor() {
 
   try {
     await invoke("save_readme", { content: textarea.value });
-    // Mark content as saved so closeReadmeEditor won't show false "unsaved changes"
     readmeOriginalContent = textarea.value;
     appendLog(t('readmeEditor.saved'));
+    showToast(t('readmeEditor.saved') || "README gespeichert", "success");
     closeReadmeEditor();
-    // Refresh dashboard to show updated README
     loadDashboard();
   } catch (e) {
     appendLog(t('readmeEditor.saveError') + ": " + e, true);
