@@ -10,7 +10,6 @@ mod deploy;
 mod error;
 mod git;
 mod kanban;
-mod oauth;
 mod process_util;
 mod state;
 mod terminal;

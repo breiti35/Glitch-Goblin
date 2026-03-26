@@ -18,7 +18,7 @@ use crate::deploy;
 use crate::error::AppError;
 use crate::git;
 use crate::kanban::{self, Column, KanbanBoard, Ticket, TicketType};
-use crate::state::{AnthropicOAuth, AppState, BugSyncSettings, GitHubSettings, Settings};
+use crate::state::{AppState, BugSyncSettings, GitHubSettings, Settings};
 use crate::terminal;
 use crate::undo::UndoAction;
 
@@ -1084,9 +1084,6 @@ pub async fn get_settings(state: State<'_>) -> Result<Settings, String> {
     } else {
         "__set__".into()
     };
-    // Never send OAuth tokens to the frontend
-    settings.anthropic_oauth.access_token = String::new();
-    settings.anthropic_oauth.refresh_token = String::new();
     Ok(settings)
 }
 
@@ -1140,12 +1137,6 @@ pub async fn save_settings(mut settings: Settings, state: State<'_>) -> Result<(
     // Clear project-specific fields — they are managed by save_project_settings
     settings.github = GitHubSettings::default();
     settings.bug_sync = BugSyncSettings::default();
-
-    // Preserve Anthropic OAuth tokens — frontend never sends them
-    {
-        let s = state.lock().await;
-        settings.anthropic_oauth = s.settings.anthropic_oauth.clone();
-    }
 
     config::save_settings_to_disk(&settings)?;
     let mut s = state.lock().await;
@@ -3091,7 +3082,7 @@ pub async fn get_log_file_path() -> Result<String, String> {
         .ok_or_else(|| "No log files found".to_string())
 }
 
-// ── Anthropic OAuth ──
+// ── Anthropic Auth (via Claude Code Credentials) ──
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -3100,58 +3091,55 @@ pub struct AnthropicAuthStatus {
     pub account_name: String,
 }
 
-/// Startet den Anthropic OAuth PKCE Login-Flow.
-/// Oeffnet den Browser, wartet auf den Callback und speichert die Tokens.
+/// Startet den Anthropic Login via `claude /login`.
+/// Gibt den Pfad zur Credentials-Datei zurueck, damit das Frontend
+/// nach dem Terminal-Login den Status pruefen kann.
 #[tauri::command]
-pub async fn start_anthropic_login(state: State<'_>) -> Result<AnthropicAuthStatus, String> {
-    let tokens = crate::oauth::run_oauth_flow(&HTTP_CLIENT).await?;
+pub async fn start_anthropic_login(_state: State<'_>) -> Result<AnthropicAuthStatus, String> {
+    // Pruefe ob Credentials bereits vorhanden sind
+    if read_claude_code_token().await.is_ok() {
+        info!("Claude Code Credentials bereits vorhanden");
+        return Ok(AnthropicAuthStatus {
+            connected: true,
+            account_name: "Claude Code".to_string(),
+        });
+    }
 
-    // Determine account name (not available from token endpoint, use placeholder)
-    let account_name = "Anthropic Account".to_string();
-
-    let oauth = AnthropicOAuth {
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        expires_at: tokens.expires_at,
-        account_name: account_name.clone(),
-    };
-
-    // Save to state and persist
-    let mut s = state.lock().await;
-    s.settings.anthropic_oauth = oauth;
-    config::save_settings_to_disk(&s.settings)?;
-
-    info!("Anthropic OAuth Login erfolgreich");
-
+    // Credentials nicht vorhanden — Frontend muss ein Terminal mit `claude /login` oeffnen.
+    // Wir geben den aktuellen Status zurueck (nicht verbunden).
     Ok(AnthropicAuthStatus {
-        connected: true,
-        account_name,
+        connected: false,
+        account_name: String::new(),
     })
 }
 
 /// Gibt den aktuellen Anthropic-Verbindungsstatus zurueck.
+/// Prueft ob ~/.claude/.credentials.json einen gueltigen Token enthaelt.
 #[tauri::command]
-pub async fn get_anthropic_auth_status(state: State<'_>) -> Result<AnthropicAuthStatus, String> {
-    let s = state.lock().await;
-    let oauth = &s.settings.anthropic_oauth;
-    let connected = !oauth.access_token.is_empty();
+pub async fn get_anthropic_auth_status(_state: State<'_>) -> Result<AnthropicAuthStatus, String> {
+    let connected = read_claude_code_token().await.is_ok();
     Ok(AnthropicAuthStatus {
         connected,
         account_name: if connected {
-            oauth.account_name.clone()
+            "Claude Code".to_string()
         } else {
             String::new()
         },
     })
 }
 
-/// Meldet den User von Anthropic ab und loescht alle Tokens.
+/// Meldet den User von Anthropic ab.
+/// Loescht die Claude Code Credentials-Datei.
 #[tauri::command]
-pub async fn anthropic_logout(state: State<'_>) -> Result<(), String> {
-    let mut s = state.lock().await;
-    s.settings.anthropic_oauth = AnthropicOAuth::default();
-    config::save_settings_to_disk(&s.settings)?;
-    info!("Anthropic OAuth Logout");
+pub async fn anthropic_logout(_state: State<'_>) -> Result<(), String> {
+    let home = dirs::home_dir().ok_or("Home directory not found")?;
+    let creds_path = home.join(".claude").join(".credentials.json");
+    if creds_path.exists() {
+        tokio::fs::remove_file(&creds_path)
+            .await
+            .map_err(|e| format!("Credentials-Datei loeschen fehlgeschlagen: {e}"))?;
+    }
+    info!("Anthropic Logout: Credentials-Datei geloescht");
     Ok(())
 }
 
@@ -3239,9 +3227,9 @@ async fn read_claude_code_token() -> Result<String, String> {
 }
 
 /// Ruft Claude-Nutzungsstatistiken ab.
-/// Strategie: 1) In-Memory-Cache  2) Datei-Cache  3) Eigener OAuth-Token  4) Claude Code OAuth-Token
+/// Strategie: 1) In-Memory-Cache  2) Datei-Cache  3) Claude Code OAuth-Token
 #[tauri::command]
-pub async fn get_claude_usage(state: State<'_>) -> Result<ClaudeUsage, String> {
+pub async fn get_claude_usage(_state: State<'_>) -> Result<ClaudeUsage, String> {
     // 1) In-memory cache (60 seconds)
     {
         let cache = USAGE_CACHE.lock().await;
@@ -3269,52 +3257,14 @@ pub async fn get_claude_usage(state: State<'_>) -> Result<ClaudeUsage, String> {
         if let Some(ref entry) = *cache {
             if let Some(until) = entry.backoff_until {
                 if std::time::Instant::now() < until {
-                    // Still in backoff period — return stale data if available
                     return Ok(entry.usage.clone());
                 }
             }
         }
     }
 
-    // 4) Try own Anthropic OAuth token first (if logged in)
-    let own_token = {
-        let s = state.lock().await;
-        let oauth = &s.settings.anthropic_oauth;
-        if !oauth.access_token.is_empty() {
-            Some((oauth.access_token.clone(), oauth.refresh_token.clone(), oauth.expires_at.clone()))
-        } else {
-            None
-        }
-    };
-
-    let token: String = if let Some((access, refresh, expires_at)) = own_token {
-        if crate::oauth::is_token_expired(&expires_at) && !refresh.is_empty() {
-            // Token expired — try refresh
-            match crate::oauth::refresh_access_token(&HTTP_CLIENT, &refresh).await {
-                Ok(new_tokens) => {
-                    let refreshed = new_tokens.access_token.clone();
-                    let mut s = state.lock().await;
-                    s.settings.anthropic_oauth.access_token = new_tokens.access_token;
-                    s.settings.anthropic_oauth.refresh_token = new_tokens.refresh_token;
-                    s.settings.anthropic_oauth.expires_at = new_tokens.expires_at;
-                    if let Err(e) = config::save_settings_to_disk(&s.settings) {
-                        tracing::warn!("Refreshed Token konnte nicht gespeichert werden: {e}");
-                    }
-                    refreshed
-                }
-                Err(e) => {
-                    tracing::warn!("OAuth token refresh fehlgeschlagen: {e}");
-                    // Fall through to Claude Code credentials
-                    read_claude_code_token().await?
-                }
-            }
-        } else {
-            access
-        }
-    } else {
-        // 5) Fallback: Claude Code OAuth token
-        read_claude_code_token().await?
-    };
+    // 4) Claude Code OAuth token from ~/.claude/.credentials.json
+    let token = read_claude_code_token().await?;
 
     let resp = HTTP_CLIENT
         .get("https://api.anthropic.com/api/oauth/usage")

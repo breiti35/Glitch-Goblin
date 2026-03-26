@@ -236,6 +236,31 @@ export async function openBoardTerminal(shell) {
   }
 }
 
+/** Oeffnet ein Board-Terminal und fuehrt `claude /login` aus. */
+export async function openLoginTerminal() {
+  ensurePanelVisible();
+  const cwd = (state.project && state.project.path) || ".";
+  let shell = state.settings.default_shell || "";
+  if (!shell) {
+    try {
+      const shells = await invoke("list_available_shells");
+      if (shells.length > 0) shell = shells[0].path;
+    } catch (e) { return; }
+  }
+  if (!shell) return;
+
+  try {
+    const terminalId = await invoke("spawn_terminal", { shell, cwd });
+    state.terminalCounter++;
+    createTerminalInstance(terminalId, "claude login", BOARD_CTX);
+    setTimeout(() => {
+      invoke("write_terminal", { terminalId, data: "claude /login\r" }).catch(() => {});
+    }, 500);
+  } catch (e) {
+    appendLog("Failed to open login terminal: " + e, true);
+  }
+}
+
 export async function openTicketTerminal(startResult, model) {
   ensurePanelVisible();
 

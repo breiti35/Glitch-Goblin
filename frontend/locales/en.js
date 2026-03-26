@@ -337,22 +337,23 @@ export default {
     usageOptionCli: "Claude Code CLI",
     usageOptionCliDesc: "Claude Code must be installed. Usage display only works when Claude Code is running.",
     usageOptionOAuth: "Sign in with Anthropic",
-    usageOptionOAuthDesc: "Browser opens, authorize once. Usage display works always, independent of Claude Code.",
-    oauthConnecting: "Connecting to Anthropic...",
+    usageOptionOAuthDesc: "Uses Claude Code's login (claude /login). Sign in via terminal after onboarding.",
+    oauthConnecting: "Opening terminal...",
     oauthSuccess: "Successfully connected!",
     oauthError: "Connection failed",
   },
 
-  // Anthropic OAuth
+  // Anthropic Auth (via Claude Code Login)
   anthropicOAuth: {
     title: "Anthropic Connection",
     statusConnected: "Connected",
     statusNotConnected: "Not connected",
     login: "Sign in with Anthropic",
     logout: "Sign out",
-    connecting: "Connecting...",
-    connectedAs: "Signed in as",
-    description: "Sign in with Anthropic to use the usage display without Claude Code CLI.",
+    connecting: "Opening terminal...",
+    connectedAs: "Signed in via",
+    description: "Uses Claude Code's own login (claude /login). A terminal will be opened.",
+    onboardingHint: "After completing onboarding, you can sign in via a terminal in the settings.",
   },
 
   // Focus Mode

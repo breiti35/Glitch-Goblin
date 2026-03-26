@@ -57,31 +57,6 @@ fn default_github_poll_interval() -> u64 {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AnthropicOAuth {
-    #[serde(default)]
-    pub access_token: String,
-    #[serde(default)]
-    pub refresh_token: String,
-    /// ISO-8601 timestamp when the access token expires.
-    #[serde(default)]
-    pub expires_at: String,
-    /// Display name of the connected Anthropic account.
-    #[serde(default)]
-    pub account_name: String,
-}
-
-impl Default for AnthropicOAuth {
-    fn default() -> Self {
-        Self {
-            access_token: String::new(),
-            refresh_token: String::new(),
-            expires_at: String::new(),
-            account_name: String::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BugSyncSettings {
     #[serde(default)]
     pub enabled: bool,
@@ -168,8 +143,6 @@ pub struct Settings {
     pub bug_sync: BugSyncSettings,
     #[serde(default)]
     pub github: GitHubSettings,
-    #[serde(default)]
-    pub anthropic_oauth: AnthropicOAuth,
 }
 
 impl Default for Settings {
@@ -195,7 +168,6 @@ impl Default for Settings {
             auto_push_after_merge: false,
             bug_sync: BugSyncSettings::default(),
             github: GitHubSettings::default(),
-            anthropic_oauth: AnthropicOAuth::default(),
         }
     }
 }

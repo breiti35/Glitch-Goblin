@@ -3,7 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { esc } from './utils.js';
-import { state, appendLog, showToast, openModal, closeModal, applyAccentColor, updateThemeUI, modelToFlag } from './app.js';
+import { state, appendLog, showToast, openModal, closeModal, applyAccentColor, updateThemeUI, modelToFlag, switchView } from './app.js';
 import { renderBoard } from './board.js';
 import { loadShellOptions } from './terminal.js';
 import { t, setLocale, getLocale } from './i18n.js';
@@ -160,9 +160,11 @@ export function setupModelPresetListener() {
   });
 }
 
-// ── Anthropic OAuth ──
+// ── Anthropic Auth (via Claude Code Login) ──
 
-/** Richtet die Event-Listener fuer Anthropic OAuth Login/Logout ein. */
+let authPollInterval = null;
+
+/** Richtet die Event-Listener fuer Anthropic Login/Logout ein. */
 export function setupAnthropicOAuth() {
   const btnLogin = document.getElementById("btn-anthropic-login");
   const btnLogout = document.getElementById("btn-anthropic-logout");
@@ -172,13 +174,14 @@ export function setupAnthropicOAuth() {
       btnLogin.disabled = true;
       btnLogin.textContent = t('anthropicOAuth.connecting');
       try {
-        const status = await invoke("start_anthropic_login");
-        updateAnthropicOAuthUI(status);
-        showToast(t('onboarding.oauthSuccess'), "success");
+        const termMod = await import("./terminal.js");
+        switchView("board");
+        await termMod.openLoginTerminal();
+        // Poll for auth status every 2 seconds
+        startAuthPoll();
       } catch (err) {
-        appendLog("Anthropic OAuth error: " + err, true);
+        appendLog("Anthropic login error: " + err, true);
         showToast(t('onboarding.oauthError') + ": " + err, "error");
-      } finally {
         btnLogin.disabled = false;
         btnLogin.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">login</span> ' + esc(t('anthropicOAuth.login'));
       }
@@ -198,7 +201,37 @@ export function setupAnthropicOAuth() {
   }
 }
 
-/** Laedt den Anthropic OAuth Status vom Backend und aktualisiert die UI. */
+/** Pollt den Auth-Status bis verbunden (max 5 Minuten). */
+function startAuthPoll() {
+  stopAuthPoll();
+  let elapsed = 0;
+  authPollInterval = setInterval(async () => {
+    elapsed += 2000;
+    if (elapsed > 300_000) { stopAuthPoll(); return; }
+    try {
+      const status = await invoke("get_anthropic_auth_status");
+      if (status.connected) {
+        stopAuthPoll();
+        updateAnthropicOAuthUI(status);
+        showToast(t('onboarding.oauthSuccess'), "success");
+        const btnLogin = document.getElementById("btn-anthropic-login");
+        if (btnLogin) {
+          btnLogin.disabled = false;
+          btnLogin.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">login</span> ' + esc(t('anthropicOAuth.login'));
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }, 2000);
+}
+
+function stopAuthPoll() {
+  if (authPollInterval) {
+    clearInterval(authPollInterval);
+    authPollInterval = null;
+  }
+}
+
+/** Laedt den Anthropic Auth Status vom Backend und aktualisiert die UI. */
 export async function loadAnthropicOAuthStatus() {
   try {
     const status = await invoke("get_anthropic_auth_status");
@@ -208,7 +241,7 @@ export async function loadAnthropicOAuthStatus() {
   }
 }
 
-/** Aktualisiert die Anthropic OAuth UI-Elemente im Settings-Bereich. */
+/** Aktualisiert die Anthropic Auth UI-Elemente im Settings-Bereich. */
 function updateAnthropicOAuthUI(status) {
   const badge = document.getElementById("anthropic-oauth-badge");
   const label = document.getElementById("anthropic-oauth-label");
@@ -222,7 +255,7 @@ function updateAnthropicOAuthUI(status) {
     badge.className = "anthropic-oauth-badge connected";
     if (label) label.textContent = t('anthropicOAuth.statusConnected');
     if (account) {
-      account.textContent = t('anthropicOAuth.connectedAs') + ": " + (status.accountName || "Anthropic");
+      account.textContent = t('anthropicOAuth.connectedAs') + ": " + (status.accountName || "Claude Code");
       account.classList.remove("hidden");
     }
     if (btnLogin) btnLogin.classList.add("hidden");

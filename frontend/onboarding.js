@@ -75,11 +75,6 @@ export function setupOnboarding() {
     });
   });
 
-  // OAuth login button in onboarding
-  const btnOAuthLogin = document.getElementById('ob-oauth-login');
-  if (btnOAuthLogin) {
-    btnOAuthLogin.addEventListener('click', startOnboardingOAuth);
-  }
 
   // Auto-generate prefix when project name changes
   const nameInput = document.getElementById('ob-project-name');
@@ -311,57 +306,18 @@ function updateSummary() {
       claudeEl.style.color = 'var(--danger)';
     }
   }
-  // Anthropic OAuth row
+  // Anthropic Login row
   if (oauthRow && oauthEl) {
     if (wizardData.usageSource === 'oauth') {
       oauthRow.classList.remove('hidden');
-      if (wizardData.oauthConnected) {
-        oauthEl.textContent = '✓ ' + t('anthropicOAuth.statusConnected');
-        oauthEl.style.color = 'var(--success)';
-      } else {
-        oauthEl.textContent = '✗ ' + t('anthropicOAuth.statusNotConnected');
-        oauthEl.style.color = 'var(--danger)';
-      }
+      oauthEl.textContent = t('anthropicOAuth.onboardingHint');
+      oauthEl.style.color = 'var(--text-muted)';
     } else {
       oauthRow.classList.add('hidden');
     }
   }
 }
 
-async function startOnboardingOAuth() {
-  const btn = document.getElementById('ob-oauth-login');
-  const statusEl = document.getElementById('ob-oauth-status');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = t('onboarding.oauthConnecting');
-  }
-  if (statusEl) {
-    statusEl.classList.remove('hidden');
-    statusEl.className = 'ob-oauth-status';
-    statusEl.textContent = t('onboarding.oauthConnecting');
-  }
-  try {
-    await invoke('start_anthropic_login');
-    wizardData.oauthConnected = true;
-    if (statusEl) {
-      statusEl.className = 'ob-oauth-status ok';
-      statusEl.innerHTML = '&#10004; ' + esc(t('onboarding.oauthSuccess'));
-    }
-    showToast(t('onboarding.oauthSuccess'), 'success');
-  } catch (err) {
-    wizardData.oauthConnected = false;
-    if (statusEl) {
-      statusEl.className = 'ob-oauth-status err';
-      statusEl.innerHTML = '&#9888; ' + esc(t('onboarding.oauthError'));
-    }
-    appendLog('Onboarding OAuth error: ' + err, true);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">login</span> ' + esc(t('anthropicOAuth.login'));
-    }
-  }
-}
 
 let finishing = false;
 let prefixUserEdited = false;
