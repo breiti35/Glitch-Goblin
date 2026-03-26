@@ -478,7 +478,7 @@
             <!-- Row 4: Anthropic Verbindung -->
             <div class="settings-card">
               <div class="settings-card-title"><span class="material-symbols-outlined">key</span> <span data-i18n="anthropicOAuth.title">Anthropic Verbindung</span></div>
-              <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px" data-i18n="anthropicOAuth.description">Melde dich bei Anthropic an, um die Usage-Anzeige ohne Claude Code CLI zu nutzen.</p>
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px" data-i18n="anthropicOAuth.description">Nutzt Claude Codes eigenen Login (claude /login). Ein Terminal wird ge&ouml;ffnet.</p>
               <div id="anthropic-oauth-status" class="anthropic-oauth-status">
                 <div id="anthropic-oauth-badge" class="anthropic-oauth-badge disconnected">
                   <span class="anthropic-oauth-dot"></span>
@@ -1043,15 +1043,15 @@
               <button id="ob-claude-recheck" class="btn-secondary" style="margin-top:4px" data-i18n="onboarding.recheck">Erneut pr&uuml;fen</button>
             </div>
           </div>
-          <!-- Option B: Anthropic OAuth -->
+          <!-- Option B: Claude Code Login -->
           <div class="ob-usage-option" style="margin-top:16px">
             <label class="ob-usage-radio">
               <input type="radio" name="ob-usage-source" value="oauth">
               <span class="ob-usage-radio-label" data-i18n="onboarding.usageOptionOAuth">Mit Anthropic anmelden</span>
             </label>
-            <p class="text-muted text-small" data-i18n="onboarding.usageOptionOAuthDesc">Browser &ouml;ffnet sich, einmalig autorisieren. Usage-Anzeige funktioniert immer, unabh&auml;ngig von Claude Code.</p>
+            <p class="text-muted text-small" data-i18n="onboarding.usageOptionOAuthDesc">Nutzt Claude Codes Login (claude /login). Nach dem Onboarding im Terminal anmelden.</p>
             <div id="ob-oauth-section" class="hidden">
-              <button id="ob-oauth-login" class="btn-primary" style="margin-top:8px;font-size:12px"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">login</span> <span data-i18n="anthropicOAuth.login">Mit Anthropic anmelden</span></button>
+              <p class="text-muted text-small" style="margin-top:8px" data-i18n="anthropicOAuth.onboardingHint">Nach Abschluss des Onboardings kannst du dich in den Einstellungen &uuml;ber ein Terminal bei Anthropic anmelden.</p>
               <div id="ob-oauth-status" class="ob-oauth-status hidden"></div>
             </div>
           </div>
