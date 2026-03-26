@@ -2122,8 +2122,11 @@ pub async fn open_readme(state: State<'_>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         let mut cmd = crate::process_util::cmd_no_window("cmd");
-        let quoted_path = format!("\"{}\"", readme_path.to_string_lossy());
-        cmd.args(["/C", "start", "", &quoted_path]);
+        // Pfad NICHT manuell quoten – cmd.arg() uebernimmt das korrekte
+        // Windows-Argument-Escaping. Doppeltes Quoten korrumpiert den
+        // Laufwerksbuchstaben-Doppelpunkt (z.B. G: → G).
+        cmd.args(["/C", "start", ""]);
+        cmd.arg(&readme_path);
         cmd.spawn().map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "macos")]
