@@ -410,7 +410,8 @@ async function openReadmeEditor() {
   try {
     const content = await invoke("read_readme_full");
     textarea.value = content;
-    readmeOriginalContent = content;
+    // textarea normalizes \r\n → \n, so store the normalized value
+    readmeOriginalContent = textarea.value;
     modal.style.display = "";
     updateReadmePreview();
     textarea.focus();
@@ -435,6 +436,8 @@ async function saveReadmeEditor() {
 
   try {
     await invoke("save_readme", { content: textarea.value });
+    // Mark content as saved so closeReadmeEditor won't show false "unsaved changes"
+    readmeOriginalContent = textarea.value;
     appendLog(t('readmeEditor.saved'));
     closeReadmeEditor();
     // Refresh dashboard to show updated README
