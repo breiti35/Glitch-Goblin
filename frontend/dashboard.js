@@ -63,7 +63,14 @@ export async function loadDashboard() {
     const readmeEl = document.getElementById("dash-readme-body");
     if (readmeEl) {
       if (info.readmePreview) {
-        readmeEl.innerHTML = renderMarkdown(info.readmePreview);
+        try {
+          readmeEl.innerHTML = renderMarkdown(info.readmePreview);
+        } catch (renderErr) {
+          console.error("[README] Markdown render failed:", renderErr);
+          appendLog("README Render-Fehler: " + renderErr, true);
+          showToast("README Render-Fehler: " + renderErr.message, "error");
+          readmeEl.textContent = info.readmePreview;
+        }
       } else {
         readmeEl.textContent = t('dashboard.noReadme');
       }
@@ -451,5 +458,11 @@ function updateReadmePreview() {
   const textarea = document.getElementById("readme-editor-textarea");
   const preview = document.getElementById("readme-editor-preview-body");
   if (!textarea || !preview) return;
-  preview.innerHTML = renderMarkdown(textarea.value);
+  try {
+    preview.innerHTML = renderMarkdown(textarea.value);
+  } catch (renderErr) {
+    console.error("[README] Preview render failed:", renderErr);
+    appendLog("README Preview-Fehler: " + renderErr, true);
+    preview.textContent = textarea.value;
+  }
 }
