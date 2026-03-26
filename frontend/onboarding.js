@@ -27,7 +27,6 @@ let wizardData = {
   claudeFound: false,
   claudeVersion: '',
   usageSource: 'cli', // 'cli' or 'oauth'
-  oauthConnected: false,
 };
 
 /** Prueft ob das Onboarding angezeigt werden soll und oeffnet ggf. den Wizard. */
@@ -46,7 +45,6 @@ export function checkOnboarding() {
     claudeFound: false,
     claudeVersion: '',
     usageSource: 'cli',
-    oauthConnected: false,
   };
   showStep(0);
   openModal('modal-onboarding');

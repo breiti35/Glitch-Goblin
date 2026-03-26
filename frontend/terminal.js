@@ -255,7 +255,7 @@ export async function openLoginTerminal() {
     createTerminalInstance(terminalId, "claude login", BOARD_CTX);
     setTimeout(() => {
       invoke("write_terminal", { terminalId, data: "claude /login\r" }).catch(() => {});
-    }, 500);
+    }, 1500);
   } catch (e) {
     appendLog("Failed to open login terminal: " + e, true);
   }
