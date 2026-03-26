@@ -10,7 +10,7 @@ import { renderBoard, applyFilters, restoreFilters, toggleFilterBar, clearFilter
 import { openDetailPanel, closeDetailPanel, saveDetailTicket, deleteDetailTicket, setupCommentListeners } from './detail.js';
 import { loadGitView, setupGitListeners, checkGitStatus } from './git.js';
 import { setupTerminalListeners, openTicketTerminal, toggleTerminalView, toggleBoardTerminalPanel, cleanupTerminal, cleanupPageTerminal, refitPageTerminal } from './terminal.js';
-import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener, setupSettingsTabs } from './settings.js';
+import { loadSettingsForm, saveSettingsForm, openBackupModal, setupModelPresetListener, setupSettingsTabs, setupAnthropicOAuth, loadAnthropicOAuthStatus } from './settings.js';
 import { loadStatistics } from './statistics.js';
 import { loadDashboard, stopBuildPoll, loadTemplatesForModal, setupTemplateListener, setupImportExportListeners } from './dashboard.js';
 import { loadActivityView, setupActivityListeners } from './activity.js';
@@ -73,6 +73,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupCommentListeners();
   setupModelPresetListener();
   setupSettingsTabs();
+  setupAnthropicOAuth();
   setupNotifCenter();
   setupTemplateListener();
   setupImportExportListeners();
@@ -459,7 +460,7 @@ export function switchView(name) {
   // Lazy-load view content
   if (name === "agents") loadAgents();
   if (name === "commands") loadCommands();
-  if (name === "settings") loadSettingsForm();
+  if (name === "settings") { loadSettingsForm(); loadAnthropicOAuthStatus(); }
   if (name === "statistics") loadStatistics();
   if (name === "git") loadGitView();
   if (name === "activity") loadActivityView();

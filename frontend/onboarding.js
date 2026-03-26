@@ -26,6 +26,8 @@ let wizardData = {
   claudePath: '',
   claudeFound: false,
   claudeVersion: '',
+  usageSource: 'cli', // 'cli' or 'oauth'
+  oauthConnected: false,
 };
 
 /** Prueft ob das Onboarding angezeigt werden soll und oeffnet ggf. den Wizard. */
@@ -43,6 +45,8 @@ export function checkOnboarding() {
     claudePath: '',
     claudeFound: false,
     claudeVersion: '',
+    usageSource: 'cli',
+    oauthConnected: false,
   };
   showStep(0);
   openModal('modal-onboarding');
@@ -59,6 +63,23 @@ export function setupOnboarding() {
   if (btnBack) btnBack.addEventListener('click', onBack);
   if (btnPickFolder) btnPickFolder.addEventListener('click', pickFolder);
   if (btnClaudeRecheck) btnClaudeRecheck.addEventListener('click', checkClaude);
+
+  // Usage source radio buttons (Step 3)
+  document.querySelectorAll('input[name="ob-usage-source"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      wizardData.usageSource = e.target.value;
+      const cliSection = document.getElementById('ob-cli-section');
+      const oauthSection = document.getElementById('ob-oauth-section');
+      if (cliSection) cliSection.classList.toggle('hidden', e.target.value !== 'cli');
+      if (oauthSection) oauthSection.classList.toggle('hidden', e.target.value !== 'oauth');
+    });
+  });
+
+  // OAuth login button in onboarding
+  const btnOAuthLogin = document.getElementById('ob-oauth-login');
+  if (btnOAuthLogin) {
+    btnOAuthLogin.addEventListener('click', startOnboardingOAuth);
+  }
 
   // Auto-generate prefix when project name changes
   const nameInput = document.getElementById('ob-project-name');
@@ -126,7 +147,9 @@ function showStep(step) {
 
   // Step-specific actions
   if (step === 3) {
-    checkClaude();
+    if (wizardData.usageSource === 'cli') {
+      checkClaude();
+    }
   }
   if (step === 4) {
     updateSummary();
@@ -271,16 +294,71 @@ function updateSummary() {
   const projectEl = document.getElementById('ob-summary-project');
   const prefixEl = document.getElementById('ob-summary-prefix');
   const claudeEl = document.getElementById('ob-summary-claude');
+  const oauthRow = document.getElementById('ob-summary-oauth-row');
+  const oauthEl = document.getElementById('ob-summary-oauth');
 
   if (projectEl) projectEl.textContent = wizardData.projectName;
   if (prefixEl) prefixEl.textContent = wizardData.ticketPrefix;
   if (claudeEl) {
-    if (wizardData.claudeFound) {
+    if (wizardData.usageSource === 'oauth') {
+      claudeEl.textContent = '— ' + t('onboarding.notAvailable');
+      claudeEl.style.color = 'var(--text-muted)';
+    } else if (wizardData.claudeFound) {
       claudeEl.textContent = '✓ ' + t('onboarding.available');
       claudeEl.style.color = 'var(--success)';
     } else {
       claudeEl.textContent = '✗ ' + t('onboarding.notAvailable');
       claudeEl.style.color = 'var(--danger)';
+    }
+  }
+  // Anthropic OAuth row
+  if (oauthRow && oauthEl) {
+    if (wizardData.usageSource === 'oauth') {
+      oauthRow.classList.remove('hidden');
+      if (wizardData.oauthConnected) {
+        oauthEl.textContent = '✓ ' + t('anthropicOAuth.statusConnected');
+        oauthEl.style.color = 'var(--success)';
+      } else {
+        oauthEl.textContent = '✗ ' + t('anthropicOAuth.statusNotConnected');
+        oauthEl.style.color = 'var(--danger)';
+      }
+    } else {
+      oauthRow.classList.add('hidden');
+    }
+  }
+}
+
+async function startOnboardingOAuth() {
+  const btn = document.getElementById('ob-oauth-login');
+  const statusEl = document.getElementById('ob-oauth-status');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t('onboarding.oauthConnecting');
+  }
+  if (statusEl) {
+    statusEl.classList.remove('hidden');
+    statusEl.className = 'ob-oauth-status';
+    statusEl.textContent = t('onboarding.oauthConnecting');
+  }
+  try {
+    await invoke('start_anthropic_login');
+    wizardData.oauthConnected = true;
+    if (statusEl) {
+      statusEl.className = 'ob-oauth-status ok';
+      statusEl.innerHTML = '&#10004; ' + esc(t('onboarding.oauthSuccess'));
+    }
+    showToast(t('onboarding.oauthSuccess'), 'success');
+  } catch (err) {
+    wizardData.oauthConnected = false;
+    if (statusEl) {
+      statusEl.className = 'ob-oauth-status err';
+      statusEl.innerHTML = '&#9888; ' + esc(t('onboarding.oauthError'));
+    }
+    appendLog('Onboarding OAuth error: ' + err, true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">login</span> ' + esc(t('anthropicOAuth.login'));
     }
   }
 }
