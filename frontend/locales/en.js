@@ -113,6 +113,15 @@ export default {
     activityStreamSubtitle: "Real-time event stream for {project}",
   },
 
+  // README Editor
+  readmeEditor: {
+    save: "Save",
+    saved: "README saved",
+    loadError: "Failed to load README",
+    saveError: "Failed to save README",
+    unsavedChanges: "Discard unsaved changes?",
+  },
+
   // Git
   git: {
     title: "Git",

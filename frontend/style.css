@@ -4743,6 +4743,159 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 }
 .dash-readme-content strong { color: var(--text); }
 
+/* ── README Editor Modal ── */
+.readme-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.readme-editor-panel {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 1100px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.readme-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--outline-variant);
+  flex-shrink: 0;
+}
+.readme-editor-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+.readme-editor-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.readme-editor-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 6px;
+  background: var(--surface-container);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.readme-editor-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.readme-editor-btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.readme-editor-btn-primary:hover {
+  opacity: 0.9;
+  border-color: var(--accent);
+  color: #fff;
+}
+.readme-editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.readme-editor-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.readme-editor-pane-label {
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--outline-variant);
+  flex-shrink: 0;
+}
+.readme-editor-source textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px 16px;
+  tab-size: 2;
+}
+.readme-editor-divider {
+  width: 1px;
+  background: var(--outline-variant);
+  flex-shrink: 0;
+}
+.readme-editor-preview {
+  overflow: hidden;
+}
+.readme-editor-preview .dash-readme-content {
+  flex: 1;
+  max-height: none;
+  padding: 12px 16px;
+  overflow-y: auto;
+}
+
+/* HTML elements rendered from README HTML blocks */
+.dash-readme-content table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+}
+.dash-readme-content th,
+.dash-readme-content td {
+  border: 1px solid var(--outline-variant);
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 13px;
+}
+.dash-readme-content th {
+  background: var(--surface-container);
+  font-weight: 600;
+  color: var(--text);
+}
+.dash-readme-content details {
+  margin: 8px 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.dash-readme-content summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+.dash-readme-content details[open] summary {
+  margin-bottom: 8px;
+}
+
 /* Activity section (Stitch) */
 .dash-activity-section {
   padding: 8px 0;

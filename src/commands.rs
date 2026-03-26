@@ -2103,6 +2103,46 @@ pub async fn get_project_info(state: State<'_>) -> Result<ProjectInfo, String> {
     })
 }
 
+// ── README: Read full content ──
+
+/// Gibt den vollständigen Inhalt der README-Datei zurück.
+#[tauri::command]
+pub async fn read_readme_full(state: State<'_>) -> Result<String, String> {
+    let s = state.lock().await;
+    let project_path = s
+        .project_path()
+        .ok_or_else(|| AppError::NoProjectSelected.to_string())?;
+    drop(s);
+
+    let readme_path = ["README.md", "readme.md", "Readme.md"]
+        .iter()
+        .map(|f| project_path.join(f))
+        .find(|p| p.exists())
+        .ok_or_else(|| "Keine README.md gefunden".to_string())?;
+
+    std::fs::read_to_string(&readme_path).map_err(|e| e.to_string())
+}
+
+// ── README: Save content ──
+
+/// Speichert den Inhalt zurück in die README-Datei.
+#[tauri::command]
+pub async fn save_readme(state: State<'_>, content: String) -> Result<(), String> {
+    let s = state.lock().await;
+    let project_path = s
+        .project_path()
+        .ok_or_else(|| AppError::NoProjectSelected.to_string())?;
+    drop(s);
+
+    let readme_path = ["README.md", "readme.md", "Readme.md"]
+        .iter()
+        .map(|f| project_path.join(f))
+        .find(|p| p.exists())
+        .unwrap_or_else(|| project_path.join("README.md"));
+
+    std::fs::write(&readme_path, content).map_err(|e| e.to_string())
+}
+
 // ── Open README in editor ──
 
 #[tauri::command]

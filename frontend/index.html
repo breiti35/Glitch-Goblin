@@ -1343,6 +1343,38 @@
     </div>
   </div>
 
+  <!-- README Editor Modal -->
+  <div id="readme-editor-modal" class="readme-editor-overlay" style="display:none">
+    <div class="readme-editor-panel">
+      <div class="readme-editor-header">
+        <span class="readme-editor-title">
+          <span class="material-symbols-outlined" style="font-size:18px">edit_document</span>
+          README.md
+        </span>
+        <div class="readme-editor-actions">
+          <button id="readme-editor-save" class="readme-editor-btn readme-editor-btn-primary">
+            <span class="material-symbols-outlined" style="font-size:16px">save</span>
+            <span data-i18n="readmeEditor.save">Speichern</span>
+          </button>
+          <button id="readme-editor-close" class="readme-editor-btn">
+            <span class="material-symbols-outlined" style="font-size:16px">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="readme-editor-body">
+        <div class="readme-editor-pane readme-editor-source">
+          <div class="readme-editor-pane-label">Markdown</div>
+          <textarea id="readme-editor-textarea" spellcheck="false" placeholder="# README"></textarea>
+        </div>
+        <div class="readme-editor-divider"></div>
+        <div class="readme-editor-pane readme-editor-preview">
+          <div class="readme-editor-pane-label">Preview</div>
+          <div id="readme-editor-preview-body" class="dash-readme-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- These classic scripts run synchronously, setting window.Terminal and window.FitAddon
        before the deferred module script (app.js) executes. Do not move them into <head>. -->
   <script src="vendor/xterm/xterm.js"></script>
