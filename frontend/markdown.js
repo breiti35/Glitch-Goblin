@@ -1,6 +1,7 @@
 // ── Markdown Renderer ──
 // Lightweight, XSS-safe Markdown-to-HTML renderer for dashboard README display.
 // No external dependencies — regex-based parsing with HTML sanitization.
+// Supports safe inline HTML via allowlist.
 
 /**
  * Escapes HTML special characters to prevent XSS.
@@ -14,10 +15,99 @@ function escHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// ── HTML Sanitizer (Allowlist-based) ──
+
+const ALLOWED_TAGS = new Set([
+  'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'img', 'a', 'strong', 'em', 'b', 'i', 'br', 'hr',
+  'div', 'span', 'details', 'summary',
+  'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'ul', 'ol', 'li', 'code', 'pre', 'blockquote',
+  'del', 'sub', 'sup', 'dd', 'dt', 'dl',
+]);
+
+const ALLOWED_ATTRS = new Set([
+  'align', 'valign', 'width', 'height',
+  'src', 'alt', 'title',
+  'href', 'target', 'rel',
+  'colspan', 'rowspan', 'scope',
+  'open',
+]);
+
+/**
+ * Sanitizes an HTML string: keeps only allowed tags with allowed attributes.
+ * All event handlers (onclick, onerror, etc.) and unknown tags are stripped.
+ */
+function sanitizeHtml(html) {
+  // Process tags one by one
+  return html.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)?\/?>/g, (match, tag, attrsStr) => {
+    const tagLower = tag.toLowerCase();
+    if (!ALLOWED_TAGS.has(tagLower)) return '';
+
+    // Self-closing or closing tag
+    if (match.startsWith('</')) return `</${tagLower}>`;
+
+    // Filter attributes
+    const cleanAttrs = [];
+    if (attrsStr) {
+      const attrRegex = /([a-zA-Z][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g;
+      let attrMatch;
+      while ((attrMatch = attrRegex.exec(attrsStr)) !== null) {
+        const attrName = attrMatch[1].toLowerCase();
+        const attrVal = attrMatch[2] ?? attrMatch[3] ?? attrMatch[4] ?? '';
+        if (!ALLOWED_ATTRS.has(attrName)) continue;
+        // Block dangerous URI schemes in href/src
+        if ((attrName === 'href' || attrName === 'src') && /^\s*(javascript|data|vbscript)\s*:/i.test(attrVal)) continue;
+        cleanAttrs.push(`${attrName}="${escHtml(attrVal)}"`);
+      }
+      // Handle boolean attributes (e.g. "open" on <details>)
+      const boolRegex = /\b([a-zA-Z][\w-]*)\b(?!=)/g;
+      let boolMatch;
+      const usedAttrs = new Set(cleanAttrs.map(a => a.split('=')[0]));
+      while ((boolMatch = boolRegex.exec(attrsStr)) !== null) {
+        const name = boolMatch[1].toLowerCase();
+        if (ALLOWED_ATTRS.has(name) && !usedAttrs.has(name)) {
+          cleanAttrs.push(name);
+          usedAttrs.add(name);
+        }
+      }
+    }
+
+    // Add rel="noopener" to links for security
+    if (tagLower === 'a' && !cleanAttrs.some(a => a.startsWith('rel='))) {
+      cleanAttrs.push('rel="noopener"');
+    }
+    if (tagLower === 'a' && !cleanAttrs.some(a => a.startsWith('target='))) {
+      cleanAttrs.push('target="_blank"');
+    }
+
+    const selfClosing = tagLower === 'br' || tagLower === 'hr' || tagLower === 'img';
+    const attrStr = cleanAttrs.length > 0 ? ' ' + cleanAttrs.join(' ') : '';
+    return selfClosing ? `<${tagLower}${attrStr}>` : `<${tagLower}${attrStr}>`;
+  });
+}
+
+/**
+ * Checks if a line is an HTML block element (opening or closing).
+ */
+function isHtmlBlock(line) {
+  const trimmed = line.trim();
+  const m = trimmed.match(/^<\/?([a-zA-Z][a-zA-Z0-9]*)/);
+  if (!m) return false;
+  const tag = m[1].toLowerCase();
+  const blockTags = new Set([
+    'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'table', 'thead', 'tbody', 'tr', 'details', 'summary',
+    'ul', 'ol', 'blockquote', 'pre', 'hr', 'br',
+  ]);
+  return blockTags.has(tag) && ALLOWED_TAGS.has(tag);
+}
+
 /**
  * Renders a Markdown string to sanitized HTML.
  * Supports: headings, bold, italic, inline code, fenced code blocks,
- * unordered/ordered lists, links, blockquotes, horizontal rules, images (as placeholders).
+ * unordered/ordered lists, links, blockquotes, horizontal rules, images (as placeholders),
+ * and safe inline HTML via allowlist.
  */
 export function renderMarkdown(md) {
   if (!md) return '';
@@ -40,6 +130,8 @@ export function renderMarkdown(md) {
   const out = [];
   let inList = null; // 'ul' | 'ol' | null
   let inBlockquote = false;
+  let inHtmlBlock = false;
+  let htmlBlockBuf = [];
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
@@ -49,7 +141,28 @@ export function renderMarkdown(md) {
     if (cbMatch) {
       closeList();
       closeBlockquote();
+      closeHtmlBlock();
       out.push(codeBlocks[parseInt(cbMatch[1])]);
+      continue;
+    }
+
+    // HTML block detection: lines starting with allowed block-level HTML tags
+    if (!inHtmlBlock && isHtmlBlock(line) && !inList && !inBlockquote) {
+      closeList();
+      closeBlockquote();
+      inHtmlBlock = true;
+      htmlBlockBuf = [line];
+      // Check if the block closes on the same line
+      if (isHtmlBlockComplete(htmlBlockBuf.join('\n'))) {
+        closeHtmlBlock();
+      }
+      continue;
+    }
+    if (inHtmlBlock) {
+      htmlBlockBuf.push(line);
+      if (isHtmlBlockComplete(htmlBlockBuf.join('\n'))) {
+        closeHtmlBlock();
+      }
       continue;
     }
 
@@ -122,6 +235,7 @@ export function renderMarkdown(md) {
 
   closeList();
   closeBlockquote();
+  closeHtmlBlock();
 
   return out.join('\n');
 
@@ -138,14 +252,54 @@ export function renderMarkdown(md) {
       inBlockquote = false;
     }
   }
+
+  function closeHtmlBlock() {
+    if (inHtmlBlock) {
+      const raw = htmlBlockBuf.join('\n');
+      out.push(sanitizeHtml(raw));
+      inHtmlBlock = false;
+      htmlBlockBuf = [];
+    }
+  }
+}
+
+/**
+ * Checks if an HTML block buffer has balanced opening/closing tags
+ * (simple heuristic: empty line or balanced top-level tag).
+ */
+function isHtmlBlockComplete(block) {
+  const trimmed = block.trim();
+  // Self-closing tags are always complete
+  if (/^<(br|hr|img)\b[^>]*>$/i.test(trimmed)) return true;
+  // Check if last line is empty (blank-line terminated)
+  if (block.endsWith('\n\n')) return true;
+  // Check balanced tags (simple: first opening tag has matching closing tag)
+  const openMatch = trimmed.match(/^<([a-zA-Z][a-zA-Z0-9]*)/);
+  if (!openMatch) return true;
+  const tag = openMatch[1].toLowerCase();
+  const closeRegex = new RegExp(`</${tag}\\s*>\\s*$`, 'i');
+  return closeRegex.test(trimmed);
 }
 
 /**
  * Applies inline formatting: bold, italic, inline code, links, images.
  * Input is raw markdown text (not yet HTML-escaped).
+ * Preserves allowed inline HTML tags.
  */
 function inlineFormat(text) {
-  // Escape HTML first
+  // Extract inline HTML tags before escaping, replace with placeholders
+  const inlineTags = [];
+  text = text.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)?\/?>/g, (match, tag) => {
+    const tagLower = tag.toLowerCase();
+    if (ALLOWED_TAGS.has(tagLower)) {
+      const idx = inlineTags.length;
+      inlineTags.push(sanitizeHtml(match));
+      return `\x00INLINETAG${idx}\x00`;
+    }
+    return ''; // Strip disallowed tags
+  });
+
+  // Escape HTML (now safe — allowed tags are placeholders)
   text = escHtml(text);
 
   // Inline code (must come before bold/italic to protect backtick content)
@@ -154,10 +308,6 @@ function inlineFormat(text) {
   // Images → placeholder (local paths don't work in WebView)
   text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g,
     '<span class="md-img-placeholder" title="$1">[Bild: $1]</span>');
-
-  // Also handle raw <img> tags that were escaped
-  text = text.replace(/&lt;img[^&]*?&gt;/gi,
-    '<span class="md-img-placeholder">[Bild]</span>');
 
   // Links
   text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
@@ -177,6 +327,9 @@ function inlineFormat(text) {
 
   // Strikethrough
   text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+  // Restore inline HTML tags from placeholders
+  text = text.replace(/\x00INLINETAG(\d+)\x00/g, (_m, idx) => inlineTags[parseInt(idx)]);
 
   return text;
 }

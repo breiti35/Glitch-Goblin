@@ -267,13 +267,30 @@ export function setupImportExportListeners() {
 
   document.getElementById("dash-goto-board")?.addEventListener("click", () => switchView("board"));
 
-  // README edit button — open in default editor
-  document.querySelector(".dash-readme-edit")?.addEventListener("click", async () => {
-    try {
-      await invoke("open_readme");
-    } catch (e) {
-      appendLog("README öffnen fehlgeschlagen: " + e, true);
-    }
+  // README edit button — open in-app editor modal
+  document.querySelector(".dash-readme-edit")?.addEventListener("click", () => openReadmeEditor());
+
+  // README editor: save button
+  document.getElementById("readme-editor-save")?.addEventListener("click", () => saveReadmeEditor());
+
+  // README editor: close button
+  document.getElementById("readme-editor-close")?.addEventListener("click", () => closeReadmeEditor());
+
+  // README editor: close on overlay click
+  document.getElementById("readme-editor-modal")?.addEventListener("click", (e) => {
+    if (e.target === e.currentTarget) closeReadmeEditor();
+  });
+
+  // README editor: close on Escape
+  document.getElementById("readme-editor-modal")?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeReadmeEditor();
+  });
+
+  // README editor: live preview on input (debounced)
+  let readmePreviewTimer = null;
+  document.getElementById("readme-editor-textarea")?.addEventListener("input", () => {
+    clearTimeout(readmePreviewTimer);
+    readmePreviewTimer = setTimeout(updateReadmePreview, 200);
   });
 }
 
@@ -379,4 +396,57 @@ function renderDashActions() {
       }
     });
   });
+}
+
+// ── README Editor ──
+
+let readmeOriginalContent = '';
+
+async function openReadmeEditor() {
+  const modal = document.getElementById("readme-editor-modal");
+  const textarea = document.getElementById("readme-editor-textarea");
+  if (!modal || !textarea) return;
+
+  try {
+    const content = await invoke("read_readme_full");
+    textarea.value = content;
+    readmeOriginalContent = content;
+    modal.style.display = "";
+    updateReadmePreview();
+    textarea.focus();
+  } catch (e) {
+    appendLog(t('readmeEditor.loadError') + ": " + e, true);
+  }
+}
+
+function closeReadmeEditor() {
+  const modal = document.getElementById("readme-editor-modal");
+  const textarea = document.getElementById("readme-editor-textarea");
+  if (!modal) return;
+  if (textarea && textarea.value !== readmeOriginalContent) {
+    if (!confirm(t('readmeEditor.unsavedChanges'))) return;
+  }
+  modal.style.display = "none";
+}
+
+async function saveReadmeEditor() {
+  const textarea = document.getElementById("readme-editor-textarea");
+  if (!textarea) return;
+
+  try {
+    await invoke("save_readme", { content: textarea.value });
+    appendLog(t('readmeEditor.saved'));
+    closeReadmeEditor();
+    // Refresh dashboard to show updated README
+    loadDashboard();
+  } catch (e) {
+    appendLog(t('readmeEditor.saveError') + ": " + e, true);
+  }
+}
+
+function updateReadmePreview() {
+  const textarea = document.getElementById("readme-editor-textarea");
+  const preview = document.getElementById("readme-editor-preview-body");
+  if (!textarea || !preview) return;
+  preview.innerHTML = renderMarkdown(textarea.value);
 }

@@ -113,6 +113,15 @@ export default {
     activityStreamSubtitle: "Echtzeit-Ereignisstrom f\u00fcr {project}",
   },
 
+  // README Editor
+  readmeEditor: {
+    save: "Speichern",
+    saved: "README gespeichert",
+    loadError: "README laden fehlgeschlagen",
+    saveError: "README speichern fehlgeschlagen",
+    unsavedChanges: "Ungespeicherte \u00c4nderungen verwerfen?",
+  },
+
   // Git
   git: {
     title: "Git",
