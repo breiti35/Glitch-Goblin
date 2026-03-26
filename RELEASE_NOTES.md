@@ -1,15 +1,24 @@
-## Qualitaet & Performance
+## Neue Features
 
-### Performance
-- Git Branch-Liste laedt jetzt parallel statt sequentiell — deutlich schneller bei vielen Branches
+### Projekt-Einstellungen
+- Neues Projekt-Settings Modal: GitHub, Bug-Sync, Deploy und Ticket-Prefix an einem Ort
+- Globale und projektspezifische Einstellungen sind jetzt sauber getrennt
 
-### Code-Qualitaet
-- Terminal-Code vereinfacht (55 Zeilen weniger, keine doppelte Logik mehr)
-- Alle UI-Texte korrekt uebersetzt (Deutsch/Englisch)
-- Stabilere DOM-Behandlung (keine Abstuerze bei fehlenden Elementen)
-- Datenbank-Index fuer schnellere Kommentar-Abfragen
-- Schnellere API-Aufrufe durch Connection-Reuse
+### Onboarding
+- Welcome-Modal beim ersten App-Start fuehrt durch die Ersteinrichtung
+- Projekt anlegen, Ticket-Prefix und Claude Code Verbindung in einem Schritt
 
-### Bugfixes
-- Agent/Befehl erstellen: Keine Race Condition mehr bei gleichzeitigem Zugriff
-- Bug-Sync: Token wird korrekt validiert
+### Anthropic Login
+- Mit Anthropic anmelden direkt in der App (ueber Claude Code Login)
+- Usage-Anzeige funktioniert unabhaengig davon ob Claude Code parallel laeuft
+
+### README im Dashboard
+- README.md wird als gerendertes Markdown angezeigt (Ueberschriften, Listen, Code-Bloecke, Tabellen)
+- Integrierter Editor mit Live-Preview zum Bearbeiten direkt in der App
+- HTML-Inhalte werden sicher gerendert (XSS-geschuetzt)
+
+## Bugfixes
+
+- Terminal: Mehrzeiliger Prompt verschwindet nicht mehr (Bracketed Paste Mode)
+- README Edit-Button: Pfad auf Windows korrekt, kein haesslicher System-Fehlerdialog mehr
+- Badge-Bilder in README werden als Text-Badges dargestellt statt kaputte Platzhalter
