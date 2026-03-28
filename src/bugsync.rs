@@ -104,13 +104,7 @@ pub async fn update_bug_status(
 ) -> Result<(), String> {
     validate_api_url(api_url)?;
 
-    // Build base URL (strip trailing /unsynced or similar path segments)
-    let base = api_url
-        .trim_end_matches('/')
-        .rsplit_once('/')
-        .map(|(base, _)| base)
-        .unwrap_or(api_url);
-
+    let base = api_url.trim_end_matches('/');
     let url = format!("{base}/{bug_id}/status");
 
     let mut request = HTTP_CLIENT
