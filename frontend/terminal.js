@@ -322,7 +322,7 @@ export async function openTicketTerminal(startResult, model) {
         const isMultiline = startResult.prompt.includes("\n");
         // Bracketed paste mode: \x1b[200~ ... \x1b[201~ tells the CLI this is a paste, not typed input
         const prompt = isMultiline
-          ? "\x1b[200~" + startResult.prompt + "\x1b[201~"
+          ? "\x1b[200~" + startResult.prompt + "\x1b[201~\r"
           : startResult.prompt + "\r";
         invoke("write_terminal", { terminalId, data: prompt }).catch(e => logError("terminal: write", e));
       }
@@ -339,7 +339,7 @@ export async function openTicketTerminal(startResult, model) {
         clearInterval(checkInterval);
         const isMultiline = startResult.prompt.includes("\n");
         const prompt = isMultiline
-          ? "\x1b[200~" + startResult.prompt + "\x1b[201~"
+          ? "\x1b[200~" + startResult.prompt + "\x1b[201~\r"
           : startResult.prompt + "\r";
         invoke("write_terminal", { terminalId, data: prompt }).catch(e => logError("terminal: write", e));
       }
