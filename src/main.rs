@@ -360,6 +360,9 @@ fn main() {
             // Bug-Sync (Portal Bug-Tracker)
             commands::sync_portal_bugs,
             commands::get_bug_sync_settings,
+            commands::fetch_inbox_bugs,
+            commands::accept_inbox_bug,
+            commands::reject_inbox_bug,
             // Project Settings
             commands::get_project_settings,
             commands::save_project_settings,

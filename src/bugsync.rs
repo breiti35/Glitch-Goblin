@@ -20,6 +20,9 @@ pub struct PortalBug {
     pub created_at: Option<String>,
     #[serde(default)]
     pub portal_url: Option<String>,
+    /// Entry type: "bug", "feedback", or "idea". Defaults to None (treated as "bug").
+    #[serde(default, rename = "type")]
+    pub bug_type: Option<String>,
 }
 
 /// Response wrapper from the Portal API.
@@ -90,6 +93,49 @@ pub async fn fetch_unsynced_bugs(api_url: &str, api_token: &str) -> Result<Vec<P
         serde_json::from_slice(&bytes).map_err(|e| format!("Bug-Sync: failed to parse response: {e}"))?;
 
     Ok(body.bugs)
+}
+
+/// Update a bug's status on the Portal API (e.g. "in_progress", "rejected").
+pub async fn update_bug_status(
+    api_url: &str,
+    api_token: &str,
+    bug_id: u64,
+    status: &str,
+) -> Result<(), String> {
+    validate_api_url(api_url)?;
+
+    // Build base URL (strip trailing /unsynced or similar path segments)
+    let base = api_url
+        .trim_end_matches('/')
+        .rsplit_once('/')
+        .map(|(base, _)| base)
+        .unwrap_or(api_url);
+
+    let url = format!("{base}/{bug_id}/status");
+
+    let mut request = HTTP_CLIENT
+        .patch(&url)
+        .json(&serde_json::json!({ "status": status }));
+
+    if !api_token.is_empty() {
+        validate_api_token(api_token)?;
+        request = request.header("Authorization", format!("Bearer {api_token}"));
+    }
+
+    let response = request
+        .timeout(std::time::Duration::from_secs(15))
+        .send()
+        .await
+        .map_err(|e| format!("Bug-Sync status update failed: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Bug-Sync status update API returned status {}",
+            response.status()
+        ));
+    }
+
+    Ok(())
 }
 
 /// Mark bugs as synced on the Portal API.

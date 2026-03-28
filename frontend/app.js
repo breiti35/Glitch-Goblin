@@ -16,7 +16,7 @@ import { loadDashboard, stopBuildPoll, loadTemplatesForModal, setupTemplateListe
 import { loadActivityView, setupActivityListeners } from './activity.js';
 import { loadAgents, loadCommands, newAgentFlow, saveAgentEditor, deleteAgentEditor, setupAgentEditorClose, newCommandFlow, saveCommandEditor, deleteCommandEditor, setupCommandEditorClose } from './editors.js';
 import { setupDeployListeners, loadDeployConfig } from './deploy.js';
-import { setupBugSyncListeners, updateBugSyncBadge } from './bugsync.js';
+import { setupBugSyncListeners, updateBugSyncBadge, loadInboxView } from './bugsync.js';
 import { t, setLocale, onLocaleChange, translateDOM } from './i18n.js';
 
 // ── Extracted Modules ──
@@ -467,6 +467,7 @@ export function switchView(name) {
   if (name === "dashboard") loadDashboard();
   if (name === "archive") loadArchiveView();
   if (name === "notes") loadNotesView();
+  if (name === "bugsync") loadInboxView();
   if (name === "terminal") refitPageTerminal();
 
   // Update git warnings when switching views

@@ -370,6 +370,7 @@ async function loadProjectSettingsForm() {
     document.getElementById("ps-bugsync-url").value = ps.bug_sync.api_url || "";
     document.getElementById("ps-bugsync-token").value = "";
     document.getElementById("ps-bugsync-token").placeholder = ps.bug_sync_token_set ? "(Token gesetzt)" : "Secret oder JWT Token";
+    document.getElementById("ps-bugsync-mode").value = ps.bug_sync.sync_mode || "inbox";
     document.getElementById("ps-bugsync-interval").value = ps.bug_sync.interval_secs || 300;
     const bsInterval = ps.bug_sync.interval_secs || 300;
     document.getElementById("ps-bugsync-interval-label").textContent = bsInterval >= 60 ? Math.round(bsInterval / 60) + " min" : bsInterval + " s";
@@ -420,6 +421,7 @@ export async function saveProjectSettingsForm() {
       api_url: document.getElementById("ps-bugsync-url").value.trim(),
       api_token: document.getElementById("ps-bugsync-token").value.trim(),
       interval_secs: parseInt(document.getElementById("ps-bugsync-interval").value) || 300,
+      sync_mode: document.getElementById("ps-bugsync-mode").value || "inbox",
     },
   };
 

@@ -105,7 +105,7 @@
         <button data-view="activity" class="nav-item">
           <span class="material-symbols-outlined nav-icon">pulse_alert</span> <span data-i18n="nav.activity">Aktivit&auml;t</span>
         </button>
-        <button class="nav-item hidden" id="nav-bug-sync">
+        <button data-view="bugsync" class="nav-item hidden" id="nav-bug-sync">
           <span class="material-symbols-outlined nav-icon">bug_report</span> <span data-i18n="nav.bugSync">Bug-Sync</span>
           <span class="nav-badge hidden" id="bug-sync-count">0</span>
         </button>
@@ -626,6 +626,24 @@
           </div>
         </div>
         <div id="activity-list" class="activity-timeline"></div>
+      </section>
+
+      <!-- View: Bug-Sync Inbox -->
+      <section id="view-bugsync" class="view">
+        <div class="view-header">
+          <div class="view-header-left">
+            <h1 style="color:var(--accent)">Bug-Sync Inbox</h1>
+            <p class="view-subtitle" id="bugsync-inbox-subtitle">Eintr&auml;ge sichten und entscheiden</p>
+          </div>
+          <div class="view-header-right">
+            <button id="btn-inbox-refresh" class="btn-secondary">
+              <span class="material-symbols-outlined" style="font-size:16px">refresh</span> Aktualisieren
+            </button>
+          </div>
+        </div>
+        <div id="bugsync-inbox-list" class="bugsync-inbox-list">
+          <p class="empty-state">Lade Eintr&auml;ge...</p>
+        </div>
       </section>
 
       <!-- View: Agents (Stitch Card-Grid) -->
@@ -1263,6 +1281,12 @@
                 <label class="settings-label"><span class="toggle-row"><span>Bug-Sync aktivieren</span><label class="toggle-switch"><input type="checkbox" id="ps-bugsync-enabled"><span class="toggle-slider"></span></label></span></label>
                 <label class="settings-label"><span>API URL</span><input type="text" id="ps-bugsync-url" class="settings-input" placeholder="https://example.com/api/internal/bugs"></label>
                 <label class="settings-label"><span>API TOKEN</span><input type="password" id="ps-bugsync-token" class="settings-input" placeholder="Secret oder JWT Token"></label>
+                <label class="settings-label"><span>SYNC-MODUS</span>
+                  <select id="ps-bugsync-mode" class="settings-input">
+                    <option value="inbox">Inbox (Eintr&auml;ge erst sichten)</option>
+                    <option value="auto">Automatisch (sofort importieren)</option>
+                  </select>
+                </label>
                 <label class="settings-label"><span>SYNC-INTERVALL</span>
                   <div class="settings-range-row"><input type="range" id="ps-bugsync-interval" class="settings-range" min="60" max="1800" step="60" value="300"><span id="ps-bugsync-interval-label">5 min</span></div>
                 </label>

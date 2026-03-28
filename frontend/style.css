@@ -5783,3 +5783,178 @@ details.git-merged-group[open] > .git-group-collapsible::before {
 .updater-icon-spin {
   animation: updater-spin 1.2s linear infinite;
 }
+
+/* ── Bug-Sync Inbox ── */
+
+.bugsync-inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 32px 32px;
+}
+
+.bugsync-inbox-card {
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 16px 20px;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.bugsync-inbox-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+.bugsync-inbox-card.inbox-card-accepted {
+  opacity: 0.5;
+  border-color: var(--success, #4caf50);
+}
+
+.bugsync-inbox-card.inbox-card-rejected {
+  opacity: 0.4;
+  border-color: var(--danger);
+}
+
+.inbox-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.inbox-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-bug {
+  background: rgba(224, 79, 94, 0.15);
+  color: var(--danger);
+}
+
+.badge-feedback {
+  background: rgba(33, 150, 243, 0.15);
+  color: #2196f3;
+}
+
+.badge-idea {
+  background: rgba(156, 39, 176, 0.15);
+  color: #9c27b0;
+}
+
+.inbox-card-id {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.inbox-card-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.inbox-card-body {
+  margin-bottom: 12px;
+}
+
+.inbox-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
+
+.inbox-card-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+  line-height: 1.5;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inbox-card-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.inbox-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.inbox-card-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.btn-inbox-accept,
+.btn-inbox-reject {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--outline-variant);
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-inbox-accept {
+  color: var(--success, #4caf50);
+}
+
+.btn-inbox-accept:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.12);
+}
+
+.btn-inbox-reject {
+  color: var(--danger);
+}
+
+.btn-inbox-reject:hover:not(:disabled) {
+  background: rgba(224, 79, 94, 0.12);
+}
+
+.btn-inbox-accept:disabled,
+.btn-inbox-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inbox-action-done {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success, #4caf50);
+}
+
+.inbox-action-done.inbox-rejected {
+  color: var(--danger);
+}
+
+@keyframes inbox-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: inbox-spin 0.8s linear infinite;
+}
