@@ -66,6 +66,13 @@ pub struct BugSyncSettings {
     pub api_token: String,
     #[serde(default = "default_sync_interval")]
     pub interval_secs: u64,
+    /// "auto" (default, legacy) or "inbox" (review before import)
+    #[serde(default = "default_sync_mode")]
+    pub sync_mode: String,
+}
+
+fn default_sync_mode() -> String {
+    "inbox".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,6 +108,7 @@ impl Default for BugSyncSettings {
             api_url: String::new(),
             api_token: String::new(),
             interval_secs: 300,
+            sync_mode: "inbox".to_string(),
         }
     }
 }
@@ -358,6 +366,7 @@ mod tests {
         assert!(bs.api_url.is_empty());
         assert!(bs.api_token.is_empty());
         assert_eq!(bs.interval_secs, 300);
+        assert_eq!(bs.sync_mode, "inbox");
     }
 
     #[test]
@@ -376,6 +385,7 @@ mod tests {
             api_url: "https://api.example.com".into(),
             api_token: "secret-token".into(),
             interval_secs: 600,
+            sync_mode: "auto".into(),
         };
         let json = serde_json::to_string(&bs).unwrap();
         let parsed: BugSyncSettings = serde_json::from_str(&json).unwrap();
@@ -383,6 +393,7 @@ mod tests {
         assert_eq!(parsed.api_url, "https://api.example.com");
         assert_eq!(parsed.api_token, "secret-token");
         assert_eq!(parsed.interval_secs, 600);
+        assert_eq!(parsed.sync_mode, "auto");
     }
 
     #[test]

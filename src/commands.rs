@@ -2720,6 +2720,14 @@ pub async fn sync_portal_bugs(
             let id = format_ticket_id(&prefix, next_num);
             let slug = kanban::slugify(&bug.title);
 
+            let (ticket_type, prio, title_prefix) = match bug.bug_type.as_deref() {
+                Some("feedback") => (TicketType::Docs, "medium", "[Feedback] "),
+                Some("idea") => (TicketType::Feature, "medium", "[Idee] "),
+                _ => (TicketType::Bugfix, "high", ""),
+            };
+
+            let title = format!("{title_prefix}{}", bug.title);
+
             let mut desc_parts = Vec::new();
             if !bug.description.is_empty() {
                 desc_parts.push(bug.description.clone());
@@ -2737,12 +2745,12 @@ pub async fn sync_portal_bugs(
 
             let ticket = Ticket {
                 id: id.clone(),
-                title: bug.title.clone(),
+                title,
                 slug,
-                ticket_type: TicketType::Bugfix,
+                ticket_type,
                 column: Column::Backlog,
                 description,
-                prio: Some("high".to_string()),
+                prio: Some(prio.to_string()),
                 created_at: Some(kanban::now_iso()),
                 started_at: None,
                 review_at: None,
@@ -2763,8 +2771,14 @@ pub async fn sync_portal_bugs(
             bug_ids.push(bug.id);
             ticket_ids.push(id.clone());
 
+            let type_label = match bug.bug_type.as_deref() {
+                Some("feedback") => "Feedback",
+                Some("idea") => "Idee",
+                _ => "Bug",
+            };
+
             s.log(format!(
-                "Bug-Sync: Created ticket {id} from Portal Bug #{}",
+                "Bug-Sync: Created ticket {id} from Portal {type_label} #{}",
                 bug.id
             ));
 
@@ -2772,7 +2786,7 @@ pub async fn sync_portal_bugs(
                 "bug_synced",
                 Some(&id),
                 Some(&bug.title),
-                Some(&format!("Portal Bug #{}", bug.id)),
+                Some(&format!("Portal {type_label} #{}", bug.id)),
             );
         }
 
@@ -2817,6 +2831,162 @@ pub async fn get_bug_sync_settings(
         api_token_set: !bs.api_token.is_empty(),
         interval_secs: bs.interval_secs,
     })
+}
+
+/// Lädt ungesyncte Bugs vom Portal, ohne sie als Tickets zu importieren (Inbox-Modus).
+#[tauri::command]
+pub async fn fetch_inbox_bugs(
+    state: State<'_>,
+) -> Result<Vec<bugsync::PortalBug>, String> {
+    let (api_url, api_token) = {
+        let s = state.lock().await;
+        let bs = &s.settings.bug_sync;
+        if bs.api_url.is_empty() {
+            return Err("Bug-Sync: API URL nicht konfiguriert".to_string());
+        }
+        (bs.api_url.clone(), bs.api_token.clone())
+    };
+
+    bugsync::fetch_unsynced_bugs(&api_url, &api_token).await
+}
+
+/// Übernimmt einen Portal-Bug als Kanban-Ticket und meldet "in_progress" ans Portal.
+#[tauri::command]
+pub async fn accept_inbox_bug(
+    bug: bugsync::PortalBug,
+    state: State<'_>,
+) -> Result<Ticket, String> {
+    let (api_url, api_token) = {
+        let s = state.lock().await;
+        let bs = &s.settings.bug_sync;
+        (bs.api_url.clone(), bs.api_token.clone())
+    };
+
+    let ticket = {
+        let mut s = state.lock().await;
+
+        // Duplicate check
+        let already_exists = s
+            .board
+            .tickets
+            .iter()
+            .any(|t| t.portal_bug_id == Some(bug.id));
+        if already_exists {
+            return Err(format!("Bug #{} wurde bereits importiert", bug.id));
+        }
+
+        let prefix = ticket_prefix(&s);
+        let next_num = s.board.next_ticket_id;
+        s.board.next_ticket_id += 1;
+        let id = format_ticket_id(&prefix, next_num);
+        let slug = kanban::slugify(&bug.title);
+
+        let (ticket_type, prio, title_prefix) = match bug.bug_type.as_deref() {
+            Some("feedback") => (TicketType::Docs, "medium", "[Feedback] "),
+            Some("idea") => (TicketType::Feature, "medium", "[Idee] "),
+            _ => (TicketType::Bugfix, "high", ""),
+        };
+
+        let title = format!("{title_prefix}{}", bug.title);
+
+        let mut desc_parts = Vec::new();
+        if !bug.description.is_empty() {
+            desc_parts.push(bug.description.clone());
+        }
+        if let Some(cat) = &bug.category {
+            desc_parts.push(format!("Kategorie: {cat}"));
+        }
+        if let Some(reporter) = &bug.reporter_name {
+            desc_parts.push(format!("Gemeldet von: {reporter}"));
+        }
+        if let Some(screenshot) = &bug.screenshot_url {
+            desc_parts.push(format!("Screenshot: {screenshot}"));
+        }
+        let description = desc_parts.join("\n\n");
+
+        let ticket = Ticket {
+            id: id.clone(),
+            title,
+            slug,
+            ticket_type,
+            column: Column::Backlog,
+            description,
+            prio: Some(prio.to_string()),
+            created_at: Some(kanban::now_iso()),
+            started_at: None,
+            review_at: None,
+            done_at: None,
+            has_changes: None,
+            branch: None,
+            tokens_used: None,
+            cost_usd: None,
+            model_used: None,
+            comments: None,
+            portal_bug_id: Some(bug.id),
+            portal_bug_url: bug.portal_url.clone(),
+            archived_at: None,
+        };
+
+        s.board.tickets.push(ticket.clone());
+        s.save_and_backup()?;
+
+        let type_label = match bug.bug_type.as_deref() {
+            Some("feedback") => "Feedback",
+            Some("idea") => "Idee",
+            _ => "Bug",
+        };
+        s.log(format!(
+            "Bug-Sync Inbox: Ticket {id} aus Portal {type_label} #{} übernommen",
+            bug.id
+        ));
+        s.log_activity(
+            "bug_synced",
+            Some(&id),
+            Some(&bug.title),
+            Some(&format!("Portal {type_label} #{}", bug.id)),
+        );
+
+        ticket
+    };
+
+    // Report status to portal (best-effort)
+    if let Err(e) = bugsync::update_bug_status(&api_url, &api_token, bug.id, "in_progress").await {
+        tracing::warn!(error = %e, bug_id = bug.id, "Portal-Status konnte nicht aktualisiert werden");
+    }
+
+    // Also mark as synced
+    let ticket_id_vec = vec![ticket.id.clone()];
+    if let Err(e) = bugsync::mark_bugs_synced(&api_url, &api_token, &[bug.id], &ticket_id_vec).await {
+        tracing::warn!(error = %e, bug_id = bug.id, "Portal mark-synced fehlgeschlagen");
+    }
+
+    Ok(ticket)
+}
+
+/// Lehnt einen Portal-Bug ab und meldet "rejected" ans Portal.
+#[tauri::command]
+pub async fn reject_inbox_bug(
+    bug_id: u64,
+    state: State<'_>,
+) -> Result<(), String> {
+    let (api_url, api_token) = {
+        let s = state.lock().await;
+        let bs = &s.settings.bug_sync;
+        (bs.api_url.clone(), bs.api_token.clone())
+    };
+
+    bugsync::update_bug_status(&api_url, &api_token, bug_id, "rejected").await?;
+
+    let mut s = state.lock().await;
+    s.log(format!("Bug-Sync Inbox: Portal-Bug #{bug_id} abgelehnt"));
+    s.log_activity(
+        "bug_rejected",
+        None,
+        None,
+        Some(&format!("Portal-Bug #{bug_id} abgelehnt")),
+    );
+
+    Ok(())
 }
 
 // ── GitHub Actions Build Status ──

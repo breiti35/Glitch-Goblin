@@ -12,6 +12,7 @@ $ARGUMENTS
 5. **Tests** -- `cargo test` muss fehlerfrei sein
 6. **CHANGELOG** -- Eintrag unter ### Fixed hinzufuegen
 7. **Commit** -- Aussagekraeftige Commit-Message auf Deutsch
-8. **Review** -- code-reviewer Agent starten um die Aenderungen zu pruefen
+8. **Security** -- `/security-review` ausfuehren um die Aenderungen auf Sicherheitsluecken zu pruefen
+9. **Review** -- code-reviewer Agent starten um die Aenderungen zu pruefen
 
 Keine Sub-Agents starten ausser dem code-reviewer am Ende.

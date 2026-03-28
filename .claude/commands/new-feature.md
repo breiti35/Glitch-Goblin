@@ -13,7 +13,8 @@ $ARGUMENTS
 6. **Tests** -- `cargo test` muss fehlerfrei sein
 7. **CHANGELOG** -- Eintrag unter ### Added hinzufuegen
 8. **Commit** -- Aussagekraeftige Commit-Message auf Deutsch
-9. **Review** -- code-reviewer Agent starten um die Aenderungen zu pruefen
+9. **Security** -- `/security-review` ausfuehren um die Aenderungen auf Sicherheitsluecken zu pruefen
+10. **Review** -- code-reviewer Agent starten um die Aenderungen zu pruefen
 
 Keine Sub-Agents starten ausser dem code-reviewer am Ende.
 Nur Dateien aendern die zum Feature gehoeren -- kein Refactoring nebenbei.
