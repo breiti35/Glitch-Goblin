@@ -331,59 +331,83 @@ pub async fn move_ticket(
     target_column: Column,
     state: State<'_>,
 ) -> Result<(), String> {
-    let mut s = state.lock().await;
-    let idx = s
-        .board
-        .tickets
-        .iter()
-        .position(|t| t.id == ticket_id)
-        .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
+    let portal_info = {
+        let mut s = state.lock().await;
+        let idx = s
+            .board
+            .tickets
+            .iter()
+            .position(|t| t.id == ticket_id)
+            .ok_or_else(|| AppError::TicketNotFound(ticket_id.clone()))?;
 
-    let old_ticket = s.board.tickets[idx].clone();
-    let current = s.board.tickets[idx].column.clone();
+        let old_ticket = s.board.tickets[idx].clone();
+        let current = s.board.tickets[idx].column.clone();
 
-    // Same column: no-op
-    if current == target_column {
-        return Ok(());
-    }
+        // Same column: no-op
+        if current == target_column {
+            return Ok(());
+        }
 
-    // Validate: all moves between board columns allowed; Archived only from Done
-    let allowed = match (&current, &target_column) {
-        (Column::Archived, _) => false,
-        (_, Column::Archived) => current == Column::Done,
-        _ => true,
+        // Validate: all moves between board columns allowed; Archived only from Done
+        let allowed = match (&current, &target_column) {
+            (Column::Archived, _) => false,
+            (_, Column::Archived) => current == Column::Done,
+            _ => true,
+        };
+
+        if !allowed {
+            return Err(format!(
+                "Cannot move from {} to {}",
+                current.label(),
+                target_column.label()
+            ));
+        }
+
+        // Set timestamps based on target column
+        match &target_column {
+            Column::Progress => {
+                s.board.tickets[idx].started_at = Some(kanban::now_iso());
+            }
+            Column::Review => {
+                s.board.tickets[idx].review_at = Some(kanban::now_iso());
+            }
+            Column::Done => {
+                s.board.tickets[idx].done_at = Some(kanban::now_iso());
+            }
+            Column::Archived => {
+                s.board.tickets[idx].archived_at = Some(kanban::now_iso());
+            }
+            Column::Backlog => {}
+        }
+
+        s.board.tickets[idx].column = target_column.clone();
+        s.save_and_backup()?;
+        s.undo_manager.push(UndoAction::MoveTicket { old_ticket });
+        let detail = format!("{} -> {}", current.label(), target_column.label());
+        s.log_activity("ticket_moved", Some(&ticket_id), None, Some(&detail));
+
+        // Collect portal info for "resolved" status update
+        if target_column == Column::Done {
+            s.board.tickets[idx].portal_bug_id.and_then(|bug_id| {
+                let bs = &s.settings.bug_sync;
+                if !bs.api_url.is_empty() {
+                    Some((bs.api_url.clone(), bs.api_token.clone(), bug_id))
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        }
     };
 
-    if !allowed {
-        return Err(format!(
-            "Cannot move from {} to {}",
-            current.label(),
-            target_column.label()
-        ));
+    // Fire-and-forget: report "resolved" to portal when ticket moves to Done
+    if let Some((api_url, api_token, bug_id)) = portal_info {
+        if let Err(e) = bugsync::update_bug_status(&api_url, &api_token, bug_id, "resolved").await {
+            tracing::warn!(error = %e, bug_id, "Portal-Status 'resolved' konnte nicht aktualisiert werden");
+        }
     }
 
-    // Set timestamps based on target column
-    match &target_column {
-        Column::Progress => {
-            s.board.tickets[idx].started_at = Some(kanban::now_iso());
-        }
-        Column::Review => {
-            s.board.tickets[idx].review_at = Some(kanban::now_iso());
-        }
-        Column::Done => {
-            s.board.tickets[idx].done_at = Some(kanban::now_iso());
-        }
-        Column::Archived => {
-            s.board.tickets[idx].archived_at = Some(kanban::now_iso());
-        }
-        Column::Backlog => {}
-    }
-
-    s.board.tickets[idx].column = target_column.clone();
-    s.save_and_backup()?;
-    s.undo_manager.push(UndoAction::MoveTicket { old_ticket });
-    let detail = format!("{} -> {}", current.label(), target_column.label());
-    s.log_activity("ticket_moved", Some(&ticket_id), None, Some(&detail));
     Ok(())
 }
 
